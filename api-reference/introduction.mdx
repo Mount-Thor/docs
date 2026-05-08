@@ -1,33 +1,52 @@
 ---
-title: 'Introduction'
-description: 'Example section for showcasing API endpoints'
+title: "API reference"
+description: "Generated from typed Rust route metadata in admin-api. The pages under this tab are produced from https://api.mountthor.com/openapi.json."
 ---
 
-<Note>
-  If you're not looking to build API reference documentation, you can delete
-  this section by removing the api-reference folder.
-</Note>
+The customer-facing admin API surface is generated from the typed
+`#[utoipa::path]` annotations in admin-api and served at
+[`https://api.mountthor.com/openapi.json`](https://api.mountthor.com/openapi.json).
+Mintlify fetches that URL at build time and produces one reference page per
+route under this tab.
 
-## Welcome
+## What's in scope here
 
-There are two ways to build API documentation: [OpenAPI](https://mintlify.com/docs/api-playground/openapi/setup) and [MDX components](https://mintlify.com/docs/api-playground/mdx/configuration). For the starter kit, we are using the following OpenAPI specification.
+| | |
+|---|---|
+| **Audience** | Customer-facing routes under `/v1/admin/*` and the related session-minting routes. |
+| **Auth** | All routes require a Mount Thor bearer credential (`mt_live_*` API key or `mt_session_*` session token), except invite redemption — which is unauthenticated and proves identity via the single-use invite code itself. |
+| **Stability** | Routes carry `[live]` / `[todo]` markers in their summary text. `[live]` routes are mounted today; `[todo]` routes are the customer-facing target shape and are typically reached today via a current internal route name documented in [Alpha status](/concepts/alpha-status). |
+| **Spec freshness** | The spec rebuilds with every admin-api deploy. The docs site rebuilds on every push to this repository — if the spec has changed since the last docs rebuild, the rendered reference may lag by one build. |
 
-<Card
-  title="Plant Store Endpoints"
-  icon="leaf"
-  href="https://github.com/mintlify/starter/blob/main/api-reference/openapi.json"
->
-  View the OpenAPI specification file
-</Card>
+## What's not in scope here
+
+- The Kubernetes-compatible compute surface at `api.mountthor.com/v1/compute/*`
+  is not part of this OpenAPI document. Those resources are described in
+  [Bare metal](/compute/bare-metal) and [Virtual machines](/compute/virtual-machines).
+  Their canonical schemas are CRDs in your tenant control plane.
+- Internal-audience routes are excluded from the published spec. If a route
+  appears in admin-api's source but not here, it is intentional — internal
+  routes are not part of the customer contract.
 
 ## Authentication
 
-All API endpoints are authenticated using Bearer tokens and picked up from the specification file.
+Every customer-facing route documented under this tab uses the
+`api_key_bearer` security scheme:
 
-```json
-"security": [
-  {
-    "bearerAuth": []
-  }
-]
 ```
+Authorization: Bearer mt_live_*    # long-lived API key
+Authorization: Bearer mt_session_* # short-lived session token
+```
+
+See [Auth model](/concepts/auth) for which credential each route accepts and
+how to mint sessions from API keys.
+
+## Conventions
+
+- Request and response bodies are JSON.
+- Timestamps are RFC 3339 in UTC.
+- IDs are UUIDs unless explicitly typed otherwise.
+- Plaintext credentials (`mt_live_*`, `mt_session_*`) are returned exactly
+  once at issuance — Mount Thor stores only HMAC verifiers and the prefix /
+  last-four characters for display.
+- Errors return a stable machine-readable code; see [Common failures](/troubleshooting/common-failures).

@@ -1,126 +1,98 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mintlify Starter Kit",
+  "name": "Mount Thor",
+  "description": "Customer documentation for Mount Thor: dedicated Apple Silicon, no virtualization layer between you and the metal.",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#C9A84C",
+    "light": "#D4B45A",
+    "dark": "#C9A84C"
+  },
+  "appearance": {
+    "default": "dark"
   },
   "favicon": "/favicon.svg",
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg",
+    "href": "https://docs.mountthor.com"
+  },
+  "fonts": {
+    "heading": {
+      "family": "Cormorant Garamond",
+      "weight": 500,
+      "source": "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&display=swap",
+      "format": "woff2"
+    },
+    "body": {
+      "family": "Barlow",
+      "weight": 400,
+      "source": "https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600&display=swap",
+      "format": "woff2"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
             "group": "Getting started",
             "pages": [
               "index",
-              "quickstart",
-              "development"
+              "quickstart"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Concepts",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "concepts/auth",
+              "concepts/alpha-status"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Compute",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/components",
-              "essentials/reusable-snippets"
+              "compute/bare-metal",
+              "compute/virtual-machines"
             ]
           },
           {
-            "group": "Agent ready",
+            "group": "Troubleshooting",
             "pages": [
-              "agent-ready/prompt",
-              "agent-ready/visibility",
-              "agent-ready/contextual",
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "troubleshooting/common-failures"
             ]
           }
         ]
       },
       {
         "tab": "API reference",
+        "openapi": {
+          "source": "https://api.mountthor.com/openapi.json",
+          "directory": "api-reference"
+        },
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Overview",
             "pages": [
               "api-reference/introduction"
-            ]
-          },
-          {
-            "group": "Endpoint examples",
-            "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
+    ]
   },
   "navbar": {
     "links": [
       {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "label": "Status",
+        "href": "https://docs.mountthor.com/concepts/alpha-status"
       }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
+    ]
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "github": "https://github.com/Mount-Thor"
     }
   }
 }

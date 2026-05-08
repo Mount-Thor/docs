@@ -1,81 +1,214 @@
 ---
 title: "Quickstart"
-description: "Start building awesome documentation in minutes"
-icon: 'rocket'
+description: "From signup invite to first VM in a few minutes."
 ---
 
-## Get started in three steps
+This walks through redeeming a Mount Thor signup invite, minting a session
+token, and creating a `MacLease` and a `VirtualMachine`. Estimated time: ~5
+minutes once you have your invite code in hand.
 
-Get your documentation site running locally and make your first customization.
+## Prerequisites
 
-### Step 1: Set up your local environment
+- A Mount Thor signup invite emailed to you by Mount Thor. The email subject
+  is `Mount Thor signup invite for <your company>`.
+- `kubectl` installed locally.
+- `curl` and `jq` for the auth flow.
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+<Note>
+  If you don't have an invite yet, contact Mount Thor with your company name,
+  contact email, and intended workload. Invites are issued out-of-band as part
+  of alpha onboarding.
+</Note>
 
-### Step 2: Deploy your changes
+## 1. Redeem your invite
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+Mount Thor sends an SES email containing an `invite_code` of the form
+`mt_reg_*`. Redeem it to mint a long-lived API key and (in the target shape)
+your first session token.
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+The currently-implemented route is `[live]`:
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+```bash
+curl -X POST https://api.mountthor.com/v1/admin/signup-invites/redeem \
+  -H "Content-Type: application/json" \
+  -d '{
+    "invite_code": "mt_reg_01JZ8M7EXAMPLE",
+    "contact_name": "Alex Customer",
+    "contact_email": "alex@example.com"
+  }'
+```
 
-### Step 3: Go live
+The customer-facing target route is `[todo]` and will be:
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+```http
+POST /v1/admin/registrations
+```
+
+with the same `invite_code` and `contact` fields. Either way the response
+returns your account slug, tenant slug, and session token.
+
+<Warning>
+  The plaintext API key (`mt_live_*`) is returned exactly **once** in the
+  response. Store it in a secret manager immediately — Mount Thor stores only
+  an HMAC verifier and cannot recover the plaintext.
+</Warning>
+
+## 2. Mint a session token
+
+API keys are long-lived; session tokens are short-lived. You use the API key
+to mint a session token, then use the session token for compute calls.
+
+```bash
+export MT_API_KEY="mt_live_01JZ8M7EXAMPLE"
+
+curl -X POST https://api.mountthor.com/v1/admin/sessions \
+  -H "Authorization: Bearer $MT_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "session_ttl_seconds": 900 }'
+```
+
+The response includes a `session_token` of the form `mt_session_*` valid for
+the requested TTL (default 15 minutes, max 1 hour).
+
+```bash
+export MT_SESSION_TOKEN="mt_session_01JZ8M7EXAMPLE"
+```
+
+The current legacy route is also available at `POST /v1/compute/sessions`.
+Either works; `/v1/admin/sessions` is the canonical customer-facing path.
+
+See [Auth model](/concepts/auth) for the full lifecycle and rotation guidance.
+
+## 3. Set up `kubectl`
+
+The compute API is Kubernetes-compatible. Configure a local context that
+authenticates with your Mount Thor session token `[todo]`:
+
+```bash
+kubectl config set-cluster mount-thor \
+  --server=https://api.mountthor.com/v1/compute
+
+kubectl config set-credentials mount-thor-session \
+  --token="$MT_SESSION_TOKEN"
+
+kubectl config set-context mount-thor \
+  --cluster=mount-thor \
+  --user=mount-thor-session \
+  --namespace=tenant-example-alpha
+
+kubectl config use-context mount-thor
+```
+
+Replace `tenant-example-alpha` with your tenant slug from the redemption
+response.
+
+## 4. Create your first bare-metal lease
+
+Save the following as `bm-01.yaml`:
+
+```yaml
+apiVersion: control.mountthor.dev/v1alpha1
+kind: MacLease
+metadata:
+  name: bm-01
+spec:
+  leaseClassRef: m4-24g
+  imageChannelRef: xcode-16-stable
+  accessPolicy:
+    ssh: true
+    screenSharingOverSsh: true
+  releasePolicy: wipe-and-reenroll
+```
+
+Apply it and watch readiness:
+
+```bash
+kubectl apply -f bm-01.yaml
+kubectl get maclease bm-01 --watch
+```
+
+When `status.phase=Ready` and `status.readyForAccess=True`, the host is yours.
+
+## 5. Open an SSH session
+
+`MacAccessSession` is the lease-scoped, time-bounded credential that grants
+host access. Save as `bm-01-ssh.yaml`:
+
+```yaml
+apiVersion: control.mountthor.dev/v1alpha1
+kind: MacAccessSession
+metadata:
+  name: bm-01-ssh
+spec:
+  leaseRef: bm-01
+  principal: alex@example.com
+  type: ssh
+  requestedTTL: 2h
+  reason: First-run smoke test.
+```
+
+Apply and read the access command:
+
+```bash
+kubectl apply -f bm-01-ssh.yaml
+kubectl get macaccesssession bm-01-ssh \
+  -o jsonpath='{.status.connectionInfo.command}{"\n"}'
+```
+
+Run the command. It connects through `access.mountthor.com` (Mount Thor's
+brokered transport) — no SSH key, certificate pin, or tsh invocation is
+exposed to you.
+
+For the full bare-metal lifecycle (release, ports, failure handling), see
+[Bare metal](/compute/bare-metal).
+
+## 6. Or create a virtual machine
+
+For faster create/delete cycles, use a `VirtualMachine` instead. Save as
+`vm-01.yaml`:
+
+```yaml
+apiVersion: vm.mountthor.dev/v1alpha1
+kind: VirtualMachine
+metadata:
+  name: vm-01
+spec:
+  imageRef: macos-sequoia-xcode-16-3
+  powerState: Running
+  ports:
+    - name: app
+      protocol: tcp
+      guestPort: 8443
+      exposure: private-tunnel
+```
+
+Apply and read the published-port access command:
+
+```bash
+kubectl apply -f vm-01.yaml
+kubectl get virtualmachine vm-01 --watch
+kubectl get virtualmachine vm-01 \
+  -o jsonpath='{.status.publishedPorts[?(@.name=="app")].accessCommand}{"\n"}'
+```
+
+The command Mount Thor returns already contains the runtime values — your VM
+name, namespace, port — so just pick a free local port and run it. See
+[Virtual machines](/compute/virtual-machines) for image catalog, external
+images, GUI access via `private-tunnel`, and operations like reset / reimage.
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
-
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Auth model" icon="key" href="/concepts/auth">
+    Rotation, expiry, and scope of API keys and session tokens.
+  </Card>
+  <Card title="Bare metal" icon="microchip" href="/compute/bare-metal">
+    Lease classes, image channels, access types, lifecycle.
+  </Card>
+  <Card title="Virtual machines" icon="server" href="/compute/virtual-machines">
+    Image catalog, external customer images, port publishing.
+  </Card>
+  <Card title="Common failures" icon="triangle-exclamation" href="/troubleshooting/common-failures">
+    What each failure code means and how to recover.
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
