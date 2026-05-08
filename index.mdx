@@ -1,133 +1,64 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
-icon: 'star'
+title: "Mount Thor"
+description: "Dedicated Apple Silicon, with no virtualization layer between you and the metal."
 ---
 
-## Setting up
+Mount Thor exposes bare-metal Macs and macOS virtual machines through a single
+customer API at `api.mountthor.com`. You provision compute with a Kubernetes-shaped
+control surface, present a Mount Thor session token, and get short-lived host
+access — SSH, Screen Sharing, or a published TCP port — derived from declarative
+resources. There is no shared hypervisor and no opaque pool fronting your work.
 
-Get your documentation site up and running in minutes.
+<Note>
+  Mount Thor is in **alpha**. Some routes and resources are live today; others
+  are part of the customer contract but not yet implemented. See
+  [Alpha status](/concepts/alpha-status) for a precise breakdown, and look for
+  the `[live]` and `[todo]` markers throughout these docs.
+</Note>
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
+## Where to start
 
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Redeem a signup invite, mint a session token, and create your first
+    `MacLease` or `VirtualMachine`.
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Auth model" icon="key" href="/concepts/auth">
+    Long-lived API keys exchange for short-lived session tokens. Session
+    tokens authorize compute calls.
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Bare metal" icon="microchip" href="/compute/bare-metal">
+    `MacLease` for exclusive host access, `MacAccessSession` for scoped
+    SSH and Screen Sharing.
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Virtual machines" icon="server" href="/compute/virtual-machines">
+    `VirtualMachine` for fast create/delete cycles, with declarative
+    port publishing through private tunnels.
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## What's at the edge
 
-Everything you need to create world-class documentation.
+| Endpoint | Protocol | Purpose | Status |
+|---|---|---|---|
+| `https://api.mountthor.com/v1/admin/*` | HTTP JSON | Account, registration, keys, entitlements, sessions | `[live]` for current shapes; `[todo]` for the canonical customer-facing names |
+| `https://api.mountthor.com/v1/compute/*` | Kubernetes-compatible | Bare-metal and VM resources | `[todo]` at the public edge — compute resources work today against your dedicated control plane |
+| `https://api.mountthor.com/openapi.json` | HTTP JSON | Generated OpenAPI spec for the admin surface | `[live]` |
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+Brokered transport for emitted bare-metal access commands and VM published-port
+commands routes through `access.mountthor.com`, but you do not call
+`access.mountthor.com` directly to create leases, VMs, sessions, or ports.
 
-## Make your content agent ready
+## Design principles
 
-Make your docs work for humans and AI agents alike.
+Mount Thor is dedicated, vertically integrated Apple Silicon. Every customer
+gets their own Kubernetes control plane — not a namespace in a shared cluster.
+Host access is never standing: it derives from an active `MacAccessSession` or
+a `VirtualMachine.spec.ports` entry, both of which are declarative, expire on a
+schedule you set, and revoke automatically when the parent resource is deleted.
 
-<Columns cols={2}>
-  <Card
-    title="Prompt component"
-    icon="robot"
-    href="/agent-ready/prompt"
-  >
-    Embed shareable AI prompts readers can copy or open in Cursor.
-  </Card>
-  <Card
-    title="Visibility"
-    icon="eye"
-    href="/agent-ready/visibility"
-  >
-    Show different content to humans and agents reading your docs.
-  </Card>
-  <Card
-    title="Contextual menu"
-    icon="bolt"
-    href="/agent-ready/contextual"
-  >
-    Give readers one-click access to Claude, ChatGPT, Cursor, and more.
-  </Card>
-  <Card
-    title="AI coding tools"
-    icon="wand-magic-sparkles"
-    href="/ai-tools/claude-code"
-  >
-    Set up Claude Code, Cursor, or Windsurf with Mintlify's skill.
-  </Card>
-</Columns>
-
-## Need inspiration?
-
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+The API surface follows from those choices: customer-facing routes are typed,
+versioned, and generated from a registry; nothing about your fleet is implicit
+or undocumented. If a route is reachable on `api.mountthor.com`, it is in the
+[OpenAPI spec](/api-reference/introduction). If a CRD is queryable from your
+control plane, it is in [Compute](/compute/bare-metal).

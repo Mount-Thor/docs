@@ -1,0 +1,37 @@
+# Mount Thor docs — upstream watermark
+#
+# Bumps whenever content here is migrated or refreshed from the
+# Mount-Thor/mount-thor monorepo. Lets reviewers see at a glance how stale
+# a given customer-facing page might be relative to its source spec.
+#
+# How to update:
+#   1. Pull the monorepo to its latest main.
+#   2. Note the HEAD short SHA, full SHA, message, and committer date.
+#   3. Refresh this file; commit alongside the content change.
+
+source_repo: Mount-Thor/mount-thor
+source_repo_url: https://github.com/Mount-Thor/mount-thor
+
+upstream_commit:
+  sha: 92a955b10dd22e6e4dbf4424fa646f9740e78970
+  short: 92a955b
+  message: "Allow /openapi.json through customer-api edge Envoy (#809)"
+  committed_at: "2026-05-07T22:40:42-07:00"
+
+# Source files this docs revision derives content from. Bump the watermark
+# (and re-derive the affected MDX) when any of these change materially.
+derived_from:
+  - governance/docs/developers/README.md
+  - governance/docs/api-surface-registry-and-openapi-publication-spec.md
+
+# The runtime source for the API reference. Mintlify re-fetches this on
+# every build, so reference content tracks admin-api deploys regardless of
+# this file.
+runtime_spec_source: https://api.mountthor.com/openapi.json
+
+# The mount-thor commit that introduced this docs site as a published
+# subsystem. Useful for forensics if the docs/monorepo relationship ever
+# becomes ambiguous.
+docs_site_introduced_at:
+  sha: 92a955b10dd22e6e4dbf4424fa646f9740e78970
+  date: "2026-05-08"

@@ -1,0 +1,74 @@
+---
+title: "Common failures"
+description: "Failure codes you might encounter and how to recover from each."
+---
+
+Mount Thor surfaces failures via stable, machine-readable codes — either as
+HTTP responses on the admin API or as `status.failureCode` on a CRD. Codes
+are stable across alpha; treat them as part of the customer contract.
+
+## Auth and account
+
+| Signal | Meaning | What to do |
+|---|---|---|
+| `InvalidRegistrationCode` | The invite code is unknown, expired, revoked, or already redeemed. `[live]` | Request a new invite email from Mount Thor. |
+| `IdentitySetupIncomplete` | Required SSO, domain, or group setup is not complete. `[todo]` | Open the WorkOS identity setup link from your activation response and finish all required steps. |
+| `SessionExpired` | The session token has passed `expires_at`. `[live]` | Mint a new session via `POST /v1/admin/sessions`. |
+| `InsufficientScope` | The key or session lacks a scope the route requires. `[live]` | Mint a session that includes the missing scope, or use a key with broader scopes. |
+| `EntitlementDenied` | The account is not entitled to the requested product or class. `[live]` | Check `GET /v1/admin/entitlements` `[todo]` or contact Mount Thor. |
+
+## Bare metal (`MacLease`, `MacAccessSession`)
+
+| Signal | Meaning | What to do |
+|---|---|---|
+| `NoCapacityAvailable` | No eligible host is available for the requested lease class. `[live]` | Try another class, wait for capacity to free, or contact Mount Thor for capacity adjustment. |
+| `MacAccessSession.status.phase=Expired` | The access session reached `expiresAt`. `[live]` | Create a new `MacAccessSession`. The lease itself stays allocated. |
+| `LeaseNotFound` (on `MacAccessSession`) | `spec.leaseRef` does not match an existing `MacLease`. `[live]` | Verify the name, or create the lease first. |
+| `LeaseNotReady` | Referenced lease exists but is not yet `Ready`. `[live]` | Wait for the lease to reach `Ready` and create a new access session. |
+| `UnsupportedSessionType` | `spec.type` is not `ssh` or `screen-sharing-over-ssh`. `[live]` | Set `spec.type` to one of the supported values. |
+| `PrincipalNotAllowed` | `spec.principal` is not allowed by the lease access policy. `[live]` | Use an allowed customer principal or update the access policy. |
+| `InvalidTTL` | `spec.requestedTTL` is unparseable. `[live]` | Use a duration like `30m`, `2h`, or `8h`. |
+| `TTLTooLong` | Requested TTL exceeds the per-session cap. `[live]` | Request `8h` or less. |
+| `AccessBoundaryError` | Mount Thor's access path is unavailable transiently. `[live]` | Wait and retry; if persistent, contact Mount Thor. |
+| `SessionRevoked` | The session was revoked before expiry. `[live]` | Create a new `MacAccessSession`. |
+
+## Virtual machines (`VirtualMachine`, `VirtualMachineImage`, image operations)
+
+| Signal | Meaning | What to do |
+|---|---|---|
+| `ImagePullDenied` | Mount Thor cannot read the external image (registry credential expired, repository moved, etc.). `[todo]` | Verify the registry credential and image digest; rotate via `PATCH /v1/admin/registries/{id}` `[todo]`. |
+| `ImageValidationFailed` | The VM image did not pass validation (digest mismatch, unsupported format, etc.). `[todo]` | Re-export the image with a fresh digest, then create a new `VirtualMachineImageOperation`. |
+
+## Reading failure detail
+
+For CRD failures, the failure code lives on `status.failureCode` and the
+human-readable message on the latest condition:
+
+```bash
+kubectl get macaccesssession bm-01-ssh \
+  -o jsonpath='{.status.failureCode}{" "}{.status.conditions[-1:].message}{"\n"}'
+```
+
+For HTTP responses, Mount Thor returns:
+
+```json
+{
+  "error": "<machine_code>",
+  "message": "<human-readable>",
+  "request_id": "<uuid>"
+}
+```
+
+Always include `request_id` when contacting Mount Thor support — it's the
+fastest path to an answer.
+
+## When to escalate
+
+Contact Mount Thor with the request ID, the resource (or HTTP route), and a
+brief description if you see:
+
+- `AccessBoundaryError` persisting beyond a few minutes.
+- A `MacLease` stuck in `Pending` for longer than your typical placement
+  time without `NoCapacityAvailable`.
+- An HTTP `500`-class response from `api.mountthor.com` (these should be
+  exceptional; we'd like to hear about them).

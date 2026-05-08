@@ -1,0 +1,228 @@
+---
+title: "Virtual machines"
+description: "VirtualMachine for fast create/delete cycles, with declarative port publishing through private tunnels."
+---
+
+A `VirtualMachine` is a macOS guest running on a Mount Thor-managed Tart host,
+sized from an approved `VirtualMachineImage`. VMs are right for workloads that
+want macOS isolation with faster create/delete cycles than a physical
+`MacLease`, or when running multiple parallel guests on the same physical host.
+
+The CRD group is `vm.mountthor.dev/v1alpha1`.
+
+## Image catalog
+
+```bash
+kubectl get virtualmachineimages
+kubectl get virtualmachineimages \
+  -o custom-columns=NAME:.metadata.name,IMAGE:.spec.imageRef,CPU:.spec.defaultCpu,MEMORY_MIB:.spec.defaultMemoryMiB,DISK_GIB:.spec.defaultDiskGiB,PHASE:.status.phase
+```
+
+The image catalog includes Mount Thor base images and any approved customer
+images you've registered. Each entry publishes the default sizing profile
+used when a `VirtualMachine` omits explicit CPU/memory/disk overrides.
+
+Mount Thor base images (`[todo]` — final names being aligned):
+
+| Image | Guest | Architecture | Provider | Default CPU | Default memory | Default disk | Capabilities |
+|---|---|---|---|---:|---:|---:|---|
+| `macos-15-browser-agent` | macOS Sequoia 15.4 | `arm64` | Tart | 4 | 8192 MiB | 120 GiB | Safari, Chrome, Playwright, Python, guest agent |
+| `macos-15-dev-base` | macOS Sequoia 15.4 | `arm64` | Tart | 4 | 8192 MiB | 120 GiB | Command Line Tools, Homebrew, Git, Python, Node |
+| `macos-sequoia-xcode-16-3` | macOS Sequoia 15.4 with Xcode 16.3 | `arm64` | Tart | 4 | 8192 MiB | 120 GiB | Xcode 16.3, guest agent |
+
+Sizing is tuned for two concurrent VMs on one `m4-24g` host (10 CPU cores,
+24 GiB memory, 512 GiB local storage). The standard 4 CPU / 8 GiB / 120 GiB
+profile leaves room for two guests plus host headroom for Orchard, access,
+monitoring, and cleanup processes.
+
+## Create a VM
+
+```yaml
+apiVersion: vm.mountthor.dev/v1alpha1
+kind: VirtualMachine
+metadata:
+  name: vm-01
+spec:
+  imageRef: macos-sequoia-xcode-16-3
+  powerState: Running
+  ports:
+    - name: app
+      protocol: tcp
+      guestPort: 8443
+      exposure: private-tunnel
+```
+
+```bash
+kubectl apply -f vm-01.yaml
+kubectl get virtualmachine vm-01 --watch
+```
+
+Running state:
+
+```yaml
+status:
+  phase: Running
+  conditions:
+    - type: Ready
+      status: "True"
+```
+
+Mount Thor reports VM infrastructure status. The customer image is responsible
+for guest users, services, agents, logs, and workload output; Mount Thor does
+not introspect inside the guest.
+
+## Publish a port
+
+VM access is requested on the `VirtualMachine` itself, not via
+`MacAccessSession`. Each port you want published goes in `spec.ports`:
+
+```yaml
+spec:
+  ports:
+    - name: app
+      protocol: tcp
+      guestPort: 8443
+      exposure: private-tunnel
+```
+
+Constraints:
+
+- `name` is required and must be unique within the VM.
+- `guestPort` must be `1`–`65535`.
+- `protocol` defaults to `tcp` when omitted.
+- `exposure` may be omitted for an unpublished port; the only published
+  exposure value is `private-tunnel`.
+
+Mount Thor writes access details to `status.publishedPorts`:
+
+```yaml
+status:
+  publishedPorts:
+    - name: app
+      protocol: tcp
+      guestPort: 8443
+      exposure: private-tunnel
+      accessCommand: "mountthor vm tunnel --namespace <ns> --name <vm> --port-name app --local-port ${LOCAL_PORT}"
+      uriTemplate: "https://127.0.0.1:${LOCAL_PORT}"
+```
+
+Read the published-port command from status — don't construct it manually:
+
+```bash
+kubectl get virtualmachine vm-01 \
+  -o jsonpath='{.status.publishedPorts[?(@.name=="app")].accessCommand}{"\n"}'
+```
+
+The emitted command already contains the namespace, VM name, and port. Pick a
+free local port, replace `${LOCAL_PORT}`, run the command, and open the URI:
+
+```text
+https://127.0.0.1:9443
+```
+
+The command authenticates against `access.mountthor.com` on your behalf — no
+raw `tsh`, kubeconfig, guest-IP, or certificate-pin material is exposed. If
+the VM guest IP isn't known yet, `status.publishedPorts` may show the
+requested metadata before `accessCommand` is available; wait for `accessCommand`
+before connecting.
+
+## GUI access (Screen Sharing)
+
+For GUI access, request a `private-tunnel` port like:
+
+```yaml
+- name: gui
+  protocol: tcp
+  guestPort: 5900
+  exposure: private-tunnel
+```
+
+Read `status.publishedPorts[?name=="gui"]`. GUI ports include non-secret
+`credentialUsername`, `credentialSource`, and `credentialInstructions`; the
+password is **never** embedded in `status`, terminal output, or the VNC URI.
+Follow `credentialInstructions` to retrieve the rotated password from your
+secret store.
+
+## Operate (reset, reimage)
+
+Reset a VM via `VirtualMachineOperation`:
+
+```yaml
+apiVersion: vm.mountthor.dev/v1alpha1
+kind: VirtualMachineOperation
+metadata:
+  name: vm-01-reset
+spec:
+  virtualMachineRef: vm-01
+  operation: reset
+  reason: Recreate from clean image.
+```
+
+```bash
+kubectl apply -f vm-01-reset.yaml
+kubectl get virtualmachineoperation vm-01-reset --watch
+```
+
+## Delete a VM
+
+```bash
+kubectl delete virtualmachine vm-01
+```
+
+The VM instance is removed; the image stays available for future VMs.
+
+## External (customer-owned) images
+
+For images that live in a customer-owned registry, register the registry
+with Mount Thor `[todo]` and submit the read-only credential. Mount Thor
+verifies pull access, records a `VirtualMachineImage` that points at the
+external digest, and prepares Tart pull access on the host before the VM
+starts.
+
+Supported registry types:
+
+| Registry | `provider` | `auth.type` | You provide |
+|---|---|---|---|
+| Amazon ECR | `aws-ecr` | `aws-iam-role` | Role ARN for a read-only IAM role created from Mount Thor's returned policy |
+| GHCR, Harbor, OCI registries | `oci` | `registry-token` or `username-password` | Read-only robot account, deploy token, or registry token scoped to the image repository |
+
+The full registry-grant flow lives under [API reference](/api-reference/introduction)
+once `/v1/admin/registries/*` ships. In the interim, coordinate registry
+onboarding with Mount Thor.
+
+## Register an image
+
+After registry verification succeeds:
+
+```yaml
+apiVersion: vm.mountthor.dev/v1alpha1
+kind: VirtualMachineImageOperation
+metadata:
+  name: customer-browser-base-import
+spec:
+  operation: import
+  requestedImageRef: customer-browser-base
+  source:
+    type: tart-oci
+    ref: 123456789012.dkr.ecr.us-east-2.amazonaws.com/platform/macos-vm-images@sha256:<digest>
+    sha256: sha256:<digest>
+    pullSecretRef:
+      name: mt-registry-reg-01jz
+  guestOs: macos
+  guestVersion: "15.4"
+  architecture: arm64
+  defaultResources:
+    cpu: 4
+    memoryMiB: 8192
+    diskGiB: 120
+  displayName: Customer Browser Base
+  tartRegistryRef: 123456789012.dkr.ecr.us-east-2.amazonaws.com/platform/macos-vm-images@sha256:<digest>
+```
+
+```bash
+kubectl get virtualmachineimageoperation customer-browser-base-import --watch
+```
+
+Successful registration publishes (or updates) `VirtualMachineImage` with the
+`requestedImageRef`. Customers then create `VirtualMachine` resources with
+`spec.imageRef: customer-browser-base`.
