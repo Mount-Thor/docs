@@ -13,10 +13,10 @@ source_repo: Mount-Thor/mount-thor
 source_repo_url: https://github.com/Mount-Thor/mount-thor
 
 upstream_commit:
-  sha: dd4a06b3ff048f16551dce5b7a635f74b73dd7a8
-  short: dd4a06b3
-  message: "Use old password for VM image dscl rotation"
-  committed_at: "2026-05-11T08:48:12-07:00"
+  sha: de86f27cded8bbe01875e1ada6ce7f1ce66eb318
+  short: de86f27c
+  message: "Decouple canary product proofs from registry onboarding"
+  committed_at: "2026-05-11T11:27:00-07:00"
 
 # Source files this docs revision derives content from. Bump the watermark
 # (and re-derive the affected MDX) when any of these change materially.

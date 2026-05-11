@@ -1,6 +1,90 @@
 {
   "components": {
     "schemas": {
+      "ConfigMapV1": {
+        "additionalProperties": true,
+        "description": "Kubernetes core/v1 ConfigMap accepted only for Mount Thor customer VM bootstrap data. Tenant admission requires metadata.labels.vm.mountthor.dev/customer-bootstrap=true for customer create, update, patch, and delete.",
+        "properties": {
+          "apiVersion": {
+            "enum": [
+              "v1"
+            ],
+            "type": "string"
+          },
+          "binaryData": {
+            "additionalProperties": {
+              "contentEncoding": "base64",
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "data": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "immutable": {
+            "type": "boolean"
+          },
+          "kind": {
+            "enum": [
+              "ConfigMap"
+            ],
+            "type": "string"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "properties": {
+              "annotations": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "labels": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "properties": {
+                  "vm.mountthor.dev/customer-bootstrap": {
+                    "enum": [
+                      "true"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "vm.mountthor.dev/customer-bootstrap"
+                ],
+                "type": "object"
+              },
+              "name": {
+                "maxLength": 253,
+                "minLength": 1,
+                "type": "string"
+              },
+              "namespace": {
+                "description": "Must match the namespace bound to the Mount Thor compute session.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "labels"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "apiVersion",
+          "kind",
+          "metadata"
+        ],
+        "type": "object",
+        "x-mountthor-api-surface": "customer-v1",
+        "x-mountthor-source-path": "control-plane/manager/config/admission/validating-policies.yaml"
+      },
       "MacAccessSessionV1ALPHA1": {
         "properties": {
           "apiVersion": {
@@ -76,6 +160,13 @@
                       "type": "string"
                     },
                     "type": {
+                      "enum": [
+                        "LeaseResolved",
+                        "LeaseReady",
+                        "PrincipalResolved",
+                        "Granted",
+                        "Expired"
+                      ],
                       "type": "string"
                     }
                   },
@@ -113,6 +204,17 @@
                       "caller_selects_free_loopback_port"
                     ],
                     "type": "string"
+                  },
+                  "sessionCorrelationId": {
+                    "type": "string"
+                  },
+                  "targetHost": {
+                    "type": "string"
+                  },
+                  "targetPort": {
+                    "maximum": 65535,
+                    "minimum": 1,
+                    "type": "integer"
                   }
                 },
                 "type": "object"
@@ -122,8 +224,23 @@
                 "type": "string"
               },
               "failureCode": {
-                "type": "string",
-                "description": "Machine-readable failure code. See Common failures for customer-facing recovery guidance."
+                "enum": [
+                  "",
+                  "LeaseNotFound",
+                  "LeaseNotReady",
+                  "LeaseMaintenance",
+                  "LeaseReleased",
+                  "EnvironmentSuspended",
+                  "ConnectivityPathUnavailable",
+                  "UnsupportedSessionType",
+                  "PrincipalNotAllowed",
+                  "TTLTooLong",
+                  "InvalidTTL",
+                  "AccessSessionConcurrencyExceeded",
+                  "AccessBoundaryError",
+                  "SessionRevoked"
+                ],
+                "type": "string"
               },
               "grantedTTL": {
                 "type": "string"
@@ -144,6 +261,12 @@
                   "Expired",
                   "Revoked",
                   "Failed"
+                ],
+                "type": "string"
+              },
+              "transport": {
+                "enum": [
+                  "teleport"
                 ],
                 "type": "string"
               }
@@ -169,6 +292,9 @@
           },
           "spec": {
             "properties": {
+              "agentVersion": {
+                "type": "string"
+              },
               "channel": {
                 "enum": [
                   "stable",
@@ -185,6 +311,21 @@
               "macosVersion": {
                 "minLength": 1,
                 "type": "string"
+              },
+              "reclaimBehavior": {
+                "type": "string"
+              },
+              "rolloutPolicy": {
+                "properties": {
+                  "maxParallelHostUpdates": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "requireQualificationReport": {
+                    "type": "boolean"
+                  }
+                },
+                "type": "object"
               },
               "xcodeVersion": {
                 "type": "string"
@@ -225,6 +366,11 @@
                       "type": "string"
                     },
                     "type": {
+                      "enum": [
+                        "Published",
+                        "Qualified",
+                        "Deprecated"
+                      ],
                       "type": "string"
                     }
                   },
@@ -302,9 +448,31 @@
               "metalCapable": {
                 "type": "boolean"
               },
+              "networkClass": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "performanceExpectationClass": {
+                "enum": [
+                  "dedicated-host-best-effort-local-virtualization"
+                ],
+                "type": "string"
+              },
+              "storageDurabilityClass": {
+                "enum": [
+                  "host-local-ephemeral"
+                ],
+                "type": "string"
+              },
               "storageGiB": {
                 "minimum": 1,
                 "type": "integer"
+              },
+              "virtualizationSupportClass": {
+                "enum": [
+                  "customer-local-unmanaged"
+                ],
+                "type": "string"
               }
             },
             "required": [
@@ -312,7 +480,11 @@
               "architecture",
               "cpuCores",
               "memoryGiB",
-              "storageGiB"
+              "storageGiB",
+              "storageDurabilityClass",
+              "virtualizationSupportClass",
+              "performanceExpectationClass",
+              "networkClass"
             ],
             "type": "object"
           },
@@ -344,6 +516,10 @@
                       "type": "string"
                     },
                     "type": {
+                      "enum": [
+                        "Published",
+                        "Deprecated"
+                      ],
                       "type": "string"
                     }
                   },
@@ -358,6 +534,11 @@
                 "type": "array"
               },
               "deprecationState": {
+                "enum": [
+                  "Active",
+                  "Deprecated",
+                  "Retired"
+                ],
                 "type": "string"
               },
               "observedGeneration": {
@@ -403,7 +584,17 @@
               "leaseRef",
               "operation"
             ],
-            "type": "object"
+            "type": "object",
+            "x-kubernetes-validations": [
+              {
+                "message": "reset must not set targetImageChannelRef",
+                "rule": "self.operation != 'reset' || !has(self.targetImageChannelRef)"
+              },
+              {
+                "message": "reinstall requires targetImageChannelRef",
+                "rule": "self.operation != 'reinstall' || has(self.targetImageChannelRef)"
+              }
+            ]
           },
           "status": {
             "properties": {
@@ -437,6 +628,12 @@
                       "type": "string"
                     },
                     "type": {
+                      "enum": [
+                        "LeaseResolved",
+                        "LeaseReleased",
+                        "ReplacementReady",
+                        "Completed"
+                      ],
                       "type": "string"
                     }
                   },
@@ -450,13 +647,27 @@
                 },
                 "type": "array"
               },
+              "evidenceRef": {
+                "type": "string"
+              },
               "failureCode": {
-                "type": "string",
-                "description": "Machine-readable failure code. See Common failures for customer-facing recovery guidance."
+                "enum": [
+                  "",
+                  "InvalidOperation",
+                  "LeaseNotFound",
+                  "LeaseAlreadyTerminated",
+                  "TargetImageMissing",
+                  "ActiveSessionsPresent",
+                  "ReplacementLeaseFailed"
+                ],
+                "type": "string"
               },
               "observedGeneration": {
                 "format": "int64",
                 "type": "integer"
+              },
+              "originalLeaseUid": {
+                "type": "string"
               },
               "phase": {
                 "enum": [
@@ -469,6 +680,36 @@
               },
               "releaseRequestedAt": {
                 "format": "date-time",
+                "type": "string"
+              },
+              "replacementLeaseReadyForAccess": {
+                "type": "boolean"
+              },
+              "replacementLeaseUid": {
+                "type": "string"
+              },
+              "resolvedAccessPolicy": {
+                "properties": {
+                  "screenSharingOverSsh": {
+                    "type": "boolean"
+                  },
+                  "ssh": {
+                    "type": "boolean"
+                  }
+                },
+                "type": "object"
+              },
+              "resolvedImageChannelRef": {
+                "type": "string"
+              },
+              "resolvedLeaseClassRef": {
+                "type": "string"
+              },
+              "resolvedReleasePolicy": {
+                "enum": [
+                  "",
+                  "wipe-and-reenroll"
+                ],
                 "type": "string"
               },
               "startedAt": {
@@ -520,6 +761,78 @@
                 "minLength": 1,
                 "type": "string"
               },
+              "placement": {
+                "properties": {
+                  "antiCoLocateWithLeases": {
+                    "items": {
+                      "maxLength": 253,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "maxItems": 16,
+                    "type": "array",
+                    "x-kubernetes-list-type": "set"
+                  },
+                  "coLocateWithLeases": {
+                    "items": {
+                      "maxLength": 253,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "maxItems": 16,
+                    "type": "array",
+                    "x-kubernetes-list-type": "set"
+                  },
+                  "preferredSelectors": {
+                    "additionalProperties": {
+                      "maxLength": 128,
+                      "type": "string"
+                    },
+                    "type": "object"
+                  },
+                  "requiredSelectors": {
+                    "additionalProperties": {
+                      "maxLength": 128,
+                      "type": "string"
+                    },
+                    "type": "object"
+                  },
+                  "spread": {
+                    "items": {
+                      "properties": {
+                        "maxSkew": {
+                          "maximum": 8,
+                          "minimum": 1,
+                          "type": "integer"
+                        },
+                        "topologyKey": {
+                          "enum": [
+                            "topology.mountthor.dev/site",
+                            "topology.mountthor.dev/rack"
+                          ],
+                          "type": "string"
+                        },
+                        "whenUnsatisfiable": {
+                          "enum": [
+                            "DoNotSchedule",
+                            "ScheduleAnyway"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "topologyKey",
+                        "maxSkew",
+                        "whenUnsatisfiable"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 4,
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              },
               "releasePolicy": {
                 "enum": [
                   "wipe-and-reenroll"
@@ -531,7 +844,17 @@
               "leaseClassRef",
               "imageChannelRef"
             ],
-            "type": "object"
+            "type": "object",
+            "x-kubernetes-validations": [
+              {
+                "message": "screen sharing requires ssh access",
+                "rule": "!has(self.accessPolicy) || !has(self.accessPolicy.screenSharingOverSsh) || self.accessPolicy.screenSharingOverSsh == false || self.accessPolicy.ssh == true"
+              },
+              {
+                "message": "the same lease must not appear in both coLocateWithLeases and antiCoLocateWithLeases",
+                "rule": "!has(self.placement) || !has(self.placement.coLocateWithLeases) || !has(self.placement.antiCoLocateWithLeases) || self.placement.coLocateWithLeases.all(x, !(x in self.placement.antiCoLocateWithLeases))"
+              }
+            ]
           },
           "status": {
             "properties": {
@@ -565,6 +888,16 @@
                       "type": "string"
                     },
                     "type": {
+                      "enum": [
+                        "LeaseClassResolved",
+                        "ImageChannelResolved",
+                        "PlacementFeasible",
+                        "HostBound",
+                        "HostPrepared",
+                        "ReadyForAccess",
+                        "Degraded",
+                        "Terminal"
+                      ],
                       "type": "string"
                     }
                   },
@@ -578,9 +911,41 @@
                 },
                 "type": "array"
               },
+              "customerEndpoints": {
+                "properties": {
+                  "sshHost": {
+                    "type": "string"
+                  },
+                  "sshPort": {
+                    "maximum": 65535,
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
+              },
               "failureCode": {
-                "type": "string",
-                "description": "Machine-readable failure code. See Common failures for customer-facing recovery guidance."
+                "enum": [
+                  "",
+                  "LeaseClassMissing",
+                  "ImageChannelMissing",
+                  "NoMatchingHosts",
+                  "NoAllocatableHosts",
+                  "CommittedCapacityUnavailable",
+                  "AppleDependencyUnavailable",
+                  "EnvironmentRestricted",
+                  "EnvironmentSuspended",
+                  "HostPreparationFailed",
+                  "HostMissing",
+                  "HostUnreachable",
+                  "HostNotManageable",
+                  "HostBaselineNotApplied",
+                  "HostImageChannelIncompatible",
+                  "RepairInProgress",
+                  "ReclaimFailed",
+                  "TerminalHostFailure"
+                ],
+                "type": "string"
               },
               "observedGeneration": {
                 "format": "int64",
@@ -655,6 +1020,17 @@
               "displayName": {
                 "type": "string"
               },
+              "guestBootstrap": {
+                "properties": {
+                  "transport": {
+                    "type": "string"
+                  },
+                  "username": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
               "guestOs": {
                 "type": "string"
               },
@@ -672,6 +1048,14 @@
               },
               "source": {
                 "properties": {
+                  "pullSecretRef": {
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
                   "ref": {
                     "type": "string"
                   },
@@ -683,6 +1067,9 @@
                   }
                 },
                 "type": "object"
+              },
+              "tartRegistryRef": {
+                "type": "string"
               }
             },
             "type": "object"
@@ -714,6 +1101,7 @@
                       "type": "string"
                     },
                     "type": {
+                      "description": "SourceResolved TargetImageReady Validated Completed",
                       "type": "string"
                     }
                   },
@@ -729,8 +1117,21 @@
                 "type": "array"
               },
               "failureCode": {
-                "type": "string",
-                "description": "Machine-readable failure code. See Common failures for customer-facing recovery guidance."
+                "enum": [
+                  "InvalidOperation",
+                  "SourceRefMissing",
+                  "DigestMissing",
+                  "ImagePullDenied",
+                  "ImageValidationFailed",
+                  "PullSecretInvalid",
+                  "SourceDigestMismatch",
+                  "ValidationPolicyMissing",
+                  "ValidationPolicyInvalid",
+                  "GuestBootstrapInvalid",
+                  "TargetConflict",
+                  "ProviderMissing"
+                ],
+                "type": "string"
               },
               "observedGeneration": {
                 "format": "int64",
@@ -746,6 +1147,9 @@
                 "type": "string"
               },
               "resolvedImageRef": {
+                "type": "string"
+              },
+              "validationEvidenceRef": {
                 "type": "string"
               },
               "verifiedDigest": {
@@ -770,6 +1174,9 @@
           },
           "spec": {
             "properties": {
+              "approvedForDemo": {
+                "type": "boolean"
+              },
               "architecture": {
                 "type": "string"
               },
@@ -797,6 +1204,17 @@
               "displayName": {
                 "type": "string"
               },
+              "guestBootstrap": {
+                "properties": {
+                  "transport": {
+                    "type": "string"
+                  },
+                  "username": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
               "guestOs": {
                 "type": "string"
               },
@@ -806,7 +1224,14 @@
               "imageRef": {
                 "type": "string"
               },
+              "providerType": {
+                "default": "tart",
+                "type": "string"
+              },
               "sha256": {
+                "type": "string"
+              },
+              "tartRegistryRef": {
                 "type": "string"
               }
             },
@@ -835,6 +1260,7 @@
                       "type": "string"
                     },
                     "type": {
+                      "description": "Approved Ready Cached PlacementPlanned",
                       "type": "string"
                     }
                   },
@@ -854,6 +1280,15 @@
                 "type": "integer"
               },
               "phase": {
+                "enum": [
+                  "Pending",
+                  "Capturing",
+                  "Ready",
+                  "Failed"
+                ],
+                "type": "string"
+              },
+              "validationResultRef": {
                 "type": "string"
               }
             },
@@ -924,6 +1359,7 @@
                       "type": "string"
                     },
                     "type": {
+                      "description": "VirtualMachineResolved Completed",
                       "type": "string"
                     }
                   },
@@ -938,9 +1374,18 @@
                 },
                 "type": "array"
               },
+              "evidenceRef": {
+                "type": "string"
+              },
               "failureCode": {
-                "type": "string",
-                "description": "Machine-readable failure code. See Common failures for customer-facing recovery guidance."
+                "enum": [
+                  "InvalidOperation",
+                  "VirtualMachineNotFound",
+                  "TargetImageMissing",
+                  "ProviderDeleteFailed",
+                  "ProviderUnavailable"
+                ],
+                "type": "string"
               },
               "observedGeneration": {
                 "format": "int64",
@@ -953,6 +1398,9 @@
                   "Completed",
                   "Failed"
                 ],
+                "type": "string"
+              },
+              "resolvedImageDigest": {
                 "type": "string"
               },
               "startedAt": {
@@ -978,6 +1426,47 @@
           },
           "spec": {
             "properties": {
+              "artifactPolicy": {
+                "properties": {
+                  "destinationRef": {
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "exportUri": {
+                    "type": "string"
+                  },
+                  "paths": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "redactionPolicyRef": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "bootstrap": {
+                "properties": {
+                  "metadataService": {
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "userDataConfigMapRef": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
               "cpu": {
                 "format": "int32",
                 "type": "integer"
@@ -992,6 +1481,38 @@
               "memoryMiB": {
                 "format": "int32",
                 "type": "integer"
+              },
+              "networkPolicy": {
+                "properties": {
+                  "allow": {
+                    "items": {
+                      "properties": {
+                        "host": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "port": {
+                          "format": "int32",
+                          "type": "integer"
+                        },
+                        "protocol": {
+                          "type": "string"
+                        },
+                        "purpose": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "defaultAction": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
               },
               "ports": {
                 "items": {
@@ -1029,7 +1550,11 @@
                   ],
                   "type": "object"
                 },
-                "type": "array"
+                "type": "array",
+                "x-kubernetes-list-map-keys": [
+                  "name"
+                ],
+                "x-kubernetes-list-type": "map"
               },
               "powerState": {
                 "default": "Running",
@@ -1038,6 +1563,66 @@
                   "Stopped"
                 ],
                 "type": "string"
+              },
+              "resetPolicy": {
+                "properties": {
+                  "cleanupEvidence": {
+                    "type": "string"
+                  },
+                  "mode": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "retentionPolicy": {
+                "properties": {
+                  "artifactDays": {
+                    "format": "int32",
+                    "type": "integer"
+                  },
+                  "imageCacheDays": {
+                    "format": "int32",
+                    "type": "integer"
+                  },
+                  "warmCapacityHold": {
+                    "type": "boolean"
+                  }
+                },
+                "type": "object"
+              },
+              "services": {
+                "items": {
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "portName": {
+                      "type": "string"
+                    },
+                    "readiness": {
+                      "properties": {
+                        "expectedStatus": {
+                          "format": "int32",
+                          "type": "integer"
+                        },
+                        "path": {
+                          "type": "string"
+                        },
+                        "timeoutSeconds": {
+                          "format": "int32",
+                          "type": "integer"
+                        },
+                        "type": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
               }
             },
             "required": [
@@ -1047,6 +1632,29 @@
           },
           "status": {
             "properties": {
+              "artifactStatuses": {
+                "items": {
+                  "properties": {
+                    "exportUri": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "type": "string"
+                    },
+                    "phase": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "cleanupEvidenceRef": {
+                "type": "string"
+              },
               "conditions": {
                 "items": {
                   "properties": {
@@ -1068,6 +1676,7 @@
                       "type": "string"
                     },
                     "type": {
+                      "description": "PlacementResolved CapacityAdmitted HostResolved ImageResolved ImageReady ImageCachedOnHost ProviderBound PortsPublished MetricsPersisted Ready Terminal",
                       "type": "string"
                     }
                   },
@@ -1083,10 +1692,32 @@
                 "type": "array"
               },
               "failureCode": {
-                "type": "string",
-                "description": "Machine-readable failure code. See Common failures for customer-facing recovery guidance."
+                "enum": [
+                  "NoCapacityAvailable",
+                  "PlacementUnavailable",
+                  "ImageNotFound",
+                  "ImageNotReady",
+                  "ImageNotApproved",
+                  "ProviderCreateFailed",
+                  "ProviderStartFailed",
+                  "ProviderStopFailed",
+                  "ProviderDeleteFailed",
+                  "ProviderIPUnavailable",
+                  "BootstrapFailed",
+                  "PortPublishFailed",
+                  "ProviderUnavailable",
+                  "ServiceProbeFailed",
+                  "ArtifactExportFailed",
+                  "ResetFailed",
+                  "GuestBootstrapMissing",
+                  "GuestBootstrapInvalid"
+                ],
+                "type": "string"
               },
               "failureMessage": {
+                "type": "string"
+              },
+              "lastResetRef": {
                 "type": "string"
               },
               "observedGeneration": {
@@ -1113,6 +1744,9 @@
                       "type": "string"
                     },
                     "credentialInstructions": {
+                      "type": "string"
+                    },
+                    "credentialSource": {
                       "type": "string"
                     },
                     "credentialUsername": {
@@ -1145,6 +1779,52 @@
               },
               "resolvedImageRef": {
                 "type": "string"
+              },
+              "serviceStatuses": {
+                "items": {
+                  "properties": {
+                    "lastCheckedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "ready": {
+                      "type": "boolean"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "timings": {
+                "properties": {
+                  "customerReadyAt": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "guestReadyProbePassedAt": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "portsPublishedAt": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "requestAcceptedAt": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "servicesReadyAt": {
+                    "format": "date-time",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
               }
             },
             "type": "object"
@@ -1162,12 +1842,311 @@
     }
   },
   "info": {
-    "description": "OpenAPI reference for Mount Thor customer compute resources.",
-    "title": "Mount Thor Compute API",
-    "version": "v1"
+    "description": "Generated Kubernetes-compatible customer compute schemas. Do not edit by hand.",
+    "title": "Mount Thor Customer Compute CRDs",
+    "version": "v1",
+    "x-mountthor-audience": "customer",
+    "x-mountthor-source": "customer-v1",
+    "x-mountthor-stability": "alpha"
   },
   "openapi": "3.1.0",
   "paths": {
+    "/v1/compute/api/v1/namespaces/{namespace}/configmaps": {
+      "get": {
+        "description": "Manage tenant-scoped, non-secret VM bootstrap user data only. Customer-created bootstrap ConfigMaps must be labeled vm.mountthor.dev/customer-bootstrap=true; generic ConfigMaps and Secrets are not customer API.",
+        "operationId": "listConfigMap",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Set true for Kubernetes watch semantics when the resource allows watch.",
+            "in": "query",
+            "name": "watch",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigMapV1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:read"
+            ]
+          }
+        ],
+        "summary": "list VM bootstrap ConfigMap",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "",
+          "kind": "ConfigMap",
+          "version": "v1"
+        },
+        "x-mountthor-customer-safe-status": false,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/admission/validating-policies.yaml"
+      },
+      "post": {
+        "description": "Manage tenant-scoped, non-secret VM bootstrap user data only. Customer-created bootstrap ConfigMaps must be labeled vm.mountthor.dev/customer-bootstrap=true; generic ConfigMaps and Secrets are not customer API.",
+        "operationId": "createConfigMap",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigMapV1"
+              }
+            },
+            "application/yaml": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigMapV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigMapV1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:write"
+            ]
+          }
+        ],
+        "summary": "create VM bootstrap ConfigMap",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "",
+          "kind": "ConfigMap",
+          "version": "v1"
+        },
+        "x-mountthor-customer-safe-status": false,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/admission/validating-policies.yaml"
+      }
+    },
+    "/v1/compute/api/v1/namespaces/{namespace}/configmaps/{name}": {
+      "delete": {
+        "description": "Manage tenant-scoped, non-secret VM bootstrap user data only. Customer-created bootstrap ConfigMaps must be labeled vm.mountthor.dev/customer-bootstrap=true; generic ConfigMaps and Secrets are not customer API.",
+        "operationId": "deleteConfigMap",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigMapV1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:write"
+            ]
+          }
+        ],
+        "summary": "delete VM bootstrap ConfigMap",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "",
+          "kind": "ConfigMap",
+          "version": "v1"
+        },
+        "x-mountthor-customer-safe-status": false,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/admission/validating-policies.yaml"
+      },
+      "get": {
+        "description": "Manage tenant-scoped, non-secret VM bootstrap user data only. Customer-created bootstrap ConfigMaps must be labeled vm.mountthor.dev/customer-bootstrap=true; generic ConfigMaps and Secrets are not customer API.",
+        "operationId": "getConfigMap",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigMapV1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:read"
+            ]
+          }
+        ],
+        "summary": "get VM bootstrap ConfigMap",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "",
+          "kind": "ConfigMap",
+          "version": "v1"
+        },
+        "x-mountthor-customer-safe-status": false,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/admission/validating-policies.yaml"
+      }
+    },
     "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macaccesssessions": {
       "get": {
         "operationId": "listMacAccessSession",
@@ -1230,7 +2209,15 @@
         "summary": "list MacAccessSession",
         "tags": [
           "compute"
-        ]
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "control.mountthor.dev",
+          "kind": "MacAccessSession",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macaccesssessions.yaml"
       },
       "post": {
         "operationId": "createMacAccessSession",
@@ -1299,7 +2286,15 @@
         "summary": "create MacAccessSession",
         "tags": [
           "compute"
-        ]
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "control.mountthor.dev",
+          "kind": "MacAccessSession",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macaccesssessions.yaml"
       }
     },
     "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macaccesssessions/{name}": {
@@ -1363,7 +2358,15 @@
         "summary": "delete MacAccessSession",
         "tags": [
           "compute"
-        ]
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "control.mountthor.dev",
+          "kind": "MacAccessSession",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macaccesssessions.yaml"
       },
       "get": {
         "operationId": "getMacAccessSession",
@@ -1425,7 +2428,15 @@
         "summary": "get MacAccessSession",
         "tags": [
           "compute"
-        ]
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "control.mountthor.dev",
+          "kind": "MacAccessSession",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macaccesssessions.yaml"
       }
     },
     "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macimagechannels": {
@@ -1490,7 +2501,15 @@
         "summary": "list MacImageChannel",
         "tags": [
           "compute"
-        ]
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "control.mountthor.dev",
+          "kind": "MacImageChannel",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_catalogs.yaml"
       }
     },
     "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macimagechannels/{name}": {
@@ -1554,7 +2573,15 @@
         "summary": "get MacImageChannel",
         "tags": [
           "compute"
-        ]
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "control.mountthor.dev",
+          "kind": "MacImageChannel",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_catalogs.yaml"
       }
     },
     "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleaseclasses": {
@@ -1619,7 +2646,15 @@
         "summary": "list MacLeaseClass",
         "tags": [
           "compute"
-        ]
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "control.mountthor.dev",
+          "kind": "MacLeaseClass",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_catalogs.yaml"
       }
     },
     "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleaseclasses/{name}": {
@@ -1683,7 +2718,15 @@
         "summary": "get MacLeaseClass",
         "tags": [
           "compute"
-        ]
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "control.mountthor.dev",
+          "kind": "MacLeaseClass",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_catalogs.yaml"
       }
     },
     "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleaseoperations": {
@@ -1748,7 +2791,15 @@
         "summary": "list MacLeaseOperation",
         "tags": [
           "compute"
-        ]
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "control.mountthor.dev",
+          "kind": "MacLeaseOperation",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macleaseoperations.yaml"
       },
       "post": {
         "operationId": "createMacLeaseOperation",
@@ -1817,7 +2868,15 @@
         "summary": "create MacLeaseOperation",
         "tags": [
           "compute"
-        ]
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "control.mountthor.dev",
+          "kind": "MacLeaseOperation",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macleaseoperations.yaml"
       }
     },
     "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleaseoperations/{name}": {
@@ -1881,7 +2940,15 @@
         "summary": "get MacLeaseOperation",
         "tags": [
           "compute"
-        ]
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "control.mountthor.dev",
+          "kind": "MacLeaseOperation",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macleaseoperations.yaml"
       }
     },
     "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleases": {
@@ -1946,7 +3013,15 @@
         "summary": "list MacLease",
         "tags": [
           "compute"
-        ]
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "control.mountthor.dev",
+          "kind": "MacLease",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macleases.yaml"
       },
       "post": {
         "operationId": "createMacLease",
@@ -2015,7 +3090,15 @@
         "summary": "create MacLease",
         "tags": [
           "compute"
-        ]
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "control.mountthor.dev",
+          "kind": "MacLease",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macleases.yaml"
       }
     },
     "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleases/{name}": {
@@ -2079,7 +3162,15 @@
         "summary": "delete MacLease",
         "tags": [
           "compute"
-        ]
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "control.mountthor.dev",
+          "kind": "MacLease",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macleases.yaml"
       },
       "get": {
         "operationId": "getMacLease",
@@ -2141,7 +3232,15 @@
         "summary": "get MacLease",
         "tags": [
           "compute"
-        ]
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "control.mountthor.dev",
+          "kind": "MacLease",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macleases.yaml"
       }
     },
     "/v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineimageoperations": {
@@ -2206,7 +3305,15 @@
         "summary": "list VirtualMachineImageOperation",
         "tags": [
           "compute"
-        ]
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "vm.mountthor.dev",
+          "kind": "VirtualMachineImageOperation",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachineimageoperations.yaml"
       },
       "post": {
         "operationId": "createVirtualMachineImageOperation",
@@ -2275,10 +3382,88 @@
         "summary": "create VirtualMachineImageOperation",
         "tags": [
           "compute"
-        ]
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "vm.mountthor.dev",
+          "kind": "VirtualMachineImageOperation",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachineimageoperations.yaml"
       }
     },
     "/v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineimageoperations/{name}": {
+      "delete": {
+        "operationId": "deleteVirtualMachineImageOperation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VirtualMachineImageOperationV1ALPHA1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:write"
+            ]
+          }
+        ],
+        "summary": "delete VirtualMachineImageOperation",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "vm.mountthor.dev",
+          "kind": "VirtualMachineImageOperation",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachineimageoperations.yaml"
+      },
       "get": {
         "operationId": "getVirtualMachineImageOperation",
         "parameters": [
@@ -2339,7 +3524,15 @@
         "summary": "get VirtualMachineImageOperation",
         "tags": [
           "compute"
-        ]
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "vm.mountthor.dev",
+          "kind": "VirtualMachineImageOperation",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachineimageoperations.yaml"
       }
     },
     "/v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineimages": {
@@ -2404,7 +3597,15 @@
         "summary": "list VirtualMachineImage",
         "tags": [
           "compute"
-        ]
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "vm.mountthor.dev",
+          "kind": "VirtualMachineImage",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachineimages.yaml"
       }
     },
     "/v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineimages/{name}": {
@@ -2468,7 +3669,15 @@
         "summary": "get VirtualMachineImage",
         "tags": [
           "compute"
-        ]
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "vm.mountthor.dev",
+          "kind": "VirtualMachineImage",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachineimages.yaml"
       }
     },
     "/v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineoperations": {
@@ -2533,7 +3742,15 @@
         "summary": "list VirtualMachineOperation",
         "tags": [
           "compute"
-        ]
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "vm.mountthor.dev",
+          "kind": "VirtualMachineOperation",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachineoperations.yaml"
       },
       "post": {
         "operationId": "createVirtualMachineOperation",
@@ -2602,7 +3819,15 @@
         "summary": "create VirtualMachineOperation",
         "tags": [
           "compute"
-        ]
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "vm.mountthor.dev",
+          "kind": "VirtualMachineOperation",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachineoperations.yaml"
       }
     },
     "/v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineoperations/{name}": {
@@ -2666,7 +3891,15 @@
         "summary": "get VirtualMachineOperation",
         "tags": [
           "compute"
-        ]
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "vm.mountthor.dev",
+          "kind": "VirtualMachineOperation",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachineoperations.yaml"
       }
     },
     "/v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachines": {
@@ -2731,7 +3964,15 @@
         "summary": "list VirtualMachine",
         "tags": [
           "compute"
-        ]
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "vm.mountthor.dev",
+          "kind": "VirtualMachine",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachines.yaml"
       },
       "post": {
         "operationId": "createVirtualMachine",
@@ -2800,7 +4041,15 @@
         "summary": "create VirtualMachine",
         "tags": [
           "compute"
-        ]
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "vm.mountthor.dev",
+          "kind": "VirtualMachine",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachines.yaml"
       }
     },
     "/v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachines/{name}": {
@@ -2864,7 +4113,15 @@
         "summary": "delete VirtualMachine",
         "tags": [
           "compute"
-        ]
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "vm.mountthor.dev",
+          "kind": "VirtualMachine",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachines.yaml"
       },
       "get": {
         "operationId": "getVirtualMachine",
@@ -2926,7 +4183,15 @@
         "summary": "get VirtualMachine",
         "tags": [
           "compute"
-        ]
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "vm.mountthor.dev",
+          "kind": "VirtualMachine",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachines.yaml"
       }
     }
   },
@@ -2935,5 +4200,8 @@
       "description": "Mount Thor customer Kubernetes-compatible compute API",
       "url": "https://api.mountthor.com/v1/compute"
     }
-  ]
+  ],
+  "x-mountthor-generated-from": {
+    "registry": "governance/api-surfaces/customer.v1.yaml"
+  }
 }

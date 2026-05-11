@@ -14,6 +14,12 @@ kubectl delete maclease bm-01 --ignore-not-found
 kubectl delete virtualmachine vm-01 --ignore-not-found
 ```
 
+If you created optional VM bootstrap data, delete that ConfigMap too:
+
+```bash
+kubectl delete configmap vm-01-bootstrap --ignore-not-found
+```
+
 Delete short-lived access sessions:
 
 ```bash
@@ -22,7 +28,8 @@ kubectl delete macaccesssession bm-01-ssh --ignore-not-found
 
 Deleting a `MacLease` releases the physical Mac after Mount Thor closes active
 access sessions and reclaims the host. Deleting a `VirtualMachine` removes the
-VM instance; the image remains available for future VMs.
+VM instance; the image remains available for future VMs. Deleting a bootstrap
+ConfigMap removes only the non-secret startup data you supplied.
 
 ## Revoke test API keys
 
