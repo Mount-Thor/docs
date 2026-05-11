@@ -1,0 +1,68 @@
+---
+title: "Get access"
+description: "How Mount Thor prepares your account, tenant, and private access before first use."
+---
+
+Before you use the Mount Thor API, Mount Thor approves your customer account
+and prepares the tenant environment assigned to your organization. That setup
+records any reserved capacity, creates the tenant boundary used by compute
+resources, and issues the registration material you use to activate your
+account.
+
+## Access sequence
+
+<Steps>
+  <Step title="Mount Thor approves the customer account">
+    Mount Thor confirms the organization, technical contact, intended
+    workload, and capacity plan. After approval, Mount Thor creates the tenant
+    environment used by your API calls.
+  </Step>
+  <Step title="Mount Thor sends registration material">
+    You receive a registration code by email. The code activates your account
+    through `POST /v1/admin/registrations` and returns your first API key.
+  </Step>
+  <Step title="Mount Thor prepares private access when required">
+    Customer environments normally use a private network path to Mount Thor.
+    Enterprise deployments use cloud private connectivity such as AWS Direct
+    Connect, Azure ExpressRoute, or Google Cloud Partner Interconnect. Mount
+    Thor also supports WireGuard for individual users and IPsec site-to-site
+    VPN for smaller teams or transitional deployments.
+  </Step>
+  <Step title="You initialize local tooling">
+    Mount Thor confirms your operating system and package delivery method,
+    then provides the `mountthor` CLI package and enrollment material for your
+    tenant. Install the package and run `mountthor init` on the workstation or
+    automation runner that will call the API.
+  </Step>
+</Steps>
+
+## What `mountthor init` does
+
+`mountthor init` configures the customer-specific access path, installs the
+local API context used by `kubectl`, signs in to the Mount Thor access
+boundary, and verifies access to your tenant.
+
+If private access is not ready yet, `mountthor init` creates an enrollment
+request file. Send that request file to Mount Thor. After Mount Thor returns an
+enrollment response, rerun `mountthor init` on the same machine to finish local
+setup.
+
+<Warning>
+  The enrollment request contains public configuration only. Do not send
+  private keys, API keys, session tokens, or kubeconfig files over email or
+  chat.
+</Warning>
+
+## After setup
+
+After account activation and local setup, use the same customer API flow
+throughout these docs:
+
+1. Activate your account with `POST /v1/admin/registrations`.
+2. Store the returned `mthr_live_*` API key in a secret manager.
+3. Mint short-lived `mt_session_*` tokens with `POST /v1/admin/sessions`.
+4. Use `kubectl` against `https://api.mountthor.com/v1/compute` in your tenant.
+5. Create `MacLease` and `MacAccessSession` for bare metal, or
+   `VirtualMachine` resources for VM workloads.
+
+See [Quickstart](/quickstart) for the first `curl` and `kubectl` commands.
