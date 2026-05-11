@@ -11,12 +11,12 @@ frontmatter; site config lives in `docs.json`.
 ## Repo shape
 
 - `index.mdx`, `quickstart.mdx` — top-level entry points.
-- `concepts/` — auth model, alpha-status surface, foundational concepts.
+- `concepts/` — auth model, supported API surface, foundational concepts.
 - `compute/` — bare metal and VM resource walkthroughs.
 - `troubleshooting/` — failure codes and remediation.
-- `api-reference/` — Mintlify auto-generates one page per route from
-  `https://api.mountthor.com/openapi.json` here. The single hand-written
-  page is `api-reference/introduction.mdx`.
+- `api-reference/` — Mintlify auto-generates one page per operation from
+  the admin and compute OpenAPI sources. The single hand-written page is
+  `api-reference/introduction.mdx`.
 - `logo/`, `favicon.svg`, `images/`, `snippets/` — brand and reusable bits.
 - `RUNBOOK.md` — operator runbook (manual Mintlify dashboard steps, custom
   domain setup, password rotation cadence). Not customer-facing.
@@ -34,8 +34,7 @@ truth for, `Mount-Thor/mount-thor`. The canonical specs live in:
   `troubleshooting/common-failures.mdx` are derived from sections of this
   file.
 - `governance/docs/api-surface-registry-and-openapi-publication-spec.md` —
-  the customer API contract. Drives the `[live]` / `[todo]` markers used
-  throughout these docs.
+  the customer API contract.
 - `https://api.mountthor.com/openapi.json` — the actual published OpenAPI
   document, generated from typed `utoipa` annotations in admin-api.
   Mintlify fetches this URL at build time.
@@ -43,6 +42,17 @@ truth for, `Mount-Thor/mount-thor`. The canonical specs live in:
 Edits here that imply behavior change must be traceable to a change in the
 monorepo first (or land alongside one). Don't promise a customer-facing
 shape on this site that the monorepo hasn't shipped or scheduled.
+
+### Positioning claims
+
+Top-level positioning language must come from
+`governance/docs/customer-shared-readme.md` or the customer-facing sections of
+`governance/docs/developers/README.md`. Do not add unsupported marketing claims
+such as "no virtualization layer" or "no shared hypervisor" because Mount Thor
+serves both bare-metal Apple hardware and macOS virtual machines. Use the
+current source phrasing: Apple hardware at datacenter scale, programmable
+infrastructure for AI workloads, with bare-metal leases and macOS virtual
+machines managed through the Mount Thor API and CLI.
 
 ## Conventions
 
@@ -54,13 +64,22 @@ shape on this site that the monorepo hasn't shipped or scheduled.
 - Bold for UI elements (`Click **Settings**`).
 - Code formatting for file names, commands, route paths, and code refs.
 
-### `[live]` / `[todo]` markers
+### Canonical customer path
 
-Preserve them on routes, fields, and behaviors that have a current and a
-target shape. Customers explicitly ask for this — it's how they plan
-migration. Markers come from
-`governance/docs/api-surface-registry-and-openapi-publication-spec.md`
-and from the live admin-api implementation.
+Customer-facing MDX must present one supported path:
+
+1. Activate with `POST /v1/admin/registrations` using the one-time
+   registration code.
+2. Use the returned `mthr_live_*` API key for admin routes.
+3. Mint an `mt_session_*` session with `POST /v1/admin/sessions`.
+4. Use that session for `/v1/compute/*` resources through `kubectl`.
+5. Create `MacLease` / `MacAccessSession` for bare metal or
+   `VirtualMachine` / `VirtualMachineOperation` for VMs.
+
+Do not mention legacy aliases, target/current route distinctions,
+implementation migrations, internal route names, `[live]`, or `[todo]` in
+customer-facing MDX. Route and field claims must match the live admin OpenAPI
+document and the checked-in compute OpenAPI document.
 
 ### Linking conventions
 

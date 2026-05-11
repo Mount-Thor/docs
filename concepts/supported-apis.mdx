@@ -1,0 +1,76 @@
+---
+title: "Supported APIs"
+description: "The Mount Thor customer API routes and compute resources."
+---
+
+Mount Thor exposes two customer API surfaces: an HTTP admin API for account
+and credential operations, and a Kubernetes-style compute API for bare-metal
+and VM resources.
+
+<Note>
+  Use [API reference](/api-reference/introduction) for field-level request and
+  response details. This page is the short workflow map.
+</Note>
+
+## Customer-facing API edges
+
+| Endpoint | Notes |
+|---|---|
+| `https://api.mountthor.com` | Public bearer-auth API edge |
+| `/healthz` | Liveness probe |
+| `/openapi.json` | Generated admin OpenAPI document |
+| `/v1/admin/*` | Account activation, account status, API keys, entitlements, sessions, registry grants |
+| `/v1/compute/*` | Bare-metal and VM resources in your tenant |
+
+Brokered transport at `access.mountthor.com` is the runtime endpoint for
+emitted access commands; you do not call it directly.
+
+## Admin routes
+
+| Method | Route | Purpose |
+|---|---|---|
+| `POST` | `/v1/admin/registrations` | Activate account from registration code |
+| `GET` | `/v1/admin/account` | Read account and tenant status |
+| `PATCH` | `/v1/admin/account` | Update customer-owned account fields |
+| `GET` | `/v1/admin/entitlements` | Read products, limits, and scopes |
+| `POST` | `/v1/admin/sessions` | Create short-lived session token |
+| `GET` | `/v1/admin/keys` | List key metadata |
+| `POST` | `/v1/admin/keys` | Create a new key |
+| `DELETE` | `/v1/admin/keys/{id}` | Revoke a key |
+| `GET` | `/v1/admin/registries` | List external image registries |
+| `POST` | `/v1/admin/registries` | Create registry grant instructions |
+| `GET` | `/v1/admin/registries/{id}` | Read registry verification status |
+| `PATCH` | `/v1/admin/registries/{id}` | Submit or rotate registry credentials |
+| `DELETE` | `/v1/admin/registries/{id}` | Disable registry access |
+
+## Compute resources
+
+| Resource | Verbs | Purpose |
+|---|---|---|
+| `MacLease` | `get`, `list`, `watch`, `create`, `delete` | Acquire and release bare-metal Macs |
+| `MacAccessSession` | `get`, `list`, `watch`, `create`, `delete` | Create short-lived host access |
+| `MacLeaseClass` | `get`, `list`, `watch` | Discover bare-metal capacity classes |
+| `MacImageChannel` | `get`, `list`, `watch` | Discover macOS image channels |
+| `MacIncident` | `get`, `list`, `watch` | Read customer-visible incidents |
+| `MacLeaseOperation` | `get`, `list`, `watch`, `create` | Reset or reinstall a lease |
+| `VirtualMachine` | `get`, `list`, `watch`, `create`, `delete` | Create and delete VMs |
+| `VirtualMachineOperation` | `get`, `list`, `watch`, `create` | Reset or reimage VMs |
+| `VirtualMachineImage` | `get`, `list`, `watch` | Discover approved VM images |
+| `VirtualMachineImageOperation` | `get`, `list`, `watch`, `create` | Register or validate digest-pinned external images |
+
+## Onboarding
+
+| Capability | Notes |
+|---|---|
+| Registration email | Delivers the one-time registration code |
+| Account/tenant activation | Uses `/v1/admin/registrations` |
+| Customer first API key issuance | Returned once in registration response (`mthr_live_*`) |
+| Tenant setup | Mount Thor prepares the compute environment and namespace used by your API calls |
+
+## Concurrency and limits
+
+| Limit | Notes |
+|---|---|
+| `MacAccessSession` per namespace quota | Bootstrap example sets 32; coordinate with Mount Thor for higher limits |
+| Per-lease SSH session count | Default policy allows up to 2 active or granting SSH sessions per lease |
+| Per-lease Screen Sharing session count | Default policy allows 1 active or granting Screen Sharing session per lease |

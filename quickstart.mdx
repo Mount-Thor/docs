@@ -1,56 +1,48 @@
 ---
 title: "Quickstart"
-description: "From signup invite to first VM in a few minutes."
+description: "From registration email to first VM in a few minutes."
 ---
 
-This walks through redeeming a Mount Thor signup invite, minting a session
-token, and creating a `MacLease` and a `VirtualMachine`. Estimated time: ~5
-minutes once you have your invite code in hand.
+This walks through activating your account from a Mount Thor registration code,
+minting a session token, and creating a `MacLease` or a `VirtualMachine`.
+Estimated time: ~5 minutes once you have your registration email.
 
 ## Prerequisites
 
-- A Mount Thor signup invite emailed to you by Mount Thor. The email subject
-  is `Mount Thor signup invite for <your company>`.
+- A Mount Thor registration email with a one-time code.
 - `kubectl` installed locally.
 - `curl` and `jq` for the auth flow.
 
 <Note>
-  If you don't have an invite yet, contact Mount Thor with your company name,
-  contact email, and intended workload. Invites are issued out-of-band as part
-  of alpha onboarding.
+  If you don't have access yet, contact Mount Thor with your company name,
+  contact email, and intended workload.
 </Note>
 
-## 1. Redeem your invite
+## 1. Activate your account
 
-Mount Thor sends an SES email containing an `invite_code` of the form
-`mt_reg_*`. Redeem it to mint a long-lived API key and (in the target shape)
-your first session token.
+Mount Thor sends an email containing a registration code of the form
+`mt_reg_*`. Activate the account to mint your first long-lived API key.
 
-The currently-implemented route is `[live]`:
+Activate with:
 
 ```bash
-curl -X POST https://api.mountthor.com/v1/admin/signup-invites/redeem \
+curl -X POST https://api.mountthor.com/v1/admin/registrations \
   -H "Content-Type: application/json" \
   -d '{
-    "invite_code": "mt_reg_01JZ8M7EXAMPLE",
-    "contact_name": "Alex Customer",
-    "contact_email": "alex@example.com"
+    "code": "mt_reg_01JZ8M7EXAMPLE",
+    "contact": {
+      "name": "Alex Customer",
+      "email": "alex@example.com"
+    }
   }'
 ```
 
-The customer-facing target route is `[todo]` and will be:
-
-```http
-POST /v1/admin/registrations
-```
-
-with the same `invite_code` and `contact` fields. Either way the response
-returns your account slug, tenant slug, and session token.
+The response returns your account slug, tenant slug, and first API key.
 
 <Warning>
-  The plaintext API key (`mt_live_*`) is returned exactly **once** in the
+  The plaintext API key (`mthr_live_*`) is returned exactly **once** in the
   response. Store it in a secret manager immediately — Mount Thor stores only
-  an HMAC verifier and cannot recover the plaintext.
+  a one-way verifier and cannot recover the plaintext.
 </Warning>
 
 ## 2. Mint a session token
@@ -59,7 +51,7 @@ API keys are long-lived; session tokens are short-lived. You use the API key
 to mint a session token, then use the session token for compute calls.
 
 ```bash
-export MT_API_KEY="mt_live_01JZ8M7EXAMPLE"
+export MT_API_KEY="mthr_live_01JZ8M7EXAMPLE"
 
 curl -X POST https://api.mountthor.com/v1/admin/sessions \
   -H "Authorization: Bearer $MT_API_KEY" \
@@ -74,15 +66,12 @@ the requested TTL (default 15 minutes, max 1 hour).
 export MT_SESSION_TOKEN="mt_session_01JZ8M7EXAMPLE"
 ```
 
-The current legacy route is also available at `POST /v1/compute/sessions`.
-Either works; `/v1/admin/sessions` is the canonical customer-facing path.
-
 See [Auth model](/concepts/auth) for the full lifecycle and rotation guidance.
 
 ## 3. Set up `kubectl`
 
-The compute API is Kubernetes-compatible. Configure a local context that
-authenticates with your Mount Thor session token `[todo]`:
+The compute API works with `kubectl`. Configure a local context that
+authenticates with your Mount Thor session token:
 
 ```bash
 kubectl config set-cluster mount-thor \
@@ -94,12 +83,12 @@ kubectl config set-credentials mount-thor-session \
 kubectl config set-context mount-thor \
   --cluster=mount-thor \
   --user=mount-thor-session \
-  --namespace=tenant-example-alpha
+  --namespace=tenant-example
 
 kubectl config use-context mount-thor
 ```
 
-Replace `tenant-example-alpha` with your tenant slug from the redemption
+Replace `tenant-example` with the tenant slug from your activation
 response.
 
 ## 4. Create your first bare-metal lease
@@ -155,9 +144,8 @@ kubectl get macaccesssession bm-01-ssh \
   -o jsonpath='{.status.connectionInfo.command}{"\n"}'
 ```
 
-Run the command. It connects through `access.mountthor.com` (Mount Thor's
-brokered transport) — no SSH key, certificate pin, or tsh invocation is
-exposed to you.
+Run the command. It connects through `access.mountthor.com`, and Mount Thor
+handles the short-lived access grant behind it.
 
 For the full bare-metal lifecycle (release, ports, failure handling), see
 [Bare metal](/compute/bare-metal).
@@ -173,7 +161,7 @@ kind: VirtualMachine
 metadata:
   name: vm-01
 spec:
-  imageRef: macos-sequoia-xcode-16-3
+  imageRef: starcua-macos-libreoffice-demo
   powerState: Running
   ports:
     - name: app

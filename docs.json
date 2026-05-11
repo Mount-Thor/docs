@@ -47,7 +47,7 @@
             "group": "Concepts",
             "pages": [
               "concepts/auth",
-              "concepts/alpha-status"
+              "concepts/supported-apis"
             ]
           },
           {
@@ -67,16 +67,26 @@
       },
       {
         "tab": "API reference",
-        "openapi": {
-          "source": "https://api.mountthor.com/openapi.json",
-          "directory": "api-reference"
-        },
         "groups": [
           {
             "group": "Overview",
             "pages": [
               "api-reference/introduction"
             ]
+          },
+          {
+            "group": "Admin API",
+            "openapi": {
+              "source": "https://api.mountthor.com/openapi.json",
+              "directory": "api-reference/admin"
+            }
+          },
+          {
+            "group": "Compute API",
+            "openapi": {
+              "source": "/api-reference/customer-compute-crds.v1.openapi.json",
+              "directory": "api-reference/compute"
+            }
           }
         ]
       }
@@ -85,8 +95,8 @@
   "navbar": {
     "links": [
       {
-        "label": "Status",
-        "href": "https://docs.mountthor.com/concepts/alpha-status"
+        "label": "Supported APIs",
+        "href": "https://docs.mountthor.com/concepts/supported-apis"
       }
     ]
   },

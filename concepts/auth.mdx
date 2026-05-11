@@ -5,7 +5,7 @@ description: "Long-lived API keys exchange for short-lived session tokens; sessi
 
 Mount Thor uses a two-tier credential model:
 
-1. **API key** (`mt_live_*`) — long-lived, customer-owned, returned exactly
+1. **API key** (`mthr_live_*`) — long-lived, customer-owned, returned exactly
    once at creation. You store it in a secret manager and never put it on a
    command line.
 2. **Session token** (`mt_session_*`) — short-lived, derived from an API key,
@@ -20,20 +20,18 @@ not the long-lived API key.
 
 <Steps>
   <Step title="Mount Thor mints the API key">
-    First key is issued during invite redemption. Subsequent keys are minted
-    via `POST /v1/admin/customers/{customer_id}/api-keys` `[live]` (currently
-    an admin-scoped route) or self-service via `POST /v1/admin/keys` `[todo]`.
-    The plaintext is shown once; Mount Thor stores only an HMAC verifier
-    plus the prefix and last-four characters for display.
+    First key is issued during account activation. Subsequent keys are minted
+    with the self-service `POST /v1/admin/keys` route. The plaintext is shown
+    once; Mount Thor stores only a one-way verifier plus the prefix and
+    last-four characters for display.
   </Step>
   <Step title="You exchange the API key for a session token">
-    `POST /v1/admin/sessions` (canonical) or `POST /v1/compute/sessions`
-    (alias) with `Authorization: Bearer <api_key>`. Request a TTL in the
-    300–3600 second range; default is 900 (15 minutes).
+    `POST /v1/admin/sessions` with `Authorization: Bearer <api_key>`.
+    Request a TTL in the 300–3600 second range; default is 900 (15 minutes).
   </Step>
   <Step title="You use the session token for compute">
-    Pass it as a bearer token to `api.mountthor.com/v1/compute/*` `[todo]`
-    or as the `--token` for `kubectl` against your tenant namespace.
+    Pass it as a bearer token to `api.mountthor.com/v1/compute/*` or as the
+    `--token` for `kubectl` against your tenant.
   </Step>
   <Step title="The session expires; you mint another">
     Sessions are not renewable. When one expires, present the API key again
@@ -43,17 +41,25 @@ not the long-lived API key.
 
 ## API key creation
 
-Currently mounted at the admin-scoped route `[live]`:
+Self-service key management uses a long-lived Mount Thor API key with
+`keys:read` or `keys:write` scope.
+
+List key metadata:
 
 ```bash
-curl -X POST https://api.mountthor.com/v1/admin/customers/{customer_id}/api-keys \
-  -H "Authorization: Bearer <admin token>" \
+curl https://api.mountthor.com/v1/admin/keys \
+  -H "Authorization: Bearer $MT_API_KEY"
+```
+
+Create a key:
+
+```bash
+curl -X POST https://api.mountthor.com/v1/admin/keys \
+  -H "Authorization: Bearer $MT_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "customer_user_id": "<customer user UUID>",
-    "tenant_id": "<tenant UUID>",
     "display_name": "ci-prod",
-    "scopes": ["compute:read", "compute:write"],
+    "scopes": ["sessions:write", "compute:read", "compute:write"],
     "expires_at": "2027-01-01T00:00:00Z"
   }'
 ```
@@ -62,14 +68,25 @@ Response:
 
 ```json
 {
-  "api_key_id": "<uuid>",
-  "api_key": "mt_live_01JZ8M7EXAMPLE",
+  "api_key_id": "<api key UUID>",
+  "api_key": "mthr_live_01JZ8M7EXAMPLE",
   "plaintext_display": "once",
-  "scopes": ["compute:read", "compute:write"]
+  "scopes": ["sessions:write", "compute:read", "compute:write"],
+  "status": "active"
 }
 ```
 
-The customer-self-service shape `[todo]` exposes:
+The plaintext `api_key` is returned exactly once. Mount Thor stores only a
+one-way verifier plus the key prefix and last four characters.
+
+Revoke a key:
+
+```bash
+curl -X DELETE https://api.mountthor.com/v1/admin/keys/{id} \
+  -H "Authorization: Bearer $MT_API_KEY"
+```
+
+Key management exposes:
 
 | Method | Route | Purpose |
 |---|---|---|
@@ -77,14 +94,15 @@ The customer-self-service shape `[todo]` exposes:
 | `POST` | `/v1/admin/keys` | Create a new key |
 | `DELETE` | `/v1/admin/keys/{id}` | Revoke a key |
 
-Reads return id, display name, scopes, status, creation time, expiry. The
-plaintext is never available after creation.
+Reads return id, display name, scopes, status, creation time, and expiry. The
+plaintext is never available after creation. Create-new-key plus delete-old-key
+is the customer rotation flow.
 
 ## Session minting
 
 ```bash
 curl -X POST https://api.mountthor.com/v1/admin/sessions \
-  -H "Authorization: Bearer mt_live_01JZ8M7EXAMPLE" \
+  -H "Authorization: Bearer mthr_live_01JZ8M7EXAMPLE" \
   -H "Content-Type: application/json" \
   -d '{ "session_ttl_seconds": 900 }'
 ```
@@ -106,16 +124,11 @@ parent API key's scopes — you cannot widen scope at exchange time.
 
 ## Rotation and revocation
 
-- **API keys** can be rotated in place: `POST /v1/admin/customer-api-keys/{id}/rotate`
-  atomically revokes the old key, mints a new plaintext, and revokes any
-  active sessions tied to the old key.
-- **API keys** can be revoked: `POST /v1/admin/customer-api-keys/{id}/revoke`.
-  Active sessions tied to the revoked key are revoked at the same time;
-  the response includes `active_sessions_revoked` so you know the blast radius.
-- **Session tokens** expire on schedule and are not individually revocable
-  via a customer-facing route in alpha. Mount Thor operators can revoke a
-  customer-user's active session via
-  `POST /v1/admin/customer-users/{customer_user_id}/session/revoke` if needed.
+- **API keys** rotate by creating a replacement key and deleting the old key
+  with `DELETE /v1/admin/keys/{id}`.
+- **API keys** are revoked with `DELETE /v1/admin/keys/{id}`.
+- **Session tokens** expire on schedule. To stop future sessions from a key,
+  revoke that API key.
 
 ## Scopes
 
@@ -123,34 +136,15 @@ Issued today:
 
 | Scope | Allows |
 |---|---|
-| `compute:read` | Read CRDs in your tenant namespace |
-| `compute:write` | Create/update/delete compute CRDs in your tenant namespace |
-| `compute:session` | Mint additional sessions (used by automation that bootstraps short-lived workers) |
-| `compute` | Equivalent to `compute:read` + `compute:write` |
+| `compute:read` | Read compute resources in your tenant |
+| `compute:write` | Create, update, and delete compute resources in your tenant |
+| `sessions:write` | Mint short-lived Mount Thor session tokens |
+| `keys:read` | Read API-key metadata |
+| `keys:write` | Create and revoke API keys |
+| `registries:read` | Read external registry grant status |
+| `registries:write` | Create, update, and disable external registry grants |
 
-Mount Thor's permission model defines three customer access levels (Admin,
-Operator, Reader). When [WorkOS identity setup](#identity-setup) is in
-place `[todo]`, your IdP groups are mapped to these levels; until then,
-scopes are managed by Mount Thor operators per-key.
-
-## Identity setup (WorkOS) {#identity-setup}
-
-`[todo]` — Mount Thor uses WorkOS for customer SSO and IdP group mapping.
-After account activation, your customer identity admin is given a WorkOS
-setup link to:
-
-- Connect your existing IdP (Okta, Entra ID, Google Workspace, or another
-  WorkOS-supported provider).
-- Verify your customer domain.
-- Map your IdP groups to Mount Thor access levels (Admin / Operator / Reader).
-
-Mount Thor stores the WorkOS-returned **stable provider IDs** for each
-selected group, not just display names — display names can change or
-collide; provider IDs are the durable authorization input.
-
-The WorkOS setup flow itself is documented under
-[Onboarding](#) once it lands in alpha. In the interim, key issuance is
-an out-of-band step coordinated with Mount Thor.
+API-key scopes determine which admin and compute calls a credential can make.
 
 ## Things that don't authenticate
 
@@ -160,5 +154,4 @@ Two endpoints on `api.mountthor.com` are intentionally unauthenticated:
 - `GET /openapi.json` — the public OpenAPI spec for the customer surface.
 
 Everything else under `/v1/*` requires a valid bearer credential or a
-single-use proof (an unexpired invite code, a signed WorkOS webhook
-signature, or an OAuth state token from the SSO callback).
+single-use registration code.

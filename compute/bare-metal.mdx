@@ -8,7 +8,8 @@ lease. A `MacAccessSession` is the time-bounded credential that grants SSH or
 Screen Sharing into that lease. The lease itself never exposes a reusable host
 password or SSH key — every access derives from a fresh `MacAccessSession`.
 
-The CRD group is `control.mountthor.dev/v1alpha1`.
+In Kubernetes terms, `MacLease` and `MacAccessSession` are custom resources
+in the `control.mountthor.dev/v1alpha1` API group.
 
 ## Discover capacity
 
@@ -95,9 +96,8 @@ status:
 ```
 
 The emitted command is the brokered transport command to use against
-`access.mountthor.com`. Run it as-is — it embeds the lease, principal, and
-TTL Mount Thor granted, and contains no raw SSH key, certificate pin, or
-guest-IP material.
+`access.mountthor.com`. Run it as-is; it embeds the lease, principal, and
+TTL Mount Thor granted, and contains no raw SSH key or guest IP.
 
 ## Session fields and constraints
 
@@ -155,11 +155,11 @@ itself stays allocated until you also delete the `MacLease`.
 ## Concurrency
 
 The API allows multiple `MacAccessSession` objects to reference the same
-`MacLease`. Tenant-bootstrap examples set a namespace quota of 32
-`macaccesssessions.control.mountthor.dev` objects, which is a namespace-wide
-object quota — not a per-lease concurrency policy. There is currently no
-explicit per-lease maximum session count; explicit Screen Sharing and SSH
-limits are `[todo]` and will be published in the API reference.
+`MacLease`. Mount Thor sets a default namespace quota of 32
+`macaccesssessions.control.mountthor.dev` objects. The default per-lease policy
+allows up to 2 active or granting SSH sessions and 1 active or granting Screen
+Sharing session. When a limit is exhausted, the request fails with
+`AccessSessionConcurrencyExceeded` before issuing a grant.
 
 ## Lifecycle of related resources
 
@@ -179,10 +179,10 @@ When a session expires:
 
 ## Operate (reset, reinstall)
 
-`MacLeaseOperation` is the resource for reset and reinstall operations
-`[todo]`. Operation resources avoid extra verbs on `MacLease` so the
-declarative model stays simple. Until `MacLeaseOperation` ships, contact
-Mount Thor for in-place reset or reinstall.
+Create a `MacLeaseOperation` to request reset or reinstall. Customer callers
+can `get`, `list`, `watch`, and `create` operations. The operation is rejected
+with `ActiveSessionsPresent` while the lease has active or granting access
+sessions.
 
 ## Release the lease
 
