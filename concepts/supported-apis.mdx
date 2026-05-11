@@ -56,6 +56,10 @@ emitted access commands; you do not call it directly.
 | `VirtualMachineOperation` | `get`, `list`, `watch`, `create` | Reset or reimage VMs |
 | `VirtualMachineImage` | `get`, `list`, `watch` | Discover approved VM images |
 | `VirtualMachineImageOperation` | `get`, `list`, `watch`, `create` | Register or validate digest-pinned external images |
+| VM bootstrap `ConfigMap` | `get`, `list`, `watch`, `create`, `update`, `patch`, `delete` | Provide non-secret startup user data to VMs; requires `vm.mountthor.dev/customer-bootstrap=true` |
+
+Kubernetes `Secret` objects and generic or unlabeled ConfigMaps are not part of
+the customer compute API.
 
 ## Onboarding
 

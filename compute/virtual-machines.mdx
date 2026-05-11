@@ -70,6 +70,64 @@ Mount Thor reports VM infrastructure status. The customer image is responsible
 for guest users, services, agents, logs, and workload output; Mount Thor does
 not introspect inside the guest.
 
+## Optional bootstrap user data
+
+Simple catalog-image VMs can omit bootstrap data. Use bootstrap data only when
+the guest needs non-secret startup instructions, such as creating a file,
+starting a local service, or preparing a test workload.
+
+Bootstrap data is stored in a tenant-scoped `ConfigMap` labeled for VM
+bootstrap:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vm-01-bootstrap
+  labels:
+    vm.mountthor.dev/customer-bootstrap: "true"
+data:
+  script: |
+    #!/bin/sh
+    set -eu
+    echo "hello from Mount Thor" > /Users/admin/hello.txt
+```
+
+```bash
+kubectl apply -f vm-01-bootstrap.yaml
+```
+
+Reference the bootstrap ConfigMap from the VM:
+
+```yaml
+apiVersion: vm.mountthor.dev/v1alpha1
+kind: VirtualMachine
+metadata:
+  name: vm-01
+spec:
+  imageRef: starcua-macos-libreoffice-demo
+  bootstrap:
+    metadataService: {}
+    userDataConfigMapRef: vm-01-bootstrap
+  powerState: Running
+  ports:
+    - name: app
+      protocol: tcp
+      guestPort: 8443
+      exposure: private-tunnel
+```
+
+<Warning>
+  Bootstrap ConfigMaps are non-secret user data. Do not put Mount Thor API
+  keys, session tokens, registry credentials, SSH private keys, passwords, or
+  other secret material in them. Kubernetes `Secret` objects are not part of
+  the customer compute API.
+</Warning>
+
+Only ConfigMaps labeled `vm.mountthor.dev/customer-bootstrap=true` are accepted
+for VM bootstrap. Generic ConfigMaps, unlabeled ConfigMaps, Secrets, provider
+inventory, and internal Mount Thor resources are denied.
+
 ## Publish a port
 
 VM access is requested on the `VirtualMachine` itself, not via
