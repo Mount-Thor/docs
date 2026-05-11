@@ -29,10 +29,10 @@ frontmatter; site config lives in `docs.json`.
 Customer-developer content here is **derived from**, not the source of
 truth for, `Mount-Thor/mount-thor`. The canonical specs live in:
 
-- `governance/docs/developers/README.md` — alpha onboarding runbook + customer
-  product flow. The MDX pages under `compute/`, `concepts/auth.mdx`, and
-  `troubleshooting/common-failures.mdx` are derived from sections of this
-  file.
+- `governance/docs/developers/README.md` — internal alpha onboarding runbook
+  plus customer product flow. The MDX pages under `compute/`,
+  `concepts/auth.mdx`, and `troubleshooting/common-failures.mdx` are derived
+  from the customer-facing sections of this file.
 - `governance/docs/api-surface-registry-and-openapi-publication-spec.md` —
   the customer API contract.
 - `https://api.mountthor.com/openapi.json` — the actual published OpenAPI
@@ -45,14 +45,14 @@ shape on this site that the monorepo hasn't shipped or scheduled.
 
 ### Positioning claims
 
-Top-level positioning language must come from
-`governance/docs/customer-shared-readme.md` or the customer-facing sections of
-`governance/docs/developers/README.md`. Do not add unsupported marketing claims
-such as "no virtualization layer" or "no shared hypervisor" because Mount Thor
-serves both bare-metal Apple hardware and macOS virtual machines. Use the
-current source phrasing: Apple hardware at datacenter scale, programmable
-infrastructure for AI workloads, with bare-metal leases and macOS virtual
-machines managed through the Mount Thor API and CLI.
+Top-level positioning language must come from the customer-facing sections of
+`governance/docs/developers/README.md` or already-published Mintlify pages.
+Do not add unsupported marketing claims such as "no virtualization layer" or
+"no shared hypervisor" because Mount Thor serves both bare-metal Apple
+hardware and macOS virtual machines. Use the current source phrasing: Apple
+hardware at datacenter scale, programmable infrastructure for AI workloads,
+with bare-metal leases and macOS virtual machines managed through the Mount
+Thor API and CLI.
 
 ## Conventions
 
@@ -82,7 +82,7 @@ customer-facing MDX. Route and field claims must match the live admin OpenAPI
 document and the checked-in compute OpenAPI document.
 
 Before publishing a README-derived docs refresh, compare the customer-facing
-sections in `governance/docs/customer-shared-readme.md` against the Mintlify
+sections in `governance/docs/developers/README.md` against the Mintlify
 navigation and record any intentionally omitted section. Do not silently omit
 cleanup, access setup, API reference, bare-metal, VM, common-failure, or auth
 coverage.
