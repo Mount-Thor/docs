@@ -13,21 +13,25 @@ source_repo: Mount-Thor/mount-thor
 source_repo_url: https://github.com/Mount-Thor/mount-thor
 
 upstream_commit:
-  sha: 92a955b10dd22e6e4dbf4424fa646f9740e78970
-  short: 92a955b
-  message: "Allow /openapi.json through customer-api edge Envoy (#809)"
-  committed_at: "2026-05-07T22:40:42-07:00"
+  sha: ddea124f331b8e6dc8020e6f06c1adf613b8dc9b
+  short: ddea124f
+  message: "Fix standard VM base image build workflow"
+  committed_at: "2026-05-11T07:43:43-07:00"
 
 # Source files this docs revision derives content from. Bump the watermark
 # (and re-derive the affected MDX) when any of these change materially.
 derived_from:
   - governance/docs/developers/README.md
+  - governance/docs/customer-shared-readme.md
   - governance/docs/api-surface-registry-and-openapi-publication-spec.md
+  - governance/generated/customer-compute-crds.v1.openapi.json
 
-# The runtime source for the API reference. Mintlify re-fetches this on
-# every build, so reference content tracks admin-api deploys regardless of
-# this file.
-runtime_spec_source: https://api.mountthor.com/openapi.json
+# Runtime and checked-in API reference sources. Mintlify re-fetches the admin
+# source on every build; compute OpenAPI is copied into this repository when
+# docs are refreshed from the monorepo.
+runtime_spec_sources:
+  admin_api: https://api.mountthor.com/openapi.json
+  compute_api: api-reference/customer-compute-crds.v1.openapi.json
 
 # The mount-thor commit that introduced this docs site as a published
 # subsystem. Useful for forensics if the docs/monorepo relationship ever

@@ -1,26 +1,24 @@
 ---
 title: "Mount Thor"
-description: "Dedicated Apple Silicon, with no virtualization layer between you and the metal."
+description: "Apple hardware at datacenter scale for bare-metal leases and macOS virtual machines."
 ---
 
-Mount Thor exposes bare-metal Macs and macOS virtual machines through a single
-customer API at `api.mountthor.com`. You provision compute with a Kubernetes-shaped
-control surface, present a Mount Thor session token, and get short-lived host
-access — SSH, Screen Sharing, or a published TCP port — derived from declarative
-resources. There is no shared hypervisor and no opaque pool fronting your work.
+Mount Thor exposes Apple hardware at datacenter scale as programmable
+infrastructure for AI workloads. You can reserve dedicated capacity or schedule
+workloads on demand, either on bare-metal Apple hardware or in macOS virtual
+machines. The Mount Thor API and CLI support full lifecycle management and
+resource configuration.
 
 <Note>
-  Mount Thor is in **alpha**. Some routes and resources are live today; others
-  are part of the customer contract but not yet implemented. See
-  [Alpha status](/concepts/alpha-status) for a precise breakdown, and look for
-  the `[live]` and `[todo]` markers throughout these docs.
+  Mount Thor is in alpha. These docs describe the supported customer API and
+  compute workflow for the current customer program.
 </Note>
 
 ## Where to start
 
 <CardGroup cols={2}>
   <Card title="Quickstart" icon="rocket" href="/quickstart">
-    Redeem a signup invite, mint a session token, and create your first
+    Activate from a registration email, mint a session token, and create your first
     `MacLease` or `VirtualMachine`.
   </Card>
   <Card title="Auth model" icon="key" href="/concepts/auth">
@@ -32,18 +30,18 @@ resources. There is no shared hypervisor and no opaque pool fronting your work.
     SSH and Screen Sharing.
   </Card>
   <Card title="Virtual machines" icon="server" href="/compute/virtual-machines">
-    `VirtualMachine` for fast create/delete cycles, with declarative
-    port publishing through private tunnels.
+    `VirtualMachine` for fast create/delete cycles, with port publishing
+    through private tunnels.
   </Card>
 </CardGroup>
 
 ## What's at the edge
 
-| Endpoint | Protocol | Purpose | Status |
-|---|---|---|---|
-| `https://api.mountthor.com/v1/admin/*` | HTTP JSON | Account, registration, keys, entitlements, sessions | `[live]` for current shapes; `[todo]` for the canonical customer-facing names |
-| `https://api.mountthor.com/v1/compute/*` | Kubernetes-compatible | Bare-metal and VM resources | `[todo]` at the public edge — compute resources work today against your dedicated control plane |
-| `https://api.mountthor.com/openapi.json` | HTTP JSON | Generated OpenAPI spec for the admin surface | `[live]` |
+| Endpoint | Protocol | Purpose |
+|---|---|---|
+| `https://api.mountthor.com/v1/admin/*` | HTTP JSON | Account activation, account status, keys, entitlements, sessions, registry grants |
+| `https://api.mountthor.com/v1/compute/*` | Kubernetes-style API | Bare-metal and VM resources in your tenant |
+| `https://api.mountthor.com/openapi.json` | HTTP JSON | OpenAPI reference for the admin surface |
 
 Brokered transport for emitted bare-metal access commands and VM published-port
 commands routes through `access.mountthor.com`, but you do not call
@@ -51,14 +49,13 @@ commands routes through `access.mountthor.com`, but you do not call
 
 ## Design principles
 
-Mount Thor is dedicated, vertically integrated Apple Silicon. Every customer
-gets their own Kubernetes control plane — not a namespace in a shared cluster.
-Host access is never standing: it derives from an active `MacAccessSession` or
-a `VirtualMachine.spec.ports` entry, both of which are declarative, expire on a
-schedule you set, and revoke automatically when the parent resource is deleted.
+Bare-metal access is requested with `MacLease` and `MacAccessSession`. VM
+access is requested on `VirtualMachine.spec.ports`. Host and VM access is never
+standing: it derives from API resources, expires on a schedule, and is revoked
+when the parent resource is deleted.
 
-The API surface follows from those choices: customer-facing routes are typed,
-versioned, and generated from a registry; nothing about your fleet is implicit
-or undocumented. If a route is reachable on `api.mountthor.com`, it is in the
-[OpenAPI spec](/api-reference/introduction). If a CRD is queryable from your
-control plane, it is in [Compute](/compute/bare-metal).
+The API surface follows from those choices: customer-facing routes are typed
+and versioned. If a route is reachable on `api.mountthor.com`, it is in the
+[API reference](/api-reference/introduction). If a compute resource is
+available in your tenant, it is in the compute OpenAPI reference and the
+[Compute](/compute/bare-metal) guides.

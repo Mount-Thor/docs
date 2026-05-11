@@ -1,0 +1,4466 @@
+{
+  "components": {
+    "schemas": {
+      "ConfigMapV1": {
+        "additionalProperties": true,
+        "description": "Kubernetes core/v1 ConfigMap accepted for customer VM startup configuration data. Mount Thor requires metadata.labels.vm.mountthor.dev/customer-bootstrap=true for customer create, update, patch, and delete.",
+        "properties": {
+          "apiVersion": {
+            "enum": [
+              "v1"
+            ],
+            "type": "string"
+          },
+          "binaryData": {
+            "additionalProperties": {
+              "contentEncoding": "base64",
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "data": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "immutable": {
+            "type": "boolean"
+          },
+          "kind": {
+            "enum": [
+              "ConfigMap"
+            ],
+            "type": "string"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "properties": {
+              "annotations": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "labels": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "properties": {
+                  "vm.mountthor.dev/customer-bootstrap": {
+                    "enum": [
+                      "true"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "vm.mountthor.dev/customer-bootstrap"
+                ],
+                "type": "object"
+              },
+              "name": {
+                "maxLength": 253,
+                "minLength": 1,
+                "type": "string"
+              },
+              "namespace": {
+                "description": "Must match the namespace bound to the Mount Thor compute session.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "labels"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "apiVersion",
+          "kind",
+          "metadata"
+        ],
+        "type": "object",
+        "x-mountthor-api-surface": "customer-v1",
+        "x-mountthor-source-path": "control-plane/manager/config/admission/validating-policies.yaml"
+      },
+      "MacAccessSessionV1ALPHA1": {
+        "properties": {
+          "apiVersion": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "spec": {
+            "properties": {
+              "leaseRef": {
+                "maxLength": 253,
+                "minLength": 1,
+                "type": "string"
+              },
+              "principal": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              "reason": {
+                "maxLength": 512,
+                "type": "string"
+              },
+              "requestedTTL": {
+                "pattern": "^[0-9]+(m|h)$",
+                "type": "string"
+              },
+              "type": {
+                "enum": [
+                  "ssh",
+                  "screen-sharing-over-ssh"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "leaseRef",
+              "type",
+              "requestedTTL",
+              "principal"
+            ],
+            "type": "object"
+          },
+          "status": {
+            "properties": {
+              "conditions": {
+                "items": {
+                  "properties": {
+                    "lastTransitionTime": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "observedGeneration": {
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": [
+                        "True",
+                        "False",
+                        "Unknown"
+                      ],
+                      "type": "string"
+                    },
+                    "type": {
+                      "enum": [
+                        "LeaseResolved",
+                        "LeaseReady",
+                        "PrincipalResolved",
+                        "Granted",
+                        "Expired"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "status",
+                    "reason",
+                    "lastTransitionTime"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "connectionInfo": {
+                "properties": {
+                  "clientUriTemplate": {
+                    "type": "string"
+                  },
+                  "command": {
+                    "type": "string"
+                  },
+                  "desktopCredential": {
+                    "properties": {
+                      "instructions": {
+                        "type": "string"
+                      },
+                      "username": {
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "localPortStrategy": {
+                    "enum": [
+                      "caller_selects_free_loopback_port"
+                    ],
+                    "type": "string"
+                  },
+                  "sessionCorrelationId": {
+                    "type": "string"
+                  },
+                  "targetHost": {
+                    "type": "string"
+                  },
+                  "targetPort": {
+                    "maximum": 65535,
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
+              },
+              "expiresAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "failureCode": {
+                "enum": [
+                  "",
+                  "LeaseNotFound",
+                  "LeaseNotReady",
+                  "LeaseMaintenance",
+                  "LeaseReleased",
+                  "EnvironmentSuspended",
+                  "ConnectivityPathUnavailable",
+                  "UnsupportedSessionType",
+                  "PrincipalNotAllowed",
+                  "TTLTooLong",
+                  "InvalidTTL",
+                  "AccessSessionConcurrencyExceeded",
+                  "AccessBoundaryError",
+                  "SessionRevoked"
+                ],
+                "type": "string"
+              },
+              "grantedTTL": {
+                "type": "string"
+              },
+              "issuedAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "observedGeneration": {
+                "format": "int64",
+                "type": "integer"
+              },
+              "phase": {
+                "enum": [
+                  "Pending",
+                  "Granting",
+                  "Active",
+                  "Expired",
+                  "Revoked",
+                  "Failed"
+                ],
+                "type": "string"
+              },
+              "transport": {
+                "enum": [
+                  "teleport"
+                ],
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "spec"
+        ],
+        "type": "object"
+      },
+      "MacImageChannelV1ALPHA1": {
+        "properties": {
+          "apiVersion": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "spec": {
+            "properties": {
+              "agentVersion": {
+                "type": "string"
+              },
+              "channel": {
+                "enum": [
+                  "stable",
+                  "candidate",
+                  "canary",
+                  "deprecated"
+                ],
+                "type": "string"
+              },
+              "displayName": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "macosVersion": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "reclaimBehavior": {
+                "type": "string"
+              },
+              "rolloutPolicy": {
+                "properties": {
+                  "maxParallelHostUpdates": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "requireQualificationReport": {
+                    "type": "boolean"
+                  }
+                },
+                "type": "object"
+              },
+              "xcodeVersion": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "displayName",
+              "macosVersion",
+              "channel"
+            ],
+            "type": "object"
+          },
+          "status": {
+            "properties": {
+              "conditions": {
+                "items": {
+                  "properties": {
+                    "lastTransitionTime": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "observedGeneration": {
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": [
+                        "True",
+                        "False",
+                        "Unknown"
+                      ],
+                      "type": "string"
+                    },
+                    "type": {
+                      "enum": [
+                        "Published",
+                        "Qualified",
+                        "Deprecated"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "status",
+                    "reason",
+                    "lastTransitionTime"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "currentRevision": {
+                "type": "string"
+              },
+              "deprecated": {
+                "type": "boolean"
+              },
+              "observedGeneration": {
+                "format": "int64",
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "spec"
+        ],
+        "type": "object"
+      },
+      "MacIncidentV1ALPHA1": {
+        "properties": {
+          "apiVersion": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "spec": {
+            "properties": {
+              "projectionKey": {
+                "maxLength": 253,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "status": {
+            "properties": {
+              "category": {
+                "enum": [
+                  "Lease",
+                  "Access",
+                  "Site",
+                  "Maintenance",
+                  "Repair"
+                ],
+                "type": "string"
+              },
+              "conditions": {
+                "items": {
+                  "properties": {
+                    "lastTransitionTime": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "observedGeneration": {
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": [
+                        "True",
+                        "False",
+                        "Unknown"
+                      ],
+                      "type": "string"
+                    },
+                    "type": {
+                      "enum": [
+                        "Active",
+                        "Resolved"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "status",
+                    "reason",
+                    "lastTransitionTime"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "customerImpact": {
+                "maxLength": 1024,
+                "type": "string"
+              },
+              "observedGeneration": {
+                "format": "int64",
+                "type": "integer"
+              },
+              "openedAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "recommendedAction": {
+                "maxLength": 1024,
+                "type": "string"
+              },
+              "resolvedAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "severity": {
+                "enum": [
+                  "Info",
+                  "Warning",
+                  "Critical"
+                ],
+                "type": "string"
+              },
+              "summary": {
+                "maxLength": 512,
+                "type": "string"
+              },
+              "targetRef": {
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "MacLease",
+                      "MacAccessSession",
+                      "Namespace"
+                    ],
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "updatedAt": {
+                "format": "date-time",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "MacLeaseClassV1ALPHA1": {
+        "properties": {
+          "apiVersion": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "spec": {
+            "properties": {
+              "allowedImageChannels": {
+                "items": {
+                  "maxLength": 253,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "aneCapable": {
+                "type": "boolean"
+              },
+              "architecture": {
+                "enum": [
+                  "arm64"
+                ],
+                "type": "string"
+              },
+              "cpuCores": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "displayName": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "memoryGiB": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "metalCapable": {
+                "type": "boolean"
+              },
+              "networkClass": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "performanceExpectationClass": {
+                "enum": [
+                  "dedicated-host-best-effort-local-virtualization"
+                ],
+                "type": "string"
+              },
+              "storageDurabilityClass": {
+                "enum": [
+                  "host-local-ephemeral"
+                ],
+                "type": "string"
+              },
+              "storageGiB": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "virtualizationSupportClass": {
+                "enum": [
+                  "customer-local-unmanaged"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "displayName",
+              "architecture",
+              "cpuCores",
+              "memoryGiB",
+              "storageGiB",
+              "storageDurabilityClass",
+              "virtualizationSupportClass",
+              "performanceExpectationClass",
+              "networkClass"
+            ],
+            "type": "object"
+          },
+          "status": {
+            "properties": {
+              "conditions": {
+                "items": {
+                  "properties": {
+                    "lastTransitionTime": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "observedGeneration": {
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": [
+                        "True",
+                        "False",
+                        "Unknown"
+                      ],
+                      "type": "string"
+                    },
+                    "type": {
+                      "enum": [
+                        "Published",
+                        "Deprecated"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "status",
+                    "reason",
+                    "lastTransitionTime"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "deprecationState": {
+                "enum": [
+                  "Active",
+                  "Deprecated",
+                  "Retired"
+                ],
+                "type": "string"
+              },
+              "observedGeneration": {
+                "format": "int64",
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "spec"
+        ],
+        "type": "object"
+      },
+      "MacLeaseOperationV1ALPHA1": {
+        "properties": {
+          "spec": {
+            "properties": {
+              "leaseRef": {
+                "maxLength": 253,
+                "minLength": 1,
+                "type": "string"
+              },
+              "operation": {
+                "enum": [
+                  "reset",
+                  "reinstall"
+                ],
+                "type": "string"
+              },
+              "reason": {
+                "maxLength": 512,
+                "type": "string"
+              },
+              "targetImageChannelRef": {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "leaseRef",
+              "operation"
+            ],
+            "type": "object",
+            "x-kubernetes-validations": [
+              {
+                "message": "reset must not set targetImageChannelRef",
+                "rule": "self.operation != 'reset' || !has(self.targetImageChannelRef)"
+              },
+              {
+                "message": "reinstall requires targetImageChannelRef",
+                "rule": "self.operation != 'reinstall' || has(self.targetImageChannelRef)"
+              }
+            ]
+          },
+          "status": {
+            "properties": {
+              "completedAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "conditions": {
+                "items": {
+                  "properties": {
+                    "lastTransitionTime": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "observedGeneration": {
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": [
+                        "True",
+                        "False",
+                        "Unknown"
+                      ],
+                      "type": "string"
+                    },
+                    "type": {
+                      "enum": [
+                        "LeaseResolved",
+                        "LeaseReleased",
+                        "ReplacementReady",
+                        "Completed"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "status",
+                    "reason",
+                    "lastTransitionTime"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "evidenceRef": {
+                "type": "string"
+              },
+              "failureCode": {
+                "enum": [
+                  "",
+                  "InvalidOperation",
+                  "LeaseNotFound",
+                  "LeaseAlreadyTerminated",
+                  "TargetImageMissing",
+                  "ActiveSessionsPresent",
+                  "ReplacementLeaseFailed"
+                ],
+                "type": "string"
+              },
+              "observedGeneration": {
+                "format": "int64",
+                "type": "integer"
+              },
+              "originalLeaseUid": {
+                "type": "string"
+              },
+              "phase": {
+                "enum": [
+                  "Pending",
+                  "Running",
+                  "Completed",
+                  "Failed"
+                ],
+                "type": "string"
+              },
+              "releaseRequestedAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "replacementLeaseReadyForAccess": {
+                "type": "boolean"
+              },
+              "replacementLeaseUid": {
+                "type": "string"
+              },
+              "resolvedAccessPolicy": {
+                "properties": {
+                  "screenSharingOverSsh": {
+                    "type": "boolean"
+                  },
+                  "ssh": {
+                    "type": "boolean"
+                  }
+                },
+                "type": "object"
+              },
+              "resolvedImageChannelRef": {
+                "type": "string"
+              },
+              "resolvedLeaseClassRef": {
+                "type": "string"
+              },
+              "resolvedReleasePolicy": {
+                "enum": [
+                  "",
+                  "wipe-and-reenroll"
+                ],
+                "type": "string"
+              },
+              "startedAt": {
+                "format": "date-time",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "spec"
+        ],
+        "type": "object"
+      },
+      "MacLeaseV1ALPHA1": {
+        "properties": {
+          "apiVersion": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "spec": {
+            "properties": {
+              "accessPolicy": {
+                "properties": {
+                  "screenSharingOverSsh": {
+                    "default": false,
+                    "type": "boolean"
+                  },
+                  "ssh": {
+                    "default": true,
+                    "type": "boolean"
+                  }
+                },
+                "type": "object"
+              },
+              "imageChannelRef": {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "leaseClassRef": {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "placement": {
+                "properties": {
+                  "antiCoLocateWithLeases": {
+                    "items": {
+                      "maxLength": 253,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "maxItems": 16,
+                    "type": "array",
+                    "x-kubernetes-list-type": "set"
+                  },
+                  "coLocateWithLeases": {
+                    "items": {
+                      "maxLength": 253,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "maxItems": 16,
+                    "type": "array",
+                    "x-kubernetes-list-type": "set"
+                  },
+                  "preferredSelectors": {
+                    "additionalProperties": {
+                      "maxLength": 128,
+                      "type": "string"
+                    },
+                    "type": "object"
+                  },
+                  "requiredSelectors": {
+                    "additionalProperties": {
+                      "maxLength": 128,
+                      "type": "string"
+                    },
+                    "type": "object"
+                  },
+                  "spread": {
+                    "items": {
+                      "properties": {
+                        "maxSkew": {
+                          "maximum": 8,
+                          "minimum": 1,
+                          "type": "integer"
+                        },
+                        "topologyKey": {
+                          "enum": [
+                            "topology.mountthor.dev/site",
+                            "topology.mountthor.dev/rack"
+                          ],
+                          "type": "string"
+                        },
+                        "whenUnsatisfiable": {
+                          "enum": [
+                            "DoNotSchedule",
+                            "ScheduleAnyway"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "topologyKey",
+                        "maxSkew",
+                        "whenUnsatisfiable"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 4,
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              },
+              "releasePolicy": {
+                "enum": [
+                  "wipe-and-reenroll"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "leaseClassRef",
+              "imageChannelRef"
+            ],
+            "type": "object",
+            "x-kubernetes-validations": [
+              {
+                "message": "screen sharing requires ssh access",
+                "rule": "!has(self.accessPolicy) || !has(self.accessPolicy.screenSharingOverSsh) || self.accessPolicy.screenSharingOverSsh == false || self.accessPolicy.ssh == true"
+              },
+              {
+                "message": "the same lease must not appear in both coLocateWithLeases and antiCoLocateWithLeases",
+                "rule": "!has(self.placement) || !has(self.placement.coLocateWithLeases) || !has(self.placement.antiCoLocateWithLeases) || self.placement.coLocateWithLeases.all(x, !(x in self.placement.antiCoLocateWithLeases))"
+              }
+            ]
+          },
+          "status": {
+            "properties": {
+              "allocatedAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "conditions": {
+                "items": {
+                  "properties": {
+                    "lastTransitionTime": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "observedGeneration": {
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": [
+                        "True",
+                        "False",
+                        "Unknown"
+                      ],
+                      "type": "string"
+                    },
+                    "type": {
+                      "enum": [
+                        "LeaseClassResolved",
+                        "ImageChannelResolved",
+                        "PlacementFeasible",
+                        "HostBound",
+                        "HostPrepared",
+                        "ReadyForAccess",
+                        "Degraded",
+                        "Terminal"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "status",
+                    "reason",
+                    "lastTransitionTime"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "customerEndpoints": {
+                "properties": {
+                  "sshHost": {
+                    "type": "string"
+                  },
+                  "sshPort": {
+                    "maximum": 65535,
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
+              },
+              "failureCode": {
+                "enum": [
+                  "",
+                  "LeaseClassMissing",
+                  "ImageChannelMissing",
+                  "NoMatchingHosts",
+                  "NoAllocatableHosts",
+                  "CommittedCapacityUnavailable",
+                  "AppleDependencyUnavailable",
+                  "EnvironmentRestricted",
+                  "EnvironmentSuspended",
+                  "HostPreparationFailed",
+                  "HostMissing",
+                  "HostUnreachable",
+                  "HostNotManageable",
+                  "HostBaselineNotApplied",
+                  "HostImageChannelIncompatible",
+                  "RepairInProgress",
+                  "ReclaimFailed",
+                  "TerminalHostFailure"
+                ],
+                "type": "string"
+              },
+              "observedGeneration": {
+                "format": "int64",
+                "type": "integer"
+              },
+              "phase": {
+                "enum": [
+                  "Pending",
+                  "Binding",
+                  "Ready",
+                  "Active",
+                  "Degraded",
+                  "Reclaiming",
+                  "Released",
+                  "Failed"
+                ],
+                "type": "string"
+              },
+              "readyAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "readyForAccess": {
+                "type": "boolean"
+              },
+              "releasedAt": {
+                "format": "date-time",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "spec"
+        ],
+        "type": "object"
+      },
+      "VirtualMachineImageOperationV1ALPHA1": {
+        "properties": {
+          "apiVersion": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "spec": {
+            "properties": {
+              "architecture": {
+                "type": "string"
+              },
+              "defaultResources": {
+                "properties": {
+                  "cpu": {
+                    "format": "int32",
+                    "type": "integer"
+                  },
+                  "diskGiB": {
+                    "format": "int32",
+                    "type": "integer"
+                  },
+                  "memoryMiB": {
+                    "format": "int32",
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
+              },
+              "displayName": {
+                "type": "string"
+              },
+              "guestBootstrap": {
+                "properties": {
+                  "transport": {
+                    "type": "string"
+                  },
+                  "username": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "guestOs": {
+                "type": "string"
+              },
+              "guestVersion": {
+                "type": "string"
+              },
+              "operation": {
+                "enum": [
+                  "import"
+                ],
+                "type": "string"
+              },
+              "requestedImageRef": {
+                "type": "string"
+              },
+              "source": {
+                "properties": {
+                  "pullSecretRef": {
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "ref": {
+                    "type": "string"
+                  },
+                  "sha256": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "tartRegistryRef": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "status": {
+            "properties": {
+              "completedAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "conditions": {
+                "items": {
+                  "properties": {
+                    "lastTransitionTime": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "observedGeneration": {
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "description": "SourceResolved TargetImageReady Validated Completed",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "lastTransitionTime",
+                    "message",
+                    "reason",
+                    "status",
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "failureCode": {
+                "enum": [
+                  "InvalidOperation",
+                  "SourceRefMissing",
+                  "DigestMissing",
+                  "ImagePullDenied",
+                  "ImageValidationFailed",
+                  "PullSecretInvalid",
+                  "SourceDigestMismatch",
+                  "ValidationPolicyMissing",
+                  "ValidationPolicyInvalid",
+                  "GuestBootstrapInvalid",
+                  "TargetConflict",
+                  "ProviderMissing"
+                ],
+                "type": "string"
+              },
+              "observedGeneration": {
+                "format": "int64",
+                "type": "integer"
+              },
+              "phase": {
+                "enum": [
+                  "Pending",
+                  "Ready",
+                  "Completed",
+                  "Failed"
+                ],
+                "type": "string"
+              },
+              "resolvedImageRef": {
+                "type": "string"
+              },
+              "validationEvidenceRef": {
+                "type": "string"
+              },
+              "verifiedDigest": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "VirtualMachineImageV1ALPHA1": {
+        "properties": {
+          "apiVersion": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "spec": {
+            "properties": {
+              "approvedForDemo": {
+                "type": "boolean"
+              },
+              "architecture": {
+                "type": "string"
+              },
+              "capabilities": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "defaultCpu": {
+                "format": "int32",
+                "type": "integer"
+              },
+              "defaultDiskGiB": {
+                "format": "int32",
+                "type": "integer"
+              },
+              "defaultMemoryMiB": {
+                "format": "int32",
+                "type": "integer"
+              },
+              "digest": {
+                "type": "string"
+              },
+              "displayName": {
+                "type": "string"
+              },
+              "guestBootstrap": {
+                "properties": {
+                  "transport": {
+                    "type": "string"
+                  },
+                  "username": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "guestOs": {
+                "type": "string"
+              },
+              "guestVersion": {
+                "type": "string"
+              },
+              "imageRef": {
+                "type": "string"
+              },
+              "providerType": {
+                "default": "tart",
+                "type": "string"
+              },
+              "sha256": {
+                "type": "string"
+              },
+              "tartRegistryRef": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "status": {
+            "properties": {
+              "conditions": {
+                "items": {
+                  "properties": {
+                    "lastTransitionTime": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "observedGeneration": {
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "description": "Approved Ready Cached PlacementPlanned",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "lastTransitionTime",
+                    "message",
+                    "reason",
+                    "status",
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "observedGeneration": {
+                "format": "int64",
+                "type": "integer"
+              },
+              "phase": {
+                "enum": [
+                  "Pending",
+                  "Capturing",
+                  "Ready",
+                  "Failed"
+                ],
+                "type": "string"
+              },
+              "validationResultRef": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "VirtualMachineOperationV1ALPHA1": {
+        "properties": {
+          "apiVersion": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "spec": {
+            "properties": {
+              "mode": {
+                "type": "string"
+              },
+              "operation": {
+                "enum": [
+                  "reset",
+                  "reimage"
+                ],
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "targetImageRef": {
+                "type": "string"
+              },
+              "virtualMachineRef": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "status": {
+            "properties": {
+              "completedAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "conditions": {
+                "items": {
+                  "properties": {
+                    "lastTransitionTime": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "observedGeneration": {
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "description": "VirtualMachineResolved Completed",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "lastTransitionTime",
+                    "message",
+                    "reason",
+                    "status",
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "evidenceRef": {
+                "type": "string"
+              },
+              "failureCode": {
+                "enum": [
+                  "InvalidOperation",
+                  "VirtualMachineNotFound",
+                  "TargetImageMissing",
+                  "ProviderDeleteFailed",
+                  "ProviderUnavailable"
+                ],
+                "type": "string"
+              },
+              "observedGeneration": {
+                "format": "int64",
+                "type": "integer"
+              },
+              "phase": {
+                "enum": [
+                  "Pending",
+                  "Running",
+                  "Completed",
+                  "Failed"
+                ],
+                "type": "string"
+              },
+              "resolvedImageDigest": {
+                "type": "string"
+              },
+              "startedAt": {
+                "format": "date-time",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "VirtualMachineV1ALPHA1": {
+        "properties": {
+          "apiVersion": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "spec": {
+            "properties": {
+              "artifactPolicy": {
+                "properties": {
+                  "destinationRef": {
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "exportUri": {
+                    "type": "string"
+                  },
+                  "paths": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "redactionPolicyRef": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "cpu": {
+                "format": "int32",
+                "type": "integer"
+              },
+              "diskGiB": {
+                "format": "int32",
+                "type": "integer"
+              },
+              "imageRef": {
+                "type": "string"
+              },
+              "memoryMiB": {
+                "format": "int32",
+                "type": "integer"
+              },
+              "networkPolicy": {
+                "properties": {
+                  "allow": {
+                    "items": {
+                      "properties": {
+                        "host": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "port": {
+                          "format": "int32",
+                          "type": "integer"
+                        },
+                        "protocol": {
+                          "type": "string"
+                        },
+                        "purpose": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "defaultAction": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "ports": {
+                "items": {
+                  "properties": {
+                    "exposure": {
+                      "enum": [
+                        "",
+                        "private-tunnel"
+                      ],
+                      "type": "string"
+                    },
+                    "guestPort": {
+                      "format": "int32",
+                      "maximum": 65535,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "name": {
+                      "minLength": 1,
+                      "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+                      "type": "string"
+                    },
+                    "protocol": {
+                      "default": "tcp",
+                      "enum": [
+                        "",
+                        "tcp"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "guestPort",
+                    "name"
+                  ],
+                  "type": "object"
+                },
+                "type": "array",
+                "x-kubernetes-list-map-keys": [
+                  "name"
+                ],
+                "x-kubernetes-list-type": "map"
+              },
+              "powerState": {
+                "default": "Running",
+                "enum": [
+                  "Running",
+                  "Stopped"
+                ],
+                "type": "string"
+              },
+              "resetPolicy": {
+                "properties": {
+                  "cleanupEvidence": {
+                    "type": "string"
+                  },
+                  "mode": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "retentionPolicy": {
+                "properties": {
+                  "artifactDays": {
+                    "format": "int32",
+                    "type": "integer"
+                  },
+                  "imageCacheDays": {
+                    "format": "int32",
+                    "type": "integer"
+                  },
+                  "warmCapacityHold": {
+                    "type": "boolean"
+                  }
+                },
+                "type": "object"
+              },
+              "services": {
+                "items": {
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "portName": {
+                      "type": "string"
+                    },
+                    "readiness": {
+                      "properties": {
+                        "expectedStatus": {
+                          "format": "int32",
+                          "type": "integer"
+                        },
+                        "path": {
+                          "type": "string"
+                        },
+                        "timeoutSeconds": {
+                          "format": "int32",
+                          "type": "integer"
+                        },
+                        "type": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "imageRef"
+            ],
+            "type": "object"
+          },
+          "status": {
+            "properties": {
+              "artifactStatuses": {
+                "items": {
+                  "properties": {
+                    "exportUri": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "type": "string"
+                    },
+                    "phase": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "cleanupEvidenceRef": {
+                "type": "string"
+              },
+              "conditions": {
+                "items": {
+                  "properties": {
+                    "lastTransitionTime": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "observedGeneration": {
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "description": "PlacementResolved CapacityAdmitted HostResolved ImageResolved ImageReady ImageCachedOnHost ProviderBound PortsPublished MetricsPersisted Ready Terminal",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "lastTransitionTime",
+                    "message",
+                    "reason",
+                    "status",
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "failureCode": {
+                "enum": [
+                  "NoCapacityAvailable",
+                  "PlacementUnavailable",
+                  "ImageNotFound",
+                  "ImageNotReady",
+                  "ImageNotApproved",
+                  "ProviderCreateFailed",
+                  "ProviderStartFailed",
+                  "ProviderStopFailed",
+                  "ProviderDeleteFailed",
+                  "ProviderIPUnavailable",
+                  "BootstrapFailed",
+                  "PortPublishFailed",
+                  "ProviderUnavailable",
+                  "ServiceProbeFailed",
+                  "ArtifactExportFailed",
+                  "ResetFailed",
+                  "GuestBootstrapMissing",
+                  "GuestBootstrapInvalid"
+                ],
+                "type": "string"
+              },
+              "failureMessage": {
+                "type": "string"
+              },
+              "lastResetRef": {
+                "type": "string"
+              },
+              "observedGeneration": {
+                "format": "int64",
+                "type": "integer"
+              },
+              "phase": {
+                "enum": [
+                  "Pending",
+                  "Creating",
+                  "Starting",
+                  "Running",
+                  "Stopping",
+                  "Stopped",
+                  "Deleting",
+                  "Failed"
+                ],
+                "type": "string"
+              },
+              "publishedPorts": {
+                "items": {
+                  "properties": {
+                    "accessCommand": {
+                      "type": "string"
+                    },
+                    "credentialInstructions": {
+                      "type": "string"
+                    },
+                    "credentialSource": {
+                      "type": "string"
+                    },
+                    "credentialUsername": {
+                      "type": "string"
+                    },
+                    "exposure": {
+                      "type": "string"
+                    },
+                    "guestPort": {
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "protocol": {
+                      "type": "string"
+                    },
+                    "uriTemplate": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "readyAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "resolvedImageRef": {
+                "type": "string"
+              },
+              "serviceStatuses": {
+                "items": {
+                  "properties": {
+                    "lastCheckedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "ready": {
+                      "type": "boolean"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "timings": {
+                "properties": {
+                  "customerReadyAt": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "guestReadyProbePassedAt": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "portsPublishedAt": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "requestAcceptedAt": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "servicesReadyAt": {
+                    "format": "date-time",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "MountThorSession": {
+        "bearerFormat": "mt_session",
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "description": "OpenAPI reference for Mount Thor customer compute resources.",
+    "title": "Mount Thor Compute API",
+    "version": "v1",
+    "x-mountthor-audience": "customer",
+    "x-mountthor-source": "customer-v1",
+    "x-mountthor-stability": "alpha"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/v1/compute/api/v1/namespaces/{namespace}/configmaps": {
+      "get": {
+        "operationId": "listConfigMap",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Set true for Kubernetes watch semantics when the resource allows watch.",
+            "in": "query",
+            "name": "watch",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigMapV1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:read"
+            ]
+          }
+        ],
+        "summary": "list ConfigMap",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "",
+          "kind": "ConfigMap",
+          "version": "v1"
+        },
+        "x-mountthor-customer-safe-status": false,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/admission/validating-policies.yaml"
+      },
+      "post": {
+        "operationId": "createConfigMap",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigMapV1"
+              }
+            },
+            "application/yaml": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigMapV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigMapV1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:write"
+            ]
+          }
+        ],
+        "summary": "create ConfigMap",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "",
+          "kind": "ConfigMap",
+          "version": "v1"
+        },
+        "x-mountthor-customer-safe-status": false,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/admission/validating-policies.yaml"
+      }
+    },
+    "/v1/compute/api/v1/namespaces/{namespace}/configmaps/{name}": {
+      "delete": {
+        "operationId": "deleteConfigMap",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigMapV1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:write"
+            ]
+          }
+        ],
+        "summary": "delete ConfigMap",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "",
+          "kind": "ConfigMap",
+          "version": "v1"
+        },
+        "x-mountthor-customer-safe-status": false,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/admission/validating-policies.yaml"
+      },
+      "get": {
+        "operationId": "getConfigMap",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigMapV1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:read"
+            ]
+          }
+        ],
+        "summary": "get ConfigMap",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "",
+          "kind": "ConfigMap",
+          "version": "v1"
+        },
+        "x-mountthor-customer-safe-status": false,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/admission/validating-policies.yaml"
+      }
+    },
+    "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macaccesssessions": {
+      "get": {
+        "operationId": "listMacAccessSession",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Set true for Kubernetes watch semantics when the resource allows watch.",
+            "in": "query",
+            "name": "watch",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MacAccessSessionV1ALPHA1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:read"
+            ]
+          }
+        ],
+        "summary": "list MacAccessSession",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "control.mountthor.dev",
+          "kind": "MacAccessSession",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macaccesssessions.yaml"
+      },
+      "post": {
+        "operationId": "createMacAccessSession",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MacAccessSessionV1ALPHA1"
+              }
+            },
+            "application/yaml": {
+              "schema": {
+                "$ref": "#/components/schemas/MacAccessSessionV1ALPHA1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MacAccessSessionV1ALPHA1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:write"
+            ]
+          }
+        ],
+        "summary": "create MacAccessSession",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "control.mountthor.dev",
+          "kind": "MacAccessSession",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macaccesssessions.yaml"
+      }
+    },
+    "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macaccesssessions/{name}": {
+      "delete": {
+        "operationId": "deleteMacAccessSession",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MacAccessSessionV1ALPHA1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:write"
+            ]
+          }
+        ],
+        "summary": "delete MacAccessSession",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "control.mountthor.dev",
+          "kind": "MacAccessSession",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macaccesssessions.yaml"
+      },
+      "get": {
+        "operationId": "getMacAccessSession",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MacAccessSessionV1ALPHA1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:read"
+            ]
+          }
+        ],
+        "summary": "get MacAccessSession",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "control.mountthor.dev",
+          "kind": "MacAccessSession",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macaccesssessions.yaml"
+      }
+    },
+    "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macimagechannels": {
+      "get": {
+        "operationId": "listMacImageChannel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Set true for Kubernetes watch semantics when the resource allows watch.",
+            "in": "query",
+            "name": "watch",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MacImageChannelV1ALPHA1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:read"
+            ]
+          }
+        ],
+        "summary": "list MacImageChannel",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "control.mountthor.dev",
+          "kind": "MacImageChannel",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_catalogs.yaml"
+      }
+    },
+    "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macimagechannels/{name}": {
+      "get": {
+        "operationId": "getMacImageChannel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MacImageChannelV1ALPHA1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:read"
+            ]
+          }
+        ],
+        "summary": "get MacImageChannel",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "control.mountthor.dev",
+          "kind": "MacImageChannel",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_catalogs.yaml"
+      }
+    },
+    "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macincidents": {
+      "get": {
+        "operationId": "listMacIncident",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Set true for Kubernetes watch semantics when the resource allows watch.",
+            "in": "query",
+            "name": "watch",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MacIncidentV1ALPHA1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:read"
+            ]
+          }
+        ],
+        "summary": "list MacIncident",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "control.mountthor.dev",
+          "kind": "MacIncident",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macincidents.yaml"
+      }
+    },
+    "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macincidents/{name}": {
+      "get": {
+        "operationId": "getMacIncident",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MacIncidentV1ALPHA1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:read"
+            ]
+          }
+        ],
+        "summary": "get MacIncident",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "control.mountthor.dev",
+          "kind": "MacIncident",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macincidents.yaml"
+      }
+    },
+    "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleaseclasses": {
+      "get": {
+        "operationId": "listMacLeaseClass",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Set true for Kubernetes watch semantics when the resource allows watch.",
+            "in": "query",
+            "name": "watch",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MacLeaseClassV1ALPHA1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:read"
+            ]
+          }
+        ],
+        "summary": "list MacLeaseClass",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "control.mountthor.dev",
+          "kind": "MacLeaseClass",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_catalogs.yaml"
+      }
+    },
+    "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleaseclasses/{name}": {
+      "get": {
+        "operationId": "getMacLeaseClass",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MacLeaseClassV1ALPHA1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:read"
+            ]
+          }
+        ],
+        "summary": "get MacLeaseClass",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "control.mountthor.dev",
+          "kind": "MacLeaseClass",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_catalogs.yaml"
+      }
+    },
+    "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleaseoperations": {
+      "get": {
+        "operationId": "listMacLeaseOperation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Set true for Kubernetes watch semantics when the resource allows watch.",
+            "in": "query",
+            "name": "watch",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MacLeaseOperationV1ALPHA1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:read"
+            ]
+          }
+        ],
+        "summary": "list MacLeaseOperation",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "control.mountthor.dev",
+          "kind": "MacLeaseOperation",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macleaseoperations.yaml"
+      },
+      "post": {
+        "operationId": "createMacLeaseOperation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MacLeaseOperationV1ALPHA1"
+              }
+            },
+            "application/yaml": {
+              "schema": {
+                "$ref": "#/components/schemas/MacLeaseOperationV1ALPHA1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MacLeaseOperationV1ALPHA1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:write"
+            ]
+          }
+        ],
+        "summary": "create MacLeaseOperation",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "control.mountthor.dev",
+          "kind": "MacLeaseOperation",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macleaseoperations.yaml"
+      }
+    },
+    "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleaseoperations/{name}": {
+      "get": {
+        "operationId": "getMacLeaseOperation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MacLeaseOperationV1ALPHA1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:read"
+            ]
+          }
+        ],
+        "summary": "get MacLeaseOperation",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "control.mountthor.dev",
+          "kind": "MacLeaseOperation",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macleaseoperations.yaml"
+      }
+    },
+    "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleases": {
+      "get": {
+        "operationId": "listMacLease",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Set true for Kubernetes watch semantics when the resource allows watch.",
+            "in": "query",
+            "name": "watch",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MacLeaseV1ALPHA1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:read"
+            ]
+          }
+        ],
+        "summary": "list MacLease",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "control.mountthor.dev",
+          "kind": "MacLease",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macleases.yaml"
+      },
+      "post": {
+        "operationId": "createMacLease",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MacLeaseV1ALPHA1"
+              }
+            },
+            "application/yaml": {
+              "schema": {
+                "$ref": "#/components/schemas/MacLeaseV1ALPHA1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MacLeaseV1ALPHA1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:write"
+            ]
+          }
+        ],
+        "summary": "create MacLease",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "control.mountthor.dev",
+          "kind": "MacLease",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macleases.yaml"
+      }
+    },
+    "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleases/{name}": {
+      "delete": {
+        "operationId": "deleteMacLease",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MacLeaseV1ALPHA1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:write"
+            ]
+          }
+        ],
+        "summary": "delete MacLease",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "control.mountthor.dev",
+          "kind": "MacLease",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macleases.yaml"
+      },
+      "get": {
+        "operationId": "getMacLease",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MacLeaseV1ALPHA1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:read"
+            ]
+          }
+        ],
+        "summary": "get MacLease",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "control.mountthor.dev",
+          "kind": "MacLease",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macleases.yaml"
+      }
+    },
+    "/v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineimageoperations": {
+      "get": {
+        "operationId": "listVirtualMachineImageOperation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Set true for Kubernetes watch semantics when the resource allows watch.",
+            "in": "query",
+            "name": "watch",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VirtualMachineImageOperationV1ALPHA1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:read"
+            ]
+          }
+        ],
+        "summary": "list VirtualMachineImageOperation",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "vm.mountthor.dev",
+          "kind": "VirtualMachineImageOperation",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachineimageoperations.yaml"
+      },
+      "post": {
+        "operationId": "createVirtualMachineImageOperation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VirtualMachineImageOperationV1ALPHA1"
+              }
+            },
+            "application/yaml": {
+              "schema": {
+                "$ref": "#/components/schemas/VirtualMachineImageOperationV1ALPHA1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VirtualMachineImageOperationV1ALPHA1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:write"
+            ]
+          }
+        ],
+        "summary": "create VirtualMachineImageOperation",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "vm.mountthor.dev",
+          "kind": "VirtualMachineImageOperation",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachineimageoperations.yaml"
+      }
+    },
+    "/v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineimageoperations/{name}": {
+      "delete": {
+        "operationId": "deleteVirtualMachineImageOperation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VirtualMachineImageOperationV1ALPHA1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:write"
+            ]
+          }
+        ],
+        "summary": "delete VirtualMachineImageOperation",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "vm.mountthor.dev",
+          "kind": "VirtualMachineImageOperation",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachineimageoperations.yaml"
+      },
+      "get": {
+        "operationId": "getVirtualMachineImageOperation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VirtualMachineImageOperationV1ALPHA1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:read"
+            ]
+          }
+        ],
+        "summary": "get VirtualMachineImageOperation",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "vm.mountthor.dev",
+          "kind": "VirtualMachineImageOperation",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachineimageoperations.yaml"
+      }
+    },
+    "/v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineimages": {
+      "get": {
+        "operationId": "listVirtualMachineImage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Set true for Kubernetes watch semantics when the resource allows watch.",
+            "in": "query",
+            "name": "watch",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VirtualMachineImageV1ALPHA1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:read"
+            ]
+          }
+        ],
+        "summary": "list VirtualMachineImage",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "vm.mountthor.dev",
+          "kind": "VirtualMachineImage",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachineimages.yaml"
+      }
+    },
+    "/v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineimages/{name}": {
+      "get": {
+        "operationId": "getVirtualMachineImage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VirtualMachineImageV1ALPHA1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:read"
+            ]
+          }
+        ],
+        "summary": "get VirtualMachineImage",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "vm.mountthor.dev",
+          "kind": "VirtualMachineImage",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachineimages.yaml"
+      }
+    },
+    "/v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineoperations": {
+      "get": {
+        "operationId": "listVirtualMachineOperation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Set true for Kubernetes watch semantics when the resource allows watch.",
+            "in": "query",
+            "name": "watch",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VirtualMachineOperationV1ALPHA1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:read"
+            ]
+          }
+        ],
+        "summary": "list VirtualMachineOperation",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "vm.mountthor.dev",
+          "kind": "VirtualMachineOperation",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachineoperations.yaml"
+      },
+      "post": {
+        "operationId": "createVirtualMachineOperation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VirtualMachineOperationV1ALPHA1"
+              }
+            },
+            "application/yaml": {
+              "schema": {
+                "$ref": "#/components/schemas/VirtualMachineOperationV1ALPHA1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VirtualMachineOperationV1ALPHA1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:write"
+            ]
+          }
+        ],
+        "summary": "create VirtualMachineOperation",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "vm.mountthor.dev",
+          "kind": "VirtualMachineOperation",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachineoperations.yaml"
+      }
+    },
+    "/v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineoperations/{name}": {
+      "get": {
+        "operationId": "getVirtualMachineOperation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VirtualMachineOperationV1ALPHA1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:read"
+            ]
+          }
+        ],
+        "summary": "get VirtualMachineOperation",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "vm.mountthor.dev",
+          "kind": "VirtualMachineOperation",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachineoperations.yaml"
+      }
+    },
+    "/v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachines": {
+      "get": {
+        "operationId": "listVirtualMachine",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Set true for Kubernetes watch semantics when the resource allows watch.",
+            "in": "query",
+            "name": "watch",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VirtualMachineV1ALPHA1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:read"
+            ]
+          }
+        ],
+        "summary": "list VirtualMachine",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "vm.mountthor.dev",
+          "kind": "VirtualMachine",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachines.yaml"
+      },
+      "post": {
+        "operationId": "createVirtualMachine",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VirtualMachineV1ALPHA1"
+              }
+            },
+            "application/yaml": {
+              "schema": {
+                "$ref": "#/components/schemas/VirtualMachineV1ALPHA1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VirtualMachineV1ALPHA1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:write"
+            ]
+          }
+        ],
+        "summary": "create VirtualMachine",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "vm.mountthor.dev",
+          "kind": "VirtualMachine",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachines.yaml"
+      }
+    },
+    "/v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachines/{name}": {
+      "delete": {
+        "operationId": "deleteVirtualMachine",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VirtualMachineV1ALPHA1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:write"
+            ]
+          }
+        ],
+        "summary": "delete VirtualMachine",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "vm.mountthor.dev",
+          "kind": "VirtualMachine",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachines.yaml"
+      },
+      "get": {
+        "operationId": "getVirtualMachine",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VirtualMachineV1ALPHA1"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "429": {
+            "description": "Rate Limited"
+          }
+        },
+        "security": [
+          {
+            "MountThorSession": [
+              "compute:read"
+            ]
+          }
+        ],
+        "summary": "get VirtualMachine",
+        "tags": [
+          "compute"
+        ],
+        "x-kubernetes-group-version-kind": {
+          "group": "vm.mountthor.dev",
+          "kind": "VirtualMachine",
+          "version": "v1alpha1"
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachines.yaml"
+      }
+    }
+  },
+  "servers": [
+    {
+      "description": "Mount Thor customer Kubernetes-compatible compute API",
+      "url": "https://api.mountthor.com/v1/compute"
+    }
+  ],
+  "x-mountthor-generated-from": {
+    "registry": "governance/api-surfaces/customer.v1.yaml"
+  }
+}

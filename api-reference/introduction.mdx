@@ -1,32 +1,27 @@
 ---
 title: "API reference"
-description: "Generated from typed Rust route metadata in admin-api. The pages under this tab are produced from https://api.mountthor.com/openapi.json."
+description: "Reference for the Mount Thor admin and compute APIs."
 ---
 
-The customer-facing admin API surface is generated from the typed
-`#[utoipa::path]` annotations in admin-api and served at
-[`https://api.mountthor.com/openapi.json`](https://api.mountthor.com/openapi.json).
-Mintlify fetches that URL at build time and produces one reference page per
-route under this tab.
+Mount Thor exposes two customer API surfaces:
+
+| Reference | Covers |
+|---|---|
+| Admin API | Account activation, account status, API keys, entitlements, sessions, and registry grants under `/v1/admin/*` |
+| Compute API | Bare-metal leases, access sessions, VMs, image operations, and catalog reads under `/v1/compute/*` |
 
 ## What's in scope here
 
 | | |
 |---|---|
-| **Audience** | Customer-facing routes under `/v1/admin/*` and the related session-minting routes. |
-| **Auth** | All routes require a Mount Thor bearer credential (`mt_live_*` API key or `mt_session_*` session token), except invite redemption — which is unauthenticated and proves identity via the single-use invite code itself. |
-| **Stability** | Routes carry `[live]` / `[todo]` markers in their summary text. `[live]` routes are mounted today; `[todo]` routes are the customer-facing target shape and are typically reached today via a current internal route name documented in [Alpha status](/concepts/alpha-status). |
-| **Spec freshness** | The spec rebuilds with every admin-api deploy. The docs site rebuilds on every push to this repository — if the spec has changed since the last docs rebuild, the rendered reference may lag by one build. |
+| **Audience** | Customer-facing admin routes and compute resources. |
+| **Auth** | Admin routes use `mthr_live_*` API keys. Compute routes use `mt_session_*` session tokens minted from `/v1/admin/sessions`. Registration proves access through the single-use registration code. |
+| **Contract** | The API reference is the field-level contract. Guide pages explain the recommended workflow. |
 
 ## What's not in scope here
 
-- The Kubernetes-compatible compute surface at `api.mountthor.com/v1/compute/*`
-  is not part of this OpenAPI document. Those resources are described in
-  [Bare metal](/compute/bare-metal) and [Virtual machines](/compute/virtual-machines).
-  Their canonical schemas are CRDs in your tenant control plane.
-- Internal-audience routes are excluded from the published spec. If a route
-  appears in admin-api's source but not here, it is intentional — internal
-  routes are not part of the customer contract.
+- Routes that are not listed in this reference are not part of the customer
+  API contract.
 
 ## Authentication
 
@@ -34,7 +29,7 @@ Every customer-facing route documented under this tab uses the
 `api_key_bearer` security scheme:
 
 ```
-Authorization: Bearer mt_live_*    # long-lived API key
+Authorization: Bearer mthr_live_*  # long-lived API key
 Authorization: Bearer mt_session_* # short-lived session token
 ```
 
@@ -46,7 +41,7 @@ how to mint sessions from API keys.
 - Request and response bodies are JSON.
 - Timestamps are RFC 3339 in UTC.
 - IDs are UUIDs unless explicitly typed otherwise.
-- Plaintext credentials (`mt_live_*`, `mt_session_*`) are returned exactly
-  once at issuance — Mount Thor stores only HMAC verifiers and the prefix /
-  last-four characters for display.
+- Plaintext credentials (`mthr_live_*`, `mt_session_*`) are returned exactly
+  once at issuance. Mount Thor stores only one-way verifiers and a limited
+  display fingerprint.
 - Errors return a stable machine-readable code; see [Common failures](/troubleshooting/common-failures).
