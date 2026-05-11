@@ -137,10 +137,9 @@ For GUI access, request a `private-tunnel` port like:
 ```
 
 Read `status.publishedPorts[?name=="gui"]`. GUI ports include non-secret
-`credentialUsername`, `credentialSource`, and `credentialInstructions`; the
-password is **never** embedded in `status`, terminal output, or the VNC URI.
-Follow `credentialInstructions` to retrieve the rotated password from your
-secret store.
+`credentialUsername` and `credentialInstructions`; the password is **never**
+embedded in `status`, terminal output, or the VNC URI. Follow
+`credentialInstructions` to retrieve the rotated password.
 
 ## Operate (reset, reimage)
 
@@ -177,12 +176,12 @@ Mount Thor and submit a read-only credential or role grant. Mount Thor verifies
 pull access, records a `VirtualMachineImage` that points at the external
 digest, and prepares image access before the VM starts.
 
-Supported registry types:
+Supported registry connection types:
 
-| Registry | `provider` | `auth.type` | You provide |
-|---|---|---|---|
-| Amazon ECR | `aws-ecr` | `aws-iam-role` | Role ARN for a read-only IAM role created from Mount Thor's returned policy |
-| GHCR, Harbor, OCI registries | `oci` | `registry-token` or `username-password` | Read-only robot account, deploy token, or registry token scoped to the image repository |
+| Registry | Connection | You provide |
+|---|---|---|
+| Amazon ECR | AWS IAM role | Role ARN for a read-only IAM role created from Mount Thor's returned policy |
+| GHCR, Harbor, OCI registries | Read-only registry credential | Robot account, deploy token, or registry token scoped to the image repository |
 
 Create the registry record with a Mount Thor API key that has
 `registries:write`:
@@ -193,16 +192,15 @@ Authorization: Bearer mthr_live_01JZ8M7EXAMPLE
 Content-Type: application/json
 ```
 
-Use `provider: "aws-ecr"` for Amazon ECR or `provider: "oci"` for GHCR,
-Harbor, and Docker-compatible OCI registries. The admin API returns the grant
-instructions to create the read-only role or token, and `PATCH
-/v1/admin/registries/{id}` submits the credential reference. `GET
-/v1/admin/registries/{id}` returns `pull_secret_ref` only after the registry is
-ready.
+The admin API returns the grant instructions to create the read-only role or
+token. Submit the credential reference with `PATCH
+/v1/admin/registries/{id}` and wait for the registry status to become ready.
 
 ## Register an image
 
-After registry verification succeeds:
+After registry verification succeeds, create a `VirtualMachineImageOperation`
+with an image name, a digest-pinned image reference, guest OS metadata, and
+default sizing:
 
 ```yaml
 apiVersion: vm.mountthor.dev/v1alpha1
@@ -213,11 +211,8 @@ spec:
   operation: import
   requestedImageRef: customer-browser-base
   source:
-    type: tart-oci
     ref: 123456789012.dkr.ecr.us-east-2.amazonaws.com/platform/macos-vm-images@sha256:<digest>
     sha256: sha256:<digest>
-    pullSecretRef:
-      name: mt-registry-reg-01jz
   guestOs: macos
   guestVersion: "15.4"
   architecture: arm64
@@ -226,7 +221,6 @@ spec:
     memoryMiB: 8192
     diskGiB: 120
   displayName: Customer Browser Base
-  tartRegistryRef: 123456789012.dkr.ecr.us-east-2.amazonaws.com/platform/macos-vm-images@sha256:<digest>
 ```
 
 ```bash
