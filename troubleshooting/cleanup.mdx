@@ -1,0 +1,37 @@
+---
+title: "Cleanup"
+description: "Remove test compute resources and revoke test API keys."
+---
+
+Clean up resources you created during testing when you no longer need them.
+
+## Delete compute resources
+
+Delete bare-metal leases and VMs:
+
+```bash
+kubectl delete maclease bm-01 --ignore-not-found
+kubectl delete virtualmachine vm-01 --ignore-not-found
+```
+
+Delete short-lived access sessions:
+
+```bash
+kubectl delete macaccesssession bm-01-ssh --ignore-not-found
+```
+
+Deleting a `MacLease` releases the physical Mac after Mount Thor closes active
+access sessions and reclaims the host. Deleting a `VirtualMachine` removes the
+VM instance; the image remains available for future VMs.
+
+## Revoke test API keys
+
+Revoke keys created for testing:
+
+```bash
+curl -X DELETE https://api.mountthor.com/v1/admin/keys/key_01JZ8M7EXAMPLE \
+  -H "Authorization: Bearer $MT_API_KEY"
+```
+
+Replace `key_01JZ8M7EXAMPLE` with the key ID returned by
+`GET /v1/admin/keys`. Revoked API keys can no longer mint session tokens.

@@ -13,7 +13,7 @@ frontmatter; site config lives in `docs.json`.
 - `index.mdx`, `quickstart.mdx` — top-level entry points.
 - `concepts/` — auth model, supported API surface, foundational concepts.
 - `compute/` — bare metal and VM resource walkthroughs.
-- `troubleshooting/` — failure codes and remediation.
+- `troubleshooting/` — failure codes, remediation, and cleanup.
 - `api-reference/` — Mintlify auto-generates one page per operation from
   the admin and compute OpenAPI sources. The single hand-written page is
   `api-reference/introduction.mdx`.
@@ -80,6 +80,12 @@ Do not mention legacy aliases, target/current route distinctions,
 implementation migrations, internal route names, `[live]`, or `[todo]` in
 customer-facing MDX. Route and field claims must match the live admin OpenAPI
 document and the checked-in compute OpenAPI document.
+
+Before publishing a README-derived docs refresh, compare the customer-facing
+sections in `governance/docs/customer-shared-readme.md` against the Mintlify
+navigation and record any intentionally omitted section. Do not silently omit
+cleanup, access setup, API reference, bare-metal, VM, common-failure, or auth
+coverage.
 
 The published compute OpenAPI document is intentionally narrower than the raw
 generated artifact when the raw artifact includes Kubernetes plumbing or
