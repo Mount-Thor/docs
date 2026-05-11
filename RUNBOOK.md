@@ -98,7 +98,8 @@ next merged PR organically; explicit forces are rarely needed.
 
 The compute OpenAPI document is checked into this repo. When the monorepo
 changes `governance/generated/customer-compute-crds.v1.openapi.json`, copy the
-new artifact to `api-reference/customer-compute-crds.v1.openapi.json` and bump
+new artifact to `api-reference/customer-compute-crds.v1.openapi.json`, remove
+non-workflow resources such as core `ConfigMap` and `MacIncident`, and bump
 `.watermark` in the same PR.
 
 ### When to update `.watermark`

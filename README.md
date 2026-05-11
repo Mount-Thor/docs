@@ -11,7 +11,8 @@ The customer-facing API reference is generated from OpenAPI:
 - Admin API: [`https://api.mountthor.com/openapi.json`](https://api.mountthor.com/openapi.json),
   which Mintlify re-fetches on every build.
 - Compute API: `api-reference/customer-compute-crds.v1.openapi.json`, copied
-  from the generated monorepo artifact when the docs are refreshed.
+  from the generated monorepo artifact when the docs are refreshed, then
+  publication-filtered to the customer workflow resources documented in MDX.
 
 ## Local development
 
