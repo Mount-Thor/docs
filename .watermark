@@ -22,7 +22,6 @@ upstream_commit:
 # (and re-derive the affected MDX) when any of these change materially.
 derived_from:
   - governance/docs/developers/README.md
-  - governance/docs/customer-shared-readme.md
   - governance/docs/api-surface-registry-and-openapi-publication-spec.md
   - governance/generated/customer-compute-crds.v1.openapi.json
 

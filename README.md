@@ -34,6 +34,8 @@ mint broken-links # link integrity
 
 Customer-developer content here is derived from
 [`Mount-Thor/mount-thor`](https://github.com/Mount-Thor/mount-thor) under
-`governance/docs/developers/README.md` and
-`governance/docs/customer-shared-readme.md`. Don't promise a customer-facing
-shape or positioning claim here that the monorepo hasn't shipped or scheduled.
+`governance/docs/developers/README.md`, the API surface specs, and generated
+OpenAPI artifacts. The old
+`governance/docs/customer-shared-readme.md` file in the monorepo is only a
+compatibility pointer to this site. Don't promise a customer-facing shape or
+positioning claim here that the monorepo hasn't shipped or scheduled.
