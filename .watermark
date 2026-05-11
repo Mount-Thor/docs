@@ -13,10 +13,10 @@ source_repo: Mount-Thor/mount-thor
 source_repo_url: https://github.com/Mount-Thor/mount-thor
 
 upstream_commit:
-  sha: ddea124f331b8e6dc8020e6f06c1adf613b8dc9b
-  short: ddea124f
-  message: "Fix standard VM base image build workflow"
-  committed_at: "2026-05-11T07:43:43-07:00"
+  sha: dd4a06b3ff048f16551dce5b7a635f74b73dd7a8
+  short: dd4a06b3
+  message: "Use old password for VM image dscl rotation"
+  committed_at: "2026-05-11T08:48:12-07:00"
 
 # Source files this docs revision derives content from. Bump the watermark
 # (and re-derive the affected MDX) when any of these change materially.
