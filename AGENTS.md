@@ -81,6 +81,12 @@ implementation migrations, internal route names, `[live]`, or `[todo]` in
 customer-facing MDX. Route and field claims must match the live admin OpenAPI
 document and the checked-in compute OpenAPI document.
 
+The published compute OpenAPI document is intentionally narrower than the raw
+generated artifact when the raw artifact includes Kubernetes plumbing or
+non-workflow support projections. Do not publish `ConfigMap` or `MacIncident`
+reference pages unless there is a customer-facing guide that makes them part
+of the canonical workflow.
+
 ### Linking conventions
 
 - Internal links: `/concepts/auth`, `/compute/bare-metal` (no `.mdx`).
