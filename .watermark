@@ -13,10 +13,10 @@ source_repo: Mount-Thor/mount-thor
 source_repo_url: https://github.com/Mount-Thor/mount-thor
 
 upstream_commit:
-  sha: de86f27cded8bbe01875e1ada6ce7f1ce66eb318
-  short: de86f27c
-  message: "Decouple canary product proofs from registry onboarding"
-  committed_at: "2026-05-11T11:27:00-07:00"
+  sha: 7c98e387c5c5fa0b3a0077d74dc3aeb946d368f2
+  short: 7c98e387
+  message: "redesign customer admin api surface (#3760)"
+  committed_at: "2026-05-25T08:38:09Z"
 
 # Source files this docs revision derives content from. Bump the watermark
 # (and re-derive the affected MDX) when any of these change materially.
