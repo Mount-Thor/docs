@@ -1,120 +1,381 @@
 ---
-title: "Virtual machines"
-description: "VirtualMachine for fast create/delete cycles, with port publishing through private tunnels."
+title: "Virtual Machines"
+description: "Create isolated macOS VMs for agent sandboxes, parallel tasks, and fast iteration."
 ---
 
-A `VirtualMachine` is a macOS guest running on Mount Thor-managed capacity,
-sized from an approved `VirtualMachineImage`. VMs are right for workloads that
-want macOS isolation with faster create/delete cycles than a physical
-`MacLease`, or when running multiple parallel guests on the same physical host.
+Virtual machines give you isolated macOS environments on Mount Thor-managed
+Apple Silicon capacity. Use VMs when you want faster provisioning than bare
+metal, parallel macOS guests, or a fresh environment for each run.
 
-In Kubernetes terms, `VirtualMachine`, `VirtualMachineImage`, and
-`VirtualMachineOperation` are custom resources in the
-`vm.mountthor.dev/v1alpha1` API group.
+During alpha, create VMs from Mount Thor-provided images. Customer-owned VM
+images are coming soon.
 
-## Image catalog
+## Virtual Machine Lifecycle
+
+```mermaid
+flowchart TD
+  Start(( )) --> Pending[Pending]
+  Pending --> Creating
+  Creating --> Starting
+  Starting --> Running
+  Running --> Stopping
+  Stopping --> Stopped
+  Stopped --> Starting
+  Running --> Operation[Reset / Reimage]
+  Stopped --> Operation
+  Operation --> Creating
+  Running --> Deleting
+  Stopped --> Deleting
+  Pending --> Failed
+  Creating --> Failed
+  Starting --> Failed
+  Operation --> Failed
+  Deleting --> End(( ))
+  Failed --> End
+```
+
+What to know:
+
+- A `VirtualMachineImage` selects the macOS image and VM profile.
+- Mount Thor places the VM on eligible capacity, prepares the image when
+  needed, boots macOS, applies bootstrap data, and publishes requested SSH and
+  application ports.
+- Cold starts can take several minutes when Mount Thor prepares the image on a
+  host. Warm starts are faster because the selected image is already cached on
+  the host.
+- Connect with the Mount Thor CLI over SSH, GUI tunnels, or application port
+  tunnels. Mount Thor does not expose the guest IP as the connection interface.
+- The CLI adds a private `screen` tunnel by default. During alpha, you enable
+  macOS Screen Sharing inside the guest before using that tunnel.
+- Deleting a VM removes the VM instance and its access tunnels. The image
+  remains available, but future VM creation still depends on your reserved
+  capacity or available on-demand capacity.
+
+## Virtual Machine Resources
+
+- [`VirtualMachine`](/api-reference/compute/list-virtualmachines): the macOS VM
+  instance you create, inspect, connect to, and delete.
+- [`VirtualMachineImage`](/api-reference/compute/list-virtualmachineimages):
+  the approved image and VM profile you choose before creating a VM.
+- [`VirtualMachineOperation`](/api-reference/compute/list-virtualmachineoperations):
+  the reset or reimage request for an existing VM.
+- [`VirtualMachineImageOperation`](/api-reference/compute/list-virtualmachineimageoperations):
+  the image import or capture operation. Customer-owned image flows are coming
+  soon.
+
+## Create and Connect
+
+Create a VM with the Mount Thor CLI. The CLI creates the `VirtualMachine`,
+installs your SSH public key through non-secret bootstrap data, waits for the VM
+to start, and opens SSH.
+
+Install the CLI:
 
 ```bash
-kubectl get virtualmachineimages
-kubectl get virtualmachineimages \
-  -o custom-columns=NAME:.metadata.name,IMAGE:.spec.imageRef,CPU:.spec.defaultCpu,MEMORY_MIB:.spec.defaultMemoryMiB,DISK_GIB:.spec.defaultDiskGiB,PHASE:.status.phase
+curl -fsSL https://get.mountthor.com/install.sh | sh
+mountthor --version
 ```
 
-The image catalog includes Mount Thor base images and approved customer
-images. Each entry publishes the default sizing profile used when a
-`VirtualMachine` omits explicit CPU, memory, and disk overrides.
+The VM SSH flow requires Mount Thor CLI `0.3.1` or newer.
 
-Create VMs from image names that appear in `kubectl get
-virtualmachineimages`. The examples below use
-`starcua-macos-libreoffice-demo`; replace it with any entitled image in your
-catalog.
-
-Sizing is tuned for two concurrent VMs on one `m4-24g` host (10 CPU cores,
-24 GiB memory, 512 GiB local storage). The standard 4 CPU / 8 GiB / 120 GiB
-profile leaves room for two guests plus host headroom for access, monitoring,
-and cleanup.
-
-## Create a VM
-
-```yaml
-apiVersion: vm.mountthor.dev/v1alpha1
-kind: VirtualMachine
-metadata:
-  name: vm-01
-spec:
-  imageRef: starcua-macos-libreoffice-demo
-  powerState: Running
-  ports:
-    - name: app
-      protocol: tcp
-      guestPort: 8443
-      exposure: private-tunnel
-```
+Set your customer kubeconfig path and tenant namespace:
 
 ```bash
-kubectl apply -f vm-01.yaml
-kubectl get virtualmachine vm-01 --watch
+export KCFG="/path/to/customer.kubeconfig"
+export NS="tenant-example"
 ```
 
-Running state:
+List the VM images enabled for your account:
 
-```yaml
-status:
-  phase: Running
-  conditions:
-    - type: Ready
-      status: "True"
+```bash
+kubectl --kubeconfig "$KCFG" -n "$NS" get virtualmachineimages
 ```
 
-Mount Thor reports VM infrastructure status. The customer image is responsible
-for guest users, services, agents, logs, and workload output; Mount Thor does
-not introspect inside the guest.
+Use one `VirtualMachineImage` name for `IMAGE`. In this example,
+`macos-15-dev-base` is the VM image.
 
-## Optional bootstrap user data
+```bash
+export VM="vm-01"
+export IMAGE="macos-15-dev-base"
+export KEY="$HOME/.ssh/mountthor-$VM"
+export KNOWN_HOSTS="$HOME/.ssh/mountthor-$VM-known-hosts"
+```
 
-Simple catalog-image VMs can omit bootstrap data. Use bootstrap data only when
-the guest needs non-secret startup instructions, such as creating a file,
-starting a local service, or preparing a test workload.
+Create a local SSH key for this VM:
+
+```bash
+mkdir -p "$HOME/.ssh"
+test -f "$KEY" || ssh-keygen -t ed25519 -f "$KEY" -N "" -C "mountthor-$VM"
+chmod 600 "$KEY"
+```
+
+Keep the private key for this VM. Mount Thor installs the matching public key
+when you create or recreate the VM; creating a new local key later does not
+update an existing guest.
+
+Read the SSH username from the selected image:
+
+```bash
+export VM_USER="$(
+  kubectl --kubeconfig "$KCFG" -n "$NS" get virtualmachineimages.vm.mountthor.dev "$IMAGE" \
+    -o jsonpath='{.spec.guestBootstrap.username}'
+)"
+echo "$VM_USER"
+```
+
+Create the VM with SSH access:
+
+```bash
+KUBECONFIG="$KCFG" mountthor vm create "$VM" \
+  --namespace "$NS" \
+  --image "$IMAGE" \
+  --port ssh=tcp:22 \
+  --ssh-user "$VM_USER" \
+  --ssh-public-key-file "$KEY.pub" \
+  --wait
+```
+
+The command returns after Mount Thor creates the VM, installs your public key,
+and the VM reaches its running state.
+
+Connect with SSH:
+
+```bash
+KUBECONFIG="$KCFG" mountthor vm ssh "$VM" \
+  --namespace "$NS" \
+  --ssh-user "$VM_USER" \
+  --identity-file "$KEY" \
+  --known-hosts-file "$KNOWN_HOSTS"
+```
+
+## Inspect Status
+
+Inspect the VM with the CLI:
+
+```bash
+KUBECONFIG="$KCFG" mountthor vm get "$VM" --namespace "$NS"
+```
+
+Read the VM image, phase, ready timestamp, and failure code:
+
+```bash
+kubectl --kubeconfig "$KCFG" -n "$NS" get virtualmachines.vm.mountthor.dev "$VM" \
+  -o custom-columns=NAME:.metadata.name,IMAGE:.spec.imageRef,PHASE:.status.phase,READY:.status.readyAt,FAILURE:.status.failureCode
+```
+
+Read startup timing fields:
+
+```bash
+kubectl --kubeconfig "$KCFG" -n "$NS" get virtualmachine "$VM" \
+  -o jsonpath='{.status.timings.hostSelectedAt}{" imageReady="}{.status.timings.cacheSatisfiedAt}{" providerReady="}{.status.timings.providerCreateCompletedAt}{" customerReady="}{.status.timings.customerReadyAt}{"\n"}'
+```
+
+Empty timing fields mean the VM has not reached that step yet. If `failure` is
+populated, use that value when contacting Mount Thor.
+
+## Publish Application Ports
+
+Choose the ports you want to publish when you create the VM. The SSH example
+above publishes only port `22`. To publish an application port as well, include
+the application port in the original `mountthor vm create` command. Use this
+version instead of the SSH-only create command above:
+
+```bash
+KUBECONFIG="$KCFG" mountthor vm create "$VM" \
+  --namespace "$NS" \
+  --image "$IMAGE" \
+  --port ssh=tcp:22 \
+  --port app=tcp:8443 \
+  --ssh-user "$VM_USER" \
+  --ssh-public-key-file "$KEY.pub" \
+  --wait
+```
+
+After the VM is running, read the access command from VM status:
+
+```bash
+kubectl --kubeconfig "$KCFG" -n "$NS" get virtualmachine "$VM" \
+  -o jsonpath='{.status.publishedPorts[?(@.name=="app")].accessCommand}{"\n"}'
+```
+
+Run the returned `mountthor vm tunnel` command with a local port value. If the
+VM already exists and you need to publish a new port, recreate it with the full
+port list during alpha.
+
+## Open GUI Access
+
+During alpha, GUI access uses a Screen Sharing tunnel after you enable Screen
+Sharing inside the VM.
+
+<Accordion title="Open GUI access during alpha">
+
+Start with SSH access as an admin-capable user. Inside the VM, set a temporary
+VNC password and enable Screen Sharing:
+
+```bash
+REMOTE_USER="$(whoami)"
+
+printf "Temporary VNC password: "
+stty -echo
+IFS= read -r VNC_PW
+stty echo
+printf "\n"
+
+sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+  -activate \
+  -configure -access -on -users "$REMOTE_USER" -privs -all \
+  -configure -clientopts -setvnclegacy -vnclegacy yes -setvncpw -vncpw "$VNC_PW" \
+  -restart -agent
+
+unset VNC_PW
+```
+
+Then open the local tunnel from your workstation:
+
+```bash
+KUBECONFIG="$KCFG" mountthor vm tunnel "$VM" \
+  --namespace "$NS" \
+  --port-name screen \
+  --local-port 15900
+```
+
+Open the VNC URI:
+
+```bash
+open vnc://127.0.0.1:15900
+```
+
+After the GUI session, disable the temporary VNC password inside the VM:
+
+```bash
+sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+  -configure -clientopts -setvnclegacy -vnclegacy no \
+  -restart -agent
+```
+
+</Accordion>
+
+## Operate a VM
+
+Reset a VM when you want to recreate it from the same image:
+
+```bash
+KUBECONFIG="$KCFG" mountthor vm reset "$VM" \
+  --namespace "$NS" \
+  --reason "Refresh VM state." \
+  --wait
+```
+
+Reimage a VM when you want to replace its image:
+
+```bash
+export NEW_IMAGE="macos-15-dev-base"
+
+KUBECONFIG="$KCFG" mountthor vm reimage "$VM" \
+  --namespace "$NS" \
+  --image "$NEW_IMAGE" \
+  --wait
+```
+
+Delete a VM when you are done with the instance:
+
+```bash
+KUBECONFIG="$KCFG" mountthor vm delete "$VM" --namespace "$NS"
+```
+
+Deleting a VM removes the VM instance and its access tunnels. It does not
+remove the `VirtualMachineImage`.
+
+## Advanced: Kubernetes Resources
+
+The Mount Thor CLI is the recommended path for alpha. You can also create the
+underlying Kubernetes resources directly.
+
+Save the following as `vm-01.json`:
+
+```json
+{
+  "apiVersion": "vm.mountthor.dev/v1alpha1",
+  "kind": "VirtualMachine",
+  "metadata": {
+    "name": "vm-01"
+  },
+  "spec": {
+    "imageRef": "macos-15-dev-base",
+    "powerState": "Running",
+    "ports": [
+      {
+        "name": "app",
+        "protocol": "tcp",
+        "guestPort": 8443,
+        "exposure": "private-tunnel"
+      }
+    ]
+  }
+}
+```
+
+Apply the VM:
+
+```bash
+kubectl --kubeconfig "$KCFG" -n "$NS" apply -f vm-01.json
+kubectl --kubeconfig "$KCFG" -n "$NS" get virtualmachine vm-01 --watch
+```
+
+Port constraints:
+
+- `name` is required and must be unique within the VM.
+- `guestPort` must be `1-65535`.
+- `protocol` defaults to `tcp` when omitted.
+- `exposure` may be omitted for an unpublished port; the only published
+  exposure value is `private-tunnel`.
+
+## Advanced: Non-Secret Bootstrap
+
+Use bootstrap data only when the guest needs non-secret startup instructions,
+such as creating a file, starting a local service, or preparing a test command.
 
 Bootstrap data is stored in a tenant-scoped `ConfigMap` labeled for VM
-bootstrap:
+bootstrap. Save the following as `vm-01-bootstrap.json`:
 
-```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: vm-01-bootstrap
-  labels:
-    vm.mountthor.dev/customer-bootstrap: "true"
-data:
-  script: |
-    #!/bin/sh
-    set -eu
-    echo "hello from Mount Thor" > /Users/admin/hello.txt
+```json
+{
+  "apiVersion": "v1",
+  "kind": "ConfigMap",
+  "metadata": {
+    "name": "vm-01-bootstrap",
+    "labels": {
+      "vm.mountthor.dev/customer-bootstrap": "true"
+    }
+  },
+  "data": {
+    "script": "#!/bin/sh\nset -eu\necho \"hello from Mount Thor\" > /Users/admin/hello.txt\n"
+  }
+}
 ```
 
 ```bash
-kubectl apply -f vm-01-bootstrap.yaml
+kubectl --kubeconfig "$KCFG" -n "$NS" apply -f vm-01-bootstrap.json
 ```
 
-Reference the bootstrap ConfigMap from the VM:
+Reference the bootstrap `ConfigMap` from the VM:
 
-```yaml
-apiVersion: vm.mountthor.dev/v1alpha1
-kind: VirtualMachine
-metadata:
-  name: vm-01
-spec:
-  imageRef: starcua-macos-libreoffice-demo
-  bootstrap:
-    metadataService: {}
-    userDataConfigMapRef: vm-01-bootstrap
-  powerState: Running
-  ports:
-    - name: app
-      protocol: tcp
-      guestPort: 8443
-      exposure: private-tunnel
+```json
+{
+  "apiVersion": "vm.mountthor.dev/v1alpha1",
+  "kind": "VirtualMachine",
+  "metadata": {
+    "name": "vm-01"
+  },
+  "spec": {
+    "imageRef": "macos-15-dev-base",
+    "bootstrap": {
+      "metadataService": {},
+      "userDataConfigMapRef": "vm-01-bootstrap"
+    },
+    "powerState": "Running"
+  }
+}
 ```
 
 <Warning>
@@ -128,121 +389,28 @@ Only ConfigMaps labeled `vm.mountthor.dev/customer-bootstrap=true` are accepted
 for VM bootstrap. Generic ConfigMaps, unlabeled ConfigMaps, Secrets, provider
 inventory, and internal Mount Thor resources are denied.
 
-## Publish a port
+## Customer-Owned Images
 
-VM access is requested on the `VirtualMachine` itself, not via
-`MacAccessSession`. Each port you want published goes in `spec.ports`:
+**Status: Coming Soon**
 
-```yaml
-spec:
-  ports:
-    - name: app
-      protocol: tcp
-      guestPort: 8443
-      exposure: private-tunnel
-```
+Customer-owned VM images are not available during alpha. During alpha, use the
+Mount Thor-provided images above; the commands below are included as a preview,
+not as alpha setup steps.
 
-Constraints:
+For images that live in a customer-owned registry, you will register the
+registry with Mount Thor and submit a read-only credential or role grant. Mount
+Thor will verify pull access, record a `VirtualMachineImage` that points at the
+external digest, and prepare image access before the VM starts.
 
-- `name` is required and must be unique within the VM.
-- `guestPort` must be `1`–`65535`.
-- `protocol` defaults to `tcp` when omitted.
-- `exposure` may be omitted for an unpublished port; the only published
-  exposure value is `private-tunnel`.
-
-Mount Thor writes access details to `status.publishedPorts`:
-
-```yaml
-status:
-  publishedPorts:
-    - name: app
-      protocol: tcp
-      guestPort: 8443
-      exposure: private-tunnel
-      accessCommand: "mountthor vm tunnel --namespace <ns> --name <vm> --port-name app --local-port ${LOCAL_PORT}"
-      uriTemplate: "https://127.0.0.1:${LOCAL_PORT}"
-```
-
-Read the published-port command from status — don't construct it manually:
-
-```bash
-kubectl get virtualmachine vm-01 \
-  -o jsonpath='{.status.publishedPorts[?(@.name=="app")].accessCommand}{"\n"}'
-```
-
-The emitted command already contains the namespace, VM name, and port. Pick a
-free local port, replace `${LOCAL_PORT}`, run the command, and open the URI:
-
-```text
-https://127.0.0.1:9443
-```
-
-The command authenticates against `access.mountthor.com` on your behalf. It
-does not expose a raw kubeconfig, guest IP, or SSH key. If
-the VM guest IP isn't known yet, `status.publishedPorts` may show the
-requested metadata before `accessCommand` is available; wait for `accessCommand`
-before connecting.
-
-## GUI access (Screen Sharing)
-
-For GUI access, request a `private-tunnel` port like:
-
-```yaml
-- name: gui
-  protocol: tcp
-  guestPort: 5900
-  exposure: private-tunnel
-```
-
-Read `status.publishedPorts[?name=="gui"]`. GUI ports include non-secret
-`credentialUsername` and `credentialInstructions`; the password is **never**
-embedded in `status`, terminal output, or the VNC URI. Follow
-`credentialInstructions` to retrieve the rotated password.
-
-## Operate (reset, reimage)
-
-Reset a VM via `VirtualMachineOperation`:
-
-```yaml
-apiVersion: vm.mountthor.dev/v1alpha1
-kind: VirtualMachineOperation
-metadata:
-  name: vm-01-reset
-spec:
-  virtualMachineRef: vm-01
-  operation: reset
-  reason: Recreate from clean image.
-```
-
-```bash
-kubectl apply -f vm-01-reset.yaml
-kubectl get virtualmachineoperation vm-01-reset --watch
-```
-
-## Delete a VM
-
-```bash
-kubectl delete virtualmachine vm-01
-```
-
-The VM instance is removed; the image stays available for future VMs.
-
-## External (customer-owned) images
-
-For images that live in a customer-owned registry, register the registry with
-Mount Thor and submit a read-only credential or role grant. Mount Thor verifies
-pull access, records a `VirtualMachineImage` that points at the external
-digest, and prepares image access before the VM starts.
-
-Supported registry connection types:
+Planned registry connection types:
 
 | Registry | Connection | You provide |
 |---|---|---|
 | Amazon ECR | AWS IAM role | Role ARN for a read-only IAM role created from Mount Thor's returned policy |
 | GHCR, Harbor, OCI registries | Read-only registry credential | Robot account, deploy token, or registry token scoped to the image repository |
 
-Create the registry record with a Mount Thor API key that has
-`registries:write`:
+The planned admin flow will create the registry record with a Mount Thor API
+key that has `registries:write`:
 
 ```http
 POST /v1/admin/registries
@@ -250,41 +418,46 @@ Authorization: Bearer mthr_live_01JZ8M7EXAMPLE
 Content-Type: application/json
 ```
 
-The admin API returns the grant instructions to create the read-only role or
-token. Submit the credential reference with `PATCH
-/v1/admin/registries/{id}` and wait for the registry status to become ready.
+The admin API will return grant instructions to create the read-only role or
+token. After you submit the credential reference, Mount Thor will verify the
+registry before images from that registry can be imported.
 
-## Register an image
+## Register an Image
 
-After registry verification succeeds, create a `VirtualMachineImageOperation`
-with an image name, a digest-pinned image reference, guest OS metadata, and
-default sizing:
+**Status: Coming Soon**
 
-```yaml
-apiVersion: vm.mountthor.dev/v1alpha1
-kind: VirtualMachineImageOperation
-metadata:
-  name: customer-browser-base-import
-spec:
-  operation: import
-  requestedImageRef: customer-browser-base
-  source:
-    ref: 123456789012.dkr.ecr.us-east-2.amazonaws.com/platform/macos-vm-images@sha256:<digest>
-    sha256: sha256:<digest>
-  guestOs: macos
-  guestVersion: "15.4"
-  architecture: arm64
-  defaultResources:
-    cpu: 4
-    memoryMiB: 8192
-    diskGiB: 120
-  displayName: Customer Browser Base
+This flow is not part of the alpha customer path yet. After registry
+verification succeeds, you will create a
+`VirtualMachineImageOperation` with an image name, a digest-pinned image
+reference, guest OS metadata, and default sizing.
+
+```json
+{
+  "apiVersion": "vm.mountthor.dev/v1alpha1",
+  "kind": "VirtualMachineImageOperation",
+  "metadata": {
+    "name": "customer-browser-base-import"
+  },
+  "spec": {
+    "operation": "import",
+    "requestedImageRef": "customer-browser-base",
+    "source": {
+      "ref": "123456789012.dkr.ecr.us-east-2.amazonaws.com/platform/macos-vm-images@sha256:<digest>",
+      "sha256": "sha256:<digest>"
+    },
+    "guestOs": "macos",
+    "guestVersion": "15.4",
+    "architecture": "arm64",
+    "defaultResources": {
+      "cpu": 4,
+      "memoryMiB": 8192,
+      "diskGiB": 120
+    },
+    "displayName": "Customer Browser Base"
+  }
+}
 ```
 
-```bash
-kubectl get virtualmachineimageoperation customer-browser-base-import --watch
-```
-
-Successful registration publishes (or updates) `VirtualMachineImage` with the
-`requestedImageRef`. Customers then create `VirtualMachine` resources with
-`spec.imageRef: customer-browser-base`.
+Successful registration will publish or update a `VirtualMachineImage` with the
+`requestedImageRef`. You will then create `VirtualMachine` resources with that
+image reference.

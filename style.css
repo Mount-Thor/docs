@@ -1,0 +1,22 @@
+#footer a[href*="mintlify.com"],
+footer a[href*="mintlify.com"] {
+  display: none !important;
+}
+
+#pagination {
+  border-top: 1px solid rgb(201 168 76 / 24%);
+  margin-top: 2.5rem;
+  padding-top: 1.25rem;
+}
+
+.mermaid,
+.mermaid svg {
+  max-width: 100%;
+  height: auto !important;
+}
+
+@media (max-width: 640px) {
+  .mermaid + div:has(button) {
+    display: none !important;
+  }
+}

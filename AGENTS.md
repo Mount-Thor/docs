@@ -10,13 +10,12 @@ frontmatter; site config lives in `docs.json`.
 
 ## Repo shape
 
-- `index.mdx`, `quickstart.mdx` — top-level entry points.
-- `concepts/` — auth model, supported API surface, foundational concepts.
-- `compute/` — bare metal and VM resource walkthroughs.
-- `troubleshooting/` — failure codes, remediation, and cleanup.
+- `quickstart.mdx` — first-run account, authentication, Compute API, bare-metal,
+  and VM path.
+- `compute/` — bare metal and VM lifecycle walkthroughs.
 - `api-reference/` — Mintlify auto-generates one page per operation from
-  the admin and compute OpenAPI sources. The single hand-written page is
-  `api-reference/introduction.mdx`.
+  checked-in OpenAPI sources.
+- `style.css` — small site-level CSS overrides.
 - `logo/`, `favicon.svg`, `images/`, `snippets/` — brand and reusable bits.
 - `RUNBOOK.md` — operator runbook (manual Mintlify dashboard steps, custom
   domain setup, password rotation cadence). Not customer-facing.
@@ -30,9 +29,8 @@ Customer-developer content here is **derived from**, not the source of
 truth for, `Mount-Thor/mount-thor`. The canonical specs live in:
 
 - `governance/docs/developers/README.md` — internal alpha onboarding runbook
-  plus customer product flow. The MDX pages under `compute/`,
-  `concepts/auth.mdx`, and `troubleshooting/common-failures.mdx` are derived
-  from the customer-facing sections of this file.
+  plus customer product flow. `quickstart.mdx` and the MDX pages under
+  `compute/` are derived from the customer-facing sections of this file.
 - `governance/docs/api-surface-registry-and-openapi-publication-spec.md` —
   the customer API contract.
 - `https://api.mountthor.com/openapi.json` — the actual published OpenAPI
@@ -84,20 +82,22 @@ document and the checked-in compute OpenAPI document.
 Before publishing a README-derived docs refresh, compare the customer-facing
 sections in `governance/docs/developers/README.md` against the Mintlify
 navigation and record any intentionally omitted section. Do not silently omit
-cleanup, access setup, API reference, bare-metal, VM, common-failure, or auth
-coverage.
+account setup, authentication, Compute API configuration, API reference,
+bare-metal, VM, or resource release coverage.
 
 The published compute OpenAPI document is intentionally narrower than the raw
 generated artifact when the raw artifact includes Kubernetes plumbing or
-non-workflow support projections. Do not publish `ConfigMap` or `MacIncident`
-reference pages unless there is a customer-facing guide that makes them part
-of the canonical workflow.
+non-workflow support projections. Publish `ConfigMap` only while VM bootstrap
+docs make it part of the customer workflow. Do not publish `MacIncident`
+reference pages unless there is a customer-facing guide that makes them part of
+the canonical workflow.
 
 ### Linking conventions
 
-- Internal links: `/concepts/auth`, `/compute/bare-metal` (no `.mdx`).
-- API reference cross-link: `/api-reference/introduction` — Mintlify
-  auto-generates the per-route pages alongside it.
+- Internal links: `/quickstart`, `/compute/bare-metal`, and
+  `/compute/virtual-machines` (no `.mdx`).
+- API reference cross-links point directly to generated operation pages, such as
+  `/api-reference/api-keys/list-keys`.
 - External: full URL, no shorteners.
 
 ### Components

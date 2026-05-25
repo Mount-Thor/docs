@@ -12,6 +12,18 @@
     "default": "dark"
   },
   "favicon": "/favicon.svg",
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/quickstart",
+      "permanent": false
+    },
+    {
+      "source": "/concepts/get-access",
+      "destination": "/quickstart",
+      "permanent": false
+    }
+  ],
   "logo": {
     "light": "/logo/light.svg",
     "dark": "/logo/dark.svg",
@@ -35,76 +47,186 @@
     "tabs": [
       {
         "tab": "Documentation",
-        "groups": [
+        "pages": [
+          "quickstart",
+          "compute/bare-metal",
+          "compute/virtual-machines",
           {
-            "group": "Getting started",
-            "pages": [
-              "index",
-              "concepts/get-access",
-              "quickstart"
-            ]
-          },
-          {
-            "group": "Concepts",
-            "pages": [
-              "concepts/auth",
-              "concepts/supported-apis"
-            ]
-          },
-          {
-            "group": "Compute",
-            "pages": [
-              "compute/bare-metal",
-              "compute/virtual-machines"
-            ]
-          },
-          {
-            "group": "Troubleshooting",
-            "pages": [
-              "troubleshooting/common-failures",
-              "troubleshooting/cleanup"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "API reference",
-        "groups": [
-          {
-            "group": "Overview",
-            "pages": [
-              "api-reference/introduction"
-            ]
-          },
-          {
-            "group": "Admin API",
+            "group": "API Reference",
             "openapi": {
-              "source": "https://api.mountthor.com/openapi.json",
-              "directory": "api-reference/admin"
-            }
-          },
-          {
-            "group": "Compute API",
-            "openapi": {
-              "source": "/api-reference/customer-compute-crds.v1.openapi.json",
-              "directory": "api-reference/compute"
-            }
+              "source": "/api-reference/mount-thor-local.openapi.json",
+              "directory": "api-reference"
+            },
+            "pages": [
+              {
+                "group": "Account",
+                "pages": [
+                  "GET /v1/admin/account",
+                  "PATCH /v1/admin/account"
+                ]
+              },
+              {
+                "group": "API Keys",
+                "pages": [
+                  "GET /v1/admin/keys",
+                  "POST /v1/admin/keys",
+                  "DELETE /v1/admin/keys/{id}"
+                ]
+              },
+              {
+                "group": "Sessions",
+                "pages": [
+                  "GET /v1/admin/sessions",
+                  "POST /v1/admin/sessions",
+                  "DELETE /v1/admin/sessions/{id}"
+                ]
+              },
+              {
+                "group": "Fleet",
+                "pages": [
+                  "GET /v1/admin/fleet",
+                  "GET /v1/admin/fleet/capacity",
+                  "GET /v1/admin/fleet/usage"
+                ]
+              },
+              {
+                "group": "Catalog",
+                "pages": [
+                  "GET /v1/admin/catalog",
+                  "GET /v1/admin/catalog/images/{sku}"
+                ]
+              },
+              {
+                "group": "Compute",
+                "pages": [
+                  {
+                    "group": "ConfigMap",
+                    "pages": [
+                      "GET /v1/compute/api/v1/namespaces/{namespace}/configmaps",
+                      "POST /v1/compute/api/v1/namespaces/{namespace}/configmaps",
+                      "GET /v1/compute/api/v1/namespaces/{namespace}/configmaps/{name}",
+                      "DELETE /v1/compute/api/v1/namespaces/{namespace}/configmaps/{name}"
+                    ]
+                  },
+                  {
+                    "group": "MacAccessSession",
+                    "pages": [
+                      "GET /v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macaccesssessions",
+                      "POST /v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macaccesssessions",
+                      "GET /v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macaccesssessions/{name}",
+                      "DELETE /v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macaccesssessions/{name}"
+                    ]
+                  },
+                  {
+                    "group": "MacImageChannel",
+                    "pages": [
+                      "GET /v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macimagechannels",
+                      "GET /v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macimagechannels/{name}"
+                    ]
+                  },
+                  {
+                    "group": "MacLease",
+                    "pages": [
+                      "GET /v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleases",
+                      "POST /v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleases",
+                      "GET /v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleases/{name}",
+                      "DELETE /v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleases/{name}"
+                    ]
+                  },
+                  {
+                    "group": "MacLeaseClass",
+                    "pages": [
+                      "GET /v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleaseclasses",
+                      "GET /v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleaseclasses/{name}"
+                    ]
+                  },
+                  {
+                    "group": "MacLeaseOperation",
+                    "pages": [
+                      "GET /v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleaseoperations",
+                      "POST /v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleaseoperations",
+                      "GET /v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleaseoperations/{name}"
+                    ]
+                  },
+                  {
+                    "group": "TenantCapacityStatus",
+                    "pages": [
+                      "GET /v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/tenantcapacitystatuses",
+                      "GET /v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/tenantcapacitystatuses/{name}"
+                    ]
+                  },
+                  {
+                    "group": "VirtualMachine",
+                    "pages": [
+                      "GET /v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachines",
+                      "POST /v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachines",
+                      "GET /v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachines/{name}",
+                      "DELETE /v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachines/{name}"
+                    ]
+                  },
+                  {
+                    "group": "VirtualMachineImage",
+                    "pages": [
+                      "GET /v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineimages",
+                      "GET /v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineimages/{name}"
+                    ]
+                  },
+                  {
+                    "group": "VirtualMachineImageOperation",
+                    "pages": [
+                      "GET /v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineimageoperations",
+                      "POST /v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineimageoperations",
+                      "GET /v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineimageoperations/{name}",
+                      "DELETE /v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineimageoperations/{name}"
+                    ]
+                  },
+                  {
+                    "group": "VirtualMachineOperation",
+                    "pages": [
+                      "GET /v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineoperations",
+                      "POST /v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineoperations",
+                      "GET /v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineoperations/{name}",
+                      "DELETE /v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineoperations/{name}"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Identity Providers",
+                "pages": [
+                  "GET /v1/admin/identity/providers",
+                  "POST /v1/admin/identity/providers",
+                  "PATCH /v1/admin/identity/providers/{id}"
+                ]
+              },
+              {
+                "group": "Principals",
+                "pages": [
+                  "GET /v1/admin/identity/principals",
+                  "POST /v1/admin/identity/principals",
+                  "PATCH /v1/admin/identity/principals/{id}"
+                ]
+              },
+              {
+                "group": "Registries",
+                "pages": [
+                  "GET /v1/admin/registries",
+                  "POST /v1/admin/registries",
+                  "GET /v1/admin/registries/{id}",
+                  "PATCH /v1/admin/registries/{id}",
+                  "DELETE /v1/admin/registries/{id}"
+                ]
+              },
+              {
+                "group": "Registration",
+                "pages": [
+                  "POST /v1/admin/registrations"
+                ]
+              }
+            ]
           }
         ]
       }
     ]
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Supported APIs",
-        "href": "https://docs.mountthor.com/concepts/supported-apis"
-      }
-    ]
-  },
-  "footer": {
-    "socials": {
-      "github": "https://github.com/Mount-Thor"
-    }
   }
 }

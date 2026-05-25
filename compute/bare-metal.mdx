@@ -1,195 +1,329 @@
 ---
-title: "Bare metal"
-description: "MacLease for exclusive host access; MacAccessSession for scoped SSH and Screen Sharing."
+title: "Bare Metal"
+description: "Reserve dedicated physical Apple Silicon Macs for full host access."
 ---
 
-A `MacLease` is exclusive access to one physical Mac for the duration of the
-lease. A `MacAccessSession` is the time-bounded credential that grants SSH or
-Screen Sharing into that lease. The lease itself never exposes a reusable host
-password or SSH key — every access derives from a fresh `MacAccessSession`.
+Each bare metal lease gives you exclusive use of one physical Apple Silicon Mac.
+Create one lease for each Mac you want to use. Choose bare metal when you need
+dedicated hardware, root-capable admin access, direct device control, or the
+flexibility and power of a full host.
 
-In Kubernetes terms, `MacLease` and `MacAccessSession` are custom resources
-in the `control.mountthor.dev/v1alpha1` API group.
+You manage bare metal with Kubernetes Custom Resources. The main resources are
+`MacLease` for the Mac, `MacAccessSession` for temporary SSH or Screen Sharing
+access, and `MacLeaseOperation` for reset and reinstall.
 
-## Discover capacity
+## Bare Metal Lifecycle
+
+```mermaid
+flowchart TD
+  Start(( )) --> Pending[Pending]
+  Pending --> Binding
+  Pending --> Failed
+  Binding --> Ready
+  Binding --> Degraded
+  Degraded --> Binding
+  Degraded --> Failed
+  Ready --> ActiveAccess[Active Access]
+  ActiveAccess --> Ready
+  Ready --> Operation[Reset / Reinstall]
+  Operation --> Pending
+  Ready --> Reclaiming
+  Reclaiming --> Released
+  Released --> End(( ))
+  Failed --> End
+```
+
+What to know:
+
+- A lease stays allocated until you delete it. Closing SSH or Screen Sharing
+  does not release the Mac.
+- If on-demand capacity is enabled for your account, Mount Thor uses your
+  reserved capacity first and starts on-demand leases when unreserved capacity is
+  available.
+- When you connect to a bare metal Mac, you get a lease-scoped macOS user with
+  local admin access and passwordless `sudo`.
+- Mount Thor bills each bare metal lease for a minimum of 24 hours. If you
+  delete a lease after 2 hours, you are still billed for 24 hours.
+
+## Bare Metal Resources
+
+| Resource | Purpose | When you use it |
+|---|---|---|
+| `MacLeaseClass` | Hardware profile, such as a Mac mini class | Before lease creation |
+| `MacImageChannel` | Approved macOS image channel | Before lease creation |
+| `MacLease` | The physical Mac allocation | Provision, observe, and release bare metal |
+| `MacAccessSession` | Temporary access grant for an existing lease | Open SSH or Screen Sharing |
+| `MacLeaseOperation` | Reset or reinstall flow for an existing lease | Recover or refresh a leased Mac |
+
+The `MacLease` is the long-lived resource. `MacAccessSession` objects are
+connection windows for that lease. `MacLeaseOperation` acts on the lease and is
+blocked while someone is connected or access is still opening.
+
+## Provision a Physical Mac
+
+Provision a physical Mac by creating a `MacLease`.
+
+List the hardware profiles and macOS image channels enabled for your account:
 
 ```bash
-kubectl get macleaseclasses    # capacity classes (e.g. m4-24g)
-kubectl get macimagechannels   # approved macOS image channels (e.g. xcode-16-stable)
+kubectl --kubeconfig "$KCFG" get macleaseclasses
+kubectl --kubeconfig "$KCFG" get macimagechannels
 ```
 
-`MacLeaseClass` describes the Mac capacity class; `MacImageChannel` describes
-the approved macOS image channel. Mount Thor entitles you to a subset of each
-based on your contract; only your entitled classes appear in `kubectl get`.
+Use one `MacLeaseClass` name for `leaseClassRef` and one `MacImageChannel` name
+for `imageChannelRef`. In this example, `m4-24g` is the hardware profile and
+`xcode-16-stable` is the macOS image.
 
-## Create a lease
+Save the following as `bm-01.json`:
 
-```yaml
-apiVersion: control.mountthor.dev/v1alpha1
-kind: MacLease
-metadata:
-  name: bm-01
-spec:
-  leaseClassRef: m4-24g
-  imageChannelRef: xcode-16-stable
-  accessPolicy:
-    ssh: true
-    screenSharingOverSsh: true
-  releasePolicy: wipe-and-reenroll
+```json
+{
+  "apiVersion": "control.mountthor.dev/v1alpha1",
+  "kind": "MacLease",
+  "metadata": {
+    "name": "bm-01"
+  },
+  "spec": {
+    "leaseClassRef": "m4-24g",
+    "imageChannelRef": "xcode-16-stable",
+    "accessPolicy": {
+      "ssh": true,
+      "screenSharingOverSsh": true
+    },
+    "releasePolicy": "wipe-and-reenroll"
+  }
+}
 ```
+
+Apply the `MacLease`:
 
 ```bash
-kubectl apply -f bm-01.yaml
-kubectl get maclease bm-01 --watch
+kubectl --kubeconfig "$KCFG" -n "$NS" apply -f bm-01.json
+kubectl --kubeconfig "$KCFG" -n "$NS" wait maclease bm-01 \
+  --for=jsonpath='{.status.readyForAccess}'=true \
+  --timeout=30m
 ```
 
-Ready state:
-
-```yaml
-status:
-  phase: Ready
-  readyForAccess: true
-  conditions:
-    - type: ReadyForAccess
-      status: "True"
-      reason: LeaseReady
-```
-
-If no capacity is available the lease stays in `Pending` or moves to
-`Failed` with a customer-visible reason such as `NoCapacityAvailable`.
-
-## Open access
-
-Save as `bm-01-ssh.yaml`:
-
-```yaml
-apiVersion: control.mountthor.dev/v1alpha1
-kind: MacAccessSession
-metadata:
-  name: bm-01-ssh
-spec:
-  leaseRef: bm-01
-  principal: alex@example.com
-  type: ssh
-  requestedTTL: 2h
-  reason: Customer shell access.
-```
-
-Apply and read the access command:
+Check when the instance is ready for access:
 
 ```bash
-kubectl apply -f bm-01-ssh.yaml
+kubectl --kubeconfig "$KCFG" -n "$NS" get maclease bm-01 \
+  -o jsonpath='{.status.phase}{" readyForAccess="}{.status.readyForAccess}{" failure="}{.status.failureCode}{"\n"}'
+```
 
-kubectl get macaccesssession bm-01-ssh \
+When the command returns `Ready readyForAccess=true`, the instance is ready to
+connect. If `failure` is populated, use that value when contacting Mount Thor.
+
+The `MacLease` keeps the bare metal instance allocated for you.
+`MacAccessSession` is separate: it creates a temporary connection grant for an
+existing, ready lease. You can create a new access session when an old one
+expires without reprovisioning the instance.
+
+Create a `MacAccessSession` for `bm-01`. Save the following as
+`bm-01-ssh.json`:
+
+```json
+{
+  "apiVersion": "control.mountthor.dev/v1alpha1",
+  "kind": "MacAccessSession",
+  "metadata": {
+    "name": "bm-01-ssh"
+  },
+  "spec": {
+    "leaseRef": "bm-01",
+    "principal": "alex@example.com",
+    "type": "ssh",
+    "requestedTTL": "2h",
+    "reason": "First-run smoke test."
+  }
+}
+```
+
+Replace `alex@example.com` with your approved work email.
+
+Mount Thor returns a CLI command for SSH access. The Mount Thor CLI is a v0
+product in early development.
+
+Install the CLI:
+
+```bash
+curl -fsSL https://get.mountthor.com/install.sh | sh
+mountthor --version
+```
+
+Apply the access session and read the SSH command:
+
+```bash
+kubectl --kubeconfig "$KCFG" -n "$NS" apply -f bm-01-ssh.json
+kubectl --kubeconfig "$KCFG" -n "$NS" wait macaccesssession bm-01-ssh \
+  --for=jsonpath='{.status.phase}'=Active \
+  --timeout=5m
+kubectl --kubeconfig "$KCFG" -n "$NS" get macaccesssession bm-01-ssh \
   -o jsonpath='{.status.connectionInfo.command}{"\n"}'
 ```
 
-Active state:
+Expected output:
 
-```yaml
-status:
-  phase: Active
-  expiresAt: "<RFC3339>"
-  connectionInfo:
-    command: "<emitted command>"
+```bash
+mountthor lease ssh bm-01 --namespace tenant-example --access-session bm-01-ssh
 ```
 
-The emitted command is the brokered transport command to use against
-`access.mountthor.com`. Run it as-is; it embeds the lease, principal, and
-TTL Mount Thor granted, and contains no raw SSH key or guest IP.
+Run the returned command to open SSH access to the bare metal instance.
 
-## Session fields and constraints
+```bash
+export KUBECONFIG="$KCFG"
+
+mountthor lease ssh bm-01 --namespace "$NS" --access-session bm-01-ssh
+```
+
+## Manage Access Sessions
+
+When creating a `MacAccessSession`, set these fields:
 
 | Field | Required | Allowed values |
 |---|---|---|
 | `spec.leaseRef` | yes | Name of an existing, ready `MacLease` |
-| `spec.principal` | yes | Customer user / automation identity that will use the session |
+| `spec.principal` | yes | Customer user or automation identity that will use the session |
 | `spec.type` | yes | `ssh` or `screen-sharing-over-ssh` |
-| `spec.requestedTTL` | yes | `1m` through `8h` (e.g. `30m`, `2h`, `8h`) |
-| `spec.reason` | yes | Free-text audit reason |
+| `spec.requestedTTL` | yes | `1m` through `8h`, such as `30m`, `2h`, or `8h` |
+| `spec.reason` | no | Free-text audit reason |
 
-Mount Thor records the granted TTL on `status.grantedTTL` (which may be less
-than `requestedTTL` if entitlement caps apply), the issuance time on
-`status.issuedAt`, and the expiry on `status.expiresAt`.
+Mount Thor records the granted TTL on `status.grantedTTL`, the issuance time on
+`status.issuedAt`, and the expiry on `status.expiresAt`. The granted TTL can be
+shorter than `requestedTTL` if your account policy sets a lower cap.
 
-## Read session readiness
+<Note>
+  A `MacAccessSession` is not the same thing as a Compute API session token.
+  The session token lets `kubectl` call the Compute API. The `MacAccessSession`
+  controls the SSH or Screen Sharing access window for an existing lease. During
+  alpha, the Compute API session token supports up to 60 minutes, while a bare
+  metal access session can run longer.
+</Note>
 
-Check whether the session is usable:
+Check whether a session is usable:
 
 ```bash
-kubectl get macaccesssession bm-01-ssh \
+kubectl --kubeconfig "$KCFG" -n "$NS" get macaccesssession bm-01-ssh \
   -o jsonpath='{.status.phase}{" "}{.status.connectionInfo.command}{"\n"}'
 ```
 
-Use the session only when `status.phase == Active` and
+Use the session when `status.phase` is `Active` and
 `status.connectionInfo.command` is present.
 
 Read TTL and expiry:
 
 ```bash
-kubectl get macaccesssession bm-01-ssh \
+kubectl --kubeconfig "$KCFG" -n "$NS" get macaccesssession bm-01-ssh \
   -o jsonpath='{.status.phase}{" "}{.status.grantedTTL}{" "}{.status.expiresAt}{"\n"}'
 ```
 
-Phase values: `Pending`, `Granting`, `Active`, `Expired`, `Revoked`, `Failed`.
+Session phases are `Pending`, `Granting`, `Active`, `Expired`, `Revoked`, and
+`Failed`.
 
-If the session fails, read the rejection reason:
+If a session fails, read the failure code and latest condition message:
 
 ```bash
-kubectl get macaccesssession bm-01-ssh \
+kubectl --kubeconfig "$KCFG" -n "$NS" get macaccesssession bm-01-ssh \
   -o jsonpath='{.status.failureCode}{" "}{.status.conditions[-1:].message}{"\n"}'
 ```
 
-Failure codes are documented in [Common failures](/troubleshooting/common-failures).
-
-## End access early
+Delete an access session when you want to close access before its expiry:
 
 ```bash
-kubectl delete macaccesssession bm-01-ssh
+kubectl --kubeconfig "$KCFG" -n "$NS" delete macaccesssession bm-01-ssh
 ```
 
-Mount Thor revokes the access grant before removing the object. The lease
-itself stays allocated until you also delete the `MacLease`.
+Mount Thor revokes the access grant before removing the object. The `MacLease`
+stays allocated until you delete it.
 
-## Concurrency
+## Operate a Lease
 
-The API allows multiple `MacAccessSession` objects to reference the same
-`MacLease`. Mount Thor sets a default namespace quota of 32
-`macaccesssessions.control.mountthor.dev` objects. The default per-lease policy
-allows up to 2 active or granting SSH sessions and 1 active or granting Screen
-Sharing session. When a limit is exhausted, the request fails with
-`AccessSessionConcurrencyExceeded` before issuing a grant.
+Use `MacLeaseOperation` to reset or reinstall a lease. Mount Thor captures the
+lease configuration, releases the current Mac, provisions a replacement lease
+with the same name, and waits until the replacement is ready for access. You can
+create and read operations, but cannot update, patch, or delete them.
 
-## Lifecycle of related resources
+Save the following as `bm-01-reset.json`:
 
-When the referenced lease is deleted, released, failed, or reclaiming:
-
-- Active access sessions are revoked.
-- New access sessions for that lease fail or stay denied.
-- Create a new lease before opening new access.
-
-When a session expires:
-
-- Mount Thor revokes the access grant.
-- `status.phase` becomes `Expired`.
-- The condition `Expired=True` is set with reason `Expired`.
-- The previously-issued command no longer authorizes new access.
-- Create a new `MacAccessSession` if you need more time.
-
-## Operate (reset, reinstall)
-
-Create a `MacLeaseOperation` to request reset or reinstall. Customer callers
-can `get`, `list`, `watch`, and `create` operations. The operation is rejected
-with `ActiveSessionsPresent` while the lease has active or granting access
-sessions.
-
-## Release the lease
+```json
+{
+  "apiVersion": "control.mountthor.dev/v1alpha1",
+  "kind": "MacLeaseOperation",
+  "metadata": {
+    "name": "bm-01-reset"
+  },
+  "spec": {
+    "leaseRef": "bm-01",
+    "operation": "reset",
+    "reason": "Refresh host state."
+  }
+}
+```
 
 ```bash
-kubectl delete maclease bm-01
+kubectl --kubeconfig "$KCFG" -n "$NS" apply -f bm-01-reset.json
 ```
 
-Deleting the lease starts release. Mount Thor closes active access sessions,
-runs the configured `releasePolicy` (e.g. `wipe-and-reenroll`), reclaims the
-host, and returns capacity to your tenant pool. Reclaim evidence is
-preserved before the host returns.
+Save the following as `bm-01-reinstall.json` to reinstall onto another available
+image channel:
+
+```json
+{
+  "apiVersion": "control.mountthor.dev/v1alpha1",
+  "kind": "MacLeaseOperation",
+  "metadata": {
+    "name": "bm-01-reinstall"
+  },
+  "spec": {
+    "leaseRef": "bm-01",
+    "operation": "reinstall",
+    "targetImageChannelRef": "xcode-16-stable",
+    "reason": "Reinstall macOS image."
+  }
+}
+```
+
+```bash
+kubectl --kubeconfig "$KCFG" -n "$NS" apply -f bm-01-reinstall.json
+```
+
+Mount Thor rejects the operation with `ActiveSessionsPresent` while someone is
+connected or access is still opening. Delete or let those sessions expire, then
+create a new operation.
+
+## Release Bare Metal
+
+Delete access sessions when you want to close SSH or Screen Sharing before the
+session expires:
+
+```bash
+kubectl --kubeconfig "$KCFG" -n "$NS" delete macaccesssession \
+  bm-01-ssh bm-01-ssh-20260522051117 \
+  --ignore-not-found
+```
+
+Example output:
+
+```text
+macaccesssession.control.mountthor.dev "bm-01-ssh" deleted
+macaccesssession.control.mountthor.dev "bm-01-ssh-20260522051117" deleted
+```
+
+Delete the lease when you are done with the Mac. Mount Thor bills each bare
+metal lease for a minimum of 24 hours, even when you delete it sooner.
+
+```bash
+export LEASE="bm-01"
+
+kubectl --kubeconfig "$KCFG" -n "$NS" delete "maclease/${LEASE}" \
+  --ignore-not-found
+```
+
+Example output:
+
+```text
+maclease.control.mountthor.dev "bm-01" deleted
+```
+
+Mount Thor revokes active access sessions immediately after lease deletion. The
+Mac returns to the pool only after wipe and reenroll evidence is complete.
