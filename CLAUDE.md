@@ -11,16 +11,16 @@ Mintlify documentation site. Content lives in MDX files at the repo root and ins
 - `mint dev` — local preview at `http://localhost:3000` (run from the directory containing `docs.json`). `--port 3333` for an alternate port.
 - `mint broken-links` — validate internal links across the site.
 - `mint update` — upgrade the local CLI when the preview falls out of sync with production.
-- `npm i -g mint` — install the CLI (requires Node ≥ 19).
+- `npm i -g mint@4.2.577` — install the pinned CLI used by CI (requires Node ≥ 19).
 
-There is no build, lint, or test step — Mintlify builds and deploys on push to the default branch via the Mintlify GitHub app.
+There is no repo-local production deploy command. GitHub Actions validates the docs; production deployment is triggered from the Mintlify dashboard unless the Mintlify API trigger is wired into CI.
 
 ## Architecture
 
-- **`docs.json`** is the source of truth for site structure. Adding a new MDX page is a two-step change: create the file *and* register it under `navigation.tabs[].groups[].pages` in `docs.json`. Pages omitted from `docs.json` are not reachable from the nav.
-- **Tabs and groups**: top-level navigation is split into `Guides` and `API reference` tabs; within each tab, pages are grouped (e.g. `Getting started`, `Customization`, `Endpoint examples`). Page paths in `docs.json` are routes (no `.mdx` extension, no leading slash).
+- **`docs.json`** is the source of truth for site structure. Adding a new MDX page is a two-step change: create the file *and* register it under `navigation.tabs[].pages` in `docs.json`. Pages omitted from `docs.json` are not reachable from the nav.
+- **Tabs and groups**: top-level navigation currently uses one `Documentation` tab with L1 pages plus an `API Reference` group. Page paths in `docs.json` are routes (no `.mdx` extension, no leading slash).
 - **MDX frontmatter** drives page metadata (`title`, `description`, `icon`). The `icon` value is a Font Awesome name.
-- **API reference** pages under `api-reference/endpoint/` are generated against `api-reference/openapi.json` — update the OpenAPI spec when endpoint shapes change rather than hand-editing the MDX.
+- **API reference** pages are generated from `api-reference/mount-thor-local.openapi.json` — refresh the checked-in OpenAPI artifact when endpoint shapes change rather than hand-editing generated pages.
 - **Reusable content** lives in `snippets/` and is imported into MDX pages; `images/` and `logo/` hold static assets referenced by absolute path (e.g. `/images/foo.png`).
 - **`.mintignore`** excludes `drafts/` and `*.draft.mdx` from the build in addition to Mintlify's built-in ignores (`.git`, `.github`, `.claude`, `node_modules`, `README.md`, `LICENSE.md`, `CHANGELOG.md`, `CONTRIBUTING.md`).
 

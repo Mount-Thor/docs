@@ -76,7 +76,7 @@ curl -fsSL https://get.mountthor.com/install.sh | sh
 mountthor --version
 ```
 
-The VM SSH flow requires Mount Thor CLI `0.3.1` or newer.
+The VM SSH flow requires Mount Thor CLI `0.3.5` or newer.
 
 Set your customer kubeconfig path and tenant namespace:
 
@@ -167,7 +167,7 @@ Read startup timing fields:
 
 ```bash
 kubectl --kubeconfig "$KCFG" -n "$NS" get virtualmachine "$VM" \
-  -o jsonpath='{.status.timings.hostSelectedAt}{" imageReady="}{.status.timings.cacheSatisfiedAt}{" providerReady="}{.status.timings.providerCreateCompletedAt}{" customerReady="}{.status.timings.customerReadyAt}{"\n"}'
+  -o jsonpath='{.status.timings.requestAcceptedAt}{" guestReady="}{.status.timings.guestReadyProbePassedAt}{" portsPublished="}{.status.timings.portsPublishedAt}{" servicesReady="}{.status.timings.servicesReadyAt}{" customerReady="}{.status.timings.customerReadyAt}{"\n"}'
 ```
 
 Empty timing fields mean the VM has not reached that step yet. If `failure` is
@@ -393,71 +393,7 @@ inventory, and internal Mount Thor resources are denied.
 
 **Status: Coming Soon**
 
-Customer-owned VM images are not available during alpha. During alpha, use the
-Mount Thor-provided images above; the commands below are included as a preview,
-not as alpha setup steps.
-
-For images that live in a customer-owned registry, you will register the
-registry with Mount Thor and submit a read-only credential or role grant. Mount
-Thor will verify pull access, record a `VirtualMachineImage` that points at the
-external digest, and prepare image access before the VM starts.
-
-Planned registry connection types:
-
-| Registry | Connection | You provide |
-|---|---|---|
-| Amazon ECR | AWS IAM role | Role ARN for a read-only IAM role created from Mount Thor's returned policy |
-| GHCR, Harbor, OCI registries | Read-only registry credential | Robot account, deploy token, or registry token scoped to the image repository |
-
-The planned admin flow will create the registry record with a Mount Thor API
-key that has `registries:write`:
-
-```http
-POST /v1/admin/registries
-Authorization: Bearer mthr_live_01JZ8M7EXAMPLE
-Content-Type: application/json
-```
-
-The admin API will return grant instructions to create the read-only role or
-token. After you submit the credential reference, Mount Thor will verify the
-registry before images from that registry can be imported.
-
-## Register an Image
-
-**Status: Coming Soon**
-
-This flow is not part of the alpha customer path yet. After registry
-verification succeeds, you will create a
-`VirtualMachineImageOperation` with an image name, a digest-pinned image
-reference, guest OS metadata, and default sizing.
-
-```json
-{
-  "apiVersion": "vm.mountthor.dev/v1alpha1",
-  "kind": "VirtualMachineImageOperation",
-  "metadata": {
-    "name": "customer-browser-base-import"
-  },
-  "spec": {
-    "operation": "import",
-    "requestedImageRef": "customer-browser-base",
-    "source": {
-      "ref": "123456789012.dkr.ecr.us-east-2.amazonaws.com/platform/macos-vm-images@sha256:<digest>",
-      "sha256": "sha256:<digest>"
-    },
-    "guestOs": "macos",
-    "guestVersion": "15.4",
-    "architecture": "arm64",
-    "defaultResources": {
-      "cpu": 4,
-      "memoryMiB": 8192,
-      "diskGiB": 120
-    },
-    "displayName": "Customer Browser Base"
-  }
-}
-```
-
-Successful registration will publish or update a `VirtualMachineImage` with the
-`requestedImageRef`. You will then create `VirtualMachine` resources with that
-image reference.
+Customer-owned VM images are not available during alpha. During alpha, use
+Mount Thor-provided VM images. Customer-owned image support will add registry
+connection and image import workflows after the alpha path is ready for
+customers.

@@ -3,13 +3,15 @@
 Customer documentation for Mount Thor, served at `docs.mountthor.com`.
 
 This is a [Mintlify](https://mintlify.com) site. MDX pages + `docs.json`
-config; deployed automatically by Mintlify's GitHub App on every push to
-`main`. Universal-password gated for the alpha customer cohort.
+config; published through the Mintlify dashboard deployment for
+`docs.mountthor.com`. Universal-password gated for the alpha customer cohort.
 
-The customer-facing API reference is generated from OpenAPI:
+The customer-facing API reference is generated from checked-in OpenAPI:
 
-- Admin API: [`https://api.mountthor.com/openapi.json`](https://api.mountthor.com/openapi.json),
-  which Mintlify re-fetches on every build.
+- Combined docs artifact: `api-reference/mount-thor-local.openapi.json`, used
+  by `docs.json` for the generated API Reference navigation.
+- Admin API source: [`https://api.mountthor.com/openapi.json`](https://api.mountthor.com/openapi.json),
+  copied into the combined docs artifact when the docs are refreshed.
 - Compute API: `api-reference/customer-compute-crds.v1.openapi.json`, copied
   from the generated monorepo artifact when the docs are refreshed, then
   publication-filtered to the customer workflow resources documented in MDX.
@@ -17,7 +19,7 @@ The customer-facing API reference is generated from OpenAPI:
 ## Local development
 
 ```bash
-npm i -g mint
+npm i -g mint@4.2.577
 mint dev          # http://localhost:3000
 mint validate     # frontmatter + structure
 mint broken-links # link integrity

@@ -35,7 +35,10 @@ truth for, `Mount-Thor/mount-thor`. The canonical specs live in:
   the customer API contract.
 - `https://api.mountthor.com/openapi.json` — the actual published OpenAPI
   document, generated from typed `utoipa` annotations in admin-api.
-  Mintlify fetches this URL at build time.
+- `api-reference/mount-thor-local.openapi.json` — checked-in combined OpenAPI
+  artifact used by Mintlify for the generated API Reference. Refresh it from
+  the live admin OpenAPI plus the checked-in compute OpenAPI when API surfaces
+  change.
 
 Edits here that imply behavior change must be traceable to a change in the
 monorepo first (or land alongside one). Don't promise a customer-facing
@@ -120,7 +123,7 @@ Palantir / Bloomberg / Stripe — institutional restraint.
 ## Local development
 
 ```bash
-npm i -g mint
+npm i -g mint@4.2.577
 mint dev          # http://localhost:3000
 mint validate     # frontmatter + structure
 mint broken-links # link integrity
@@ -128,8 +131,8 @@ mint broken-links # link integrity
 
 ## CI
 
-`.github/workflows/validate.yml` runs `mint validate` and `mint broken-links`
-on PRs. Both must pass before merge.
+`.github/workflows/validate.yml` runs `mint validate`, `mint broken-links`, and
+the API reference drift check on PRs. All must pass before merge.
 
 ## Don't
 

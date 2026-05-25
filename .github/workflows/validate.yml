@@ -10,7 +10,6 @@ name: validate
 
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
   validate:
@@ -26,10 +25,21 @@ jobs:
           node-version: "22"
 
       - name: install-mint
-        run: npm install -g mint
+        run: npm install -g mint@4.2.577
 
       - name: mint-validate
         run: mint validate
 
       - name: mint-broken-links
         run: mint broken-links
+
+      - name: api-reference-drift
+        run: |
+          set -euo pipefail
+          curl -fsSL https://api.mountthor.com/openapi.json -o /tmp/live-admin.openapi.json
+          jq -S '[.paths | keys[]]' /tmp/live-admin.openapi.json > /tmp/live-admin-paths.json
+          jq -S '[.paths | keys[] | select(startswith("/v1/admin"))]' api-reference/mount-thor-local.openapi.json > /tmp/docs-admin-paths.json
+          diff -u /tmp/live-admin-paths.json /tmp/docs-admin-paths.json
+          jq -S '[.paths | keys[]]' api-reference/customer-compute-crds.v1.openapi.json > /tmp/compute-paths.json
+          jq -S '[.paths | keys[] | select(startswith("/v1/compute"))]' api-reference/mount-thor-local.openapi.json > /tmp/docs-compute-paths.json
+          diff -u /tmp/compute-paths.json /tmp/docs-compute-paths.json
