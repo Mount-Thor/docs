@@ -1,8 +1,14 @@
 {
   "components": {
+    "callbacks": {},
+    "examples": {},
+    "headers": {},
+    "links": {},
+    "parameters": {},
+    "requestBodies": {},
+    "responses": {},
     "schemas": {
       "CatalogCapacityHint": {
-        "description": "Customer-visible capacity signal for a catalog entry.",
         "properties": {
           "committed_quantity": {
             "description": "Reserved quantity for this class, when committed capacity exists.",
@@ -31,10 +37,8 @@
         "type": "object"
       },
       "CatalogEntry": {
-        "description": "Customer-visible catalog item, such as an image or hardware class.",
         "properties": {
           "capacity": {
-            "description": "Capacity hints for metal entries. Image entries omit this field.",
             "oneOf": [
               {
                 "type": "null"
@@ -78,7 +82,6 @@
         "type": "object"
       },
       "CatalogKind": {
-        "description": "Catalog item category.",
         "enum": [
           "image",
           "metal"
@@ -86,7 +89,6 @@
         "type": "string"
       },
       "CatalogListResponse": {
-        "description": "Catalog listing response.",
         "properties": {
           "customer_id": {
             "description": "Stable UUID for the customer account.",
@@ -112,7 +114,6 @@
         "type": "object"
       },
       "CatalogOwnership": {
-        "description": "Ownership scope for a catalog item.",
         "enum": [
           "mount-thor",
           "customer"
@@ -306,8 +307,148 @@
         ],
         "type": "object"
       },
+      "CreateCustomerUserInviteRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "description": "Optional pre-filled display name written to the pending\n`customer_users` row. The WorkOS user object's first/last name\noverrides this on first login.",
+            "example": "Alice Example",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "email": {
+            "description": "Invitee email. Validated to RFC 5321 shape + 254-byte cap before\nreaching the WorkOS-side validator. Lowercased before insert so\n`(customer_id, email)` is a stable idempotency key.",
+            "example": "alice@acmecorp.com",
+            "type": "string"
+          },
+          "role_slug": {
+            "description": "Optional WorkOS role slug to pre-bind on acceptance. Must match\na role configured on the WorkOS workspace (e.g.\n`mountthor-cluster-admin`, `mountthor-cluster-readonly`). When\nomitted, WorkOS leaves the invitee without a Mount Thor role\nand the customer admin assigns one later from the WorkOS\ndashboard.",
+            "example": "mountthor-cluster-readonly",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "type": "object"
+      },
+      "CreateCustomerUserInviteResponse": {
+        "properties": {
+          "accept_invitation_url": {
+            "description": "WorkOS-issued accept-invitation URL. Operators can hand this to\nthe invitee out-of-band if the WorkOS email never arrives.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "customer_id": {
+            "description": "Customer the invitee will join on acceptance.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "customer_user_id": {
+            "description": "UUID of the pending `customer_users` row.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "email": {
+            "description": "Lowercased invitee email as persisted.",
+            "type": "string"
+          },
+          "status": {
+            "description": "`customer_users.status` after the call. Always `\"invited\"` for\na new row; an existing pending row returns the same.",
+            "type": "string"
+          },
+          "workos_invitation_id": {
+            "description": "WorkOS-side invitation id (for operator lookup in the WorkOS\ndashboard). Present unless the lookup hit an existing pending\nrow and we chose not to re-issue (idempotent return).",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "customer_user_id",
+          "customer_id",
+          "email",
+          "status"
+        ],
+        "type": "object"
+      },
+      "CreateLoginRequestRequest": {
+        "additionalProperties": false,
+        "description": "Request body for `POST /v1/admin/login-requests`.\n\n`localhost_state_sha256` and `cli_verifier_sha256` are SHA-256 digests of\nrandom values held by the CLI; the plaintext never crosses the wire on this\nroute. The eventual session-mint route (`POST /v1/admin/sessions` with\n`grant_type=login-handoff`) re-presents the plaintext, and admin-api\nre-hashes and matches.",
+        "properties": {
+          "cli_verifier_sha256": {
+            "description": "SHA-256 hex digest of the CLI's verifier random value.",
+            "type": "string"
+          },
+          "customer_slug": {
+            "description": "Customer slug recorded with the registration. Format: kebab-case.\n\nOptional under umbrella #4362 PR 3 consumer-shape flow: when\nomitted the CLI lands on WorkOS's hosted AuthKit UI without an\n`organization_id` pre-bound. The admin-api resolves the Mount\nThor customer post-callback from the WorkOS user's resolved\n`organization_id`. Requires `MOUNTTHOR_AUTHKIT_ENABLED`. When\nprovided, the legacy per-customer SSO path runs unchanged.",
+            "example": "acme",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "localhost_redirect_uri": {
+            "description": "CLI's localhost callback URI. Must match\n`http://127.0.0.1:<port>/callback` with a non-privileged port and no\nquery, fragment, or credentials.",
+            "example": "http://127.0.0.1:54321/callback",
+            "type": "string"
+          },
+          "localhost_state_sha256": {
+            "description": "SHA-256 hex digest of the CLI's localhost-state random value.",
+            "type": "string"
+          },
+          "tenant_slug": {
+            "description": "Optional tenant slug to scope the eventual session to a specific\ntenant. When omitted the human session is account-scoped.\n\nOnly valid alongside `customer_slug` — the no-slug consumer flow\ncannot pre-bind a tenant because the customer is unresolved\nuntil callback. The resolved session in the consumer flow is\nalways account-scoped.",
+            "example": "acme-prod",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "localhost_redirect_uri",
+          "localhost_state_sha256",
+          "cli_verifier_sha256"
+        ],
+        "type": "object"
+      },
+      "CreateLoginRequestResponse": {
+        "description": "Response body for `POST /v1/admin/login-requests`.",
+        "properties": {
+          "authorization_url": {
+            "description": "WorkOS authorization URL the CLI opens in the customer's browser.",
+            "example": "https://api.workos.com/sso/authorize?...",
+            "type": "string"
+          },
+          "login_request_id": {
+            "description": "Stable Mount Thor identifier for this login attempt.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "state_expires_in_seconds": {
+            "description": "Seconds until the WorkOS state token and matching login request expire.",
+            "example": 600,
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "login_request_id",
+          "authorization_url",
+          "state_expires_in_seconds"
+        ],
+        "type": "object"
+      },
       "CustomerAccountCapabilities": {
-        "description": "Capabilities and entitlements attached to the account.",
         "properties": {
           "entitlements": {
             "description": "Entitlements currently visible to this account.",
@@ -401,7 +542,6 @@
         "type": "object"
       },
       "CustomerAccountTenant": {
-        "description": "Tenant namespace attached to the account.",
         "properties": {
           "compute_api_server_url": {
             "description": "Compute API server URL for this tenant.",
@@ -429,6 +569,40 @@
           "namespace_name",
           "compute_api_server_url",
           "status"
+        ],
+        "type": "object"
+      },
+      "CustomerAdminIdentityResponse": {
+        "properties": {
+          "allowed_email_domains": {
+            "description": "Email domains the customer's approval package allowed at signup.\nUseful context for the portal when explaining who can join via\nAuthKit's organization-policy auto-routing.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "has_identity_integration": {
+            "description": "Whether the caller's customer has any usable identity integration.\nDerived from `integration_status`. The portal uses this to decide\nwhether to render \"Setup SSO Logins\" vs \"Reconfigure SSO\" CTAs.",
+            "type": "boolean"
+          },
+          "integration_status": {
+            "description": "`identity_integrations.status` for the caller's customer. One of\n`draft`, `customer-input-required`, `configured`, `testing`,\n`active`, `failed`, or `suspended` — the full set the\n`identity_integrations.status` CHECK constraint allows (see\n`control-plane/manager/db/migrations/0009_customer_onboarding_admin.sql`).\n`null` if no integration exists yet (registration not far enough\nalong).",
+            "example": "configured",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "provider": {
+            "description": "Identity provider. Always `workos` today.",
+            "example": "workos",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "has_identity_integration",
+          "allowed_email_domains"
         ],
         "type": "object"
       },
@@ -476,7 +650,6 @@
         "type": "object"
       },
       "CustomerApiKeyListResponse": {
-        "description": "API key listing response.",
         "properties": {
           "customer_id": {
             "description": "Stable UUID for the customer account.",
@@ -504,7 +677,6 @@
         "type": "object"
       },
       "CustomerApiKeyMetadata": {
-        "description": "Non-secret API key metadata.",
         "properties": {
           "api_key_id": {
             "description": "Stable UUID for the API key.",
@@ -583,7 +755,6 @@
         "type": "object"
       },
       "CustomerEntitlement": {
-        "description": "Customer-visible entitlement attached to the account.",
         "properties": {
           "entitlement_type": {
             "description": "Entitlement category, such as `image-channel`, `lease-class`, or feature flag.",
@@ -611,7 +782,6 @@
         "type": "object"
       },
       "CustomerFleetResponse": {
-        "description": "Fleet listing response for account-scoped compute resources.",
         "properties": {
           "customer_id": {
             "description": "Stable UUID for the customer account.",
@@ -651,7 +821,6 @@
         "type": "object"
       },
       "CustomerFleetUsageResponse": {
-        "description": "Fleet usage response for the requested period.",
         "properties": {
           "buckets": {
             "description": "Time-series usage buckets.",
@@ -687,7 +856,6 @@
         "type": "object"
       },
       "CustomerRegistrationAccount": {
-        "description": "Account information created during registration.",
         "properties": {
           "display_name": {
             "description": "Customer display name activated by the registration.",
@@ -701,7 +869,6 @@
         "type": "object"
       },
       "CustomerRegistrationApiKey": {
-        "description": "One-time API key material returned during registration.",
         "properties": {
           "expires_at": {
             "description": "Optional RFC 3339 expiry timestamp.",
@@ -749,7 +916,6 @@
       },
       "CustomerRegistrationContact": {
         "additionalProperties": false,
-        "description": "Primary customer contact for registration.",
         "properties": {
           "email": {
             "description": "Work email address authorized by the registration invite.",
@@ -769,7 +935,6 @@
         "type": "object"
       },
       "CustomerRegistrationIdentitySetup": {
-        "description": "Identity setup link returned during registration.",
         "properties": {
           "expires_at": {
             "description": "RFC 3339 expiry timestamp for the setup URL.",
@@ -794,7 +959,6 @@
         "type": "object"
       },
       "CustomerRegistrationLinks": {
-        "description": "Follow-up links returned during registration.",
         "properties": {
           "account": {
             "description": "Account endpoint.",
@@ -822,7 +986,6 @@
         "type": "object"
       },
       "CustomerRegistrationNextStep": {
-        "description": "Next action required after registration.",
         "properties": {
           "action": {
             "description": "Customer-facing action text.",
@@ -878,7 +1041,6 @@
             "description": "Initial API key. The secret value is returned exactly once."
           },
           "identity_setup": {
-            "description": "Optional identity setup link when SSO setup is available.",
             "oneOf": [
               {
                 "type": "null"
@@ -921,7 +1083,6 @@
         "type": "object"
       },
       "CustomerRegistrationTenant": {
-        "description": "Tenant created during registration.",
         "properties": {
           "namespace_name": {
             "description": "Kubernetes namespace assigned to the customer's compute resources.",
@@ -999,7 +1160,6 @@
         "type": "object"
       },
       "CustomerSessionListResponse": {
-        "description": "Compute session listing response.",
         "properties": {
           "customer_id": {
             "description": "Stable UUID for the customer account.",
@@ -1027,7 +1187,6 @@
         "type": "object"
       },
       "FleetCapacityAllocation": {
-        "description": "Account capacity allocation for one lease class or resource shape.",
         "properties": {
           "committed_quantity": {
             "description": "Reserved quantity available for the class. Null means no committed quantity.",
@@ -1098,7 +1257,6 @@
         "type": "object"
       },
       "FleetCapacityResponse": {
-        "description": "Account capacity listing response.",
         "properties": {
           "capacity_allocations": {
             "description": "Capacity allocations that govern lease and access-session limits.",
@@ -1124,7 +1282,6 @@
         "type": "object"
       },
       "FleetLeaseSummary": {
-        "description": "Summary of a bare-metal lease in the account fleet.",
         "properties": {
           "allocated_at": {
             "description": "RFC 3339 timestamp when hardware was allocated.",
@@ -1193,7 +1350,6 @@
         "type": "object"
       },
       "FleetVirtualMachineSummary": {
-        "description": "Summary of a virtual machine in the account fleet.",
         "properties": {
           "cpu": {
             "description": "Requested vCPU count when specified.",
@@ -1265,7 +1421,6 @@
         "type": "object"
       },
       "ImageDistributionPending": {
-        "description": "Reason image distribution is not yet available.",
         "properties": {
           "reason": {
             "description": "Customer-visible reason distribution is not available yet.",
@@ -1286,7 +1441,6 @@
         "type": "object"
       },
       "ImageDownload": {
-        "description": "Time-limited image download metadata.",
         "properties": {
           "expires_at": {
             "description": "RFC 3339 expiry timestamp for the URL.",
@@ -1308,7 +1462,6 @@
         "type": "object"
       },
       "ImageResponse": {
-        "description": "Customer-visible image detail response.",
         "properties": {
           "channel": {
             "description": "Image channel name when the image is backed by a channel entitlement.",
@@ -1327,7 +1480,6 @@
             ]
           },
           "distribution_pending": {
-            "description": "Explanation when image metadata is available but distribution is not yet wired.",
             "oneOf": [
               {
                 "type": "null"
@@ -1339,7 +1491,6 @@
             ]
           },
           "download": {
-            "description": "Time-limited download link when direct download is available.",
             "oneOf": [
               {
                 "type": "null"
@@ -1359,7 +1510,6 @@
             "description": "Owner of the image distribution path."
           },
           "share": {
-            "description": "Registry share details when registry-based distribution is available.",
             "oneOf": [
               {
                 "type": "null"
@@ -1401,7 +1551,6 @@
         "type": "object"
       },
       "ImageShare": {
-        "description": "Registry share metadata for an image.",
         "properties": {
           "registry_binding_id": {
             "description": "Registry grant id associated with the share, when customer-owned.",
@@ -1476,6 +1625,72 @@
         "required": [
           "issuer",
           "audiences"
+        ],
+        "type": "object"
+      },
+      "IssueCustomerAdminIdentitySetupLinkRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "intent": {
+            "description": "WorkOS Admin Portal intent. One of `sso`, `dsync`, or\n`domain_verification`. Defaults to `sso` when omitted; the\n\"Setup SSO Logins\" CTA in the portal is the primary caller.",
+            "example": "sso",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason": {
+            "description": "Optional audit reason (8..=1000 chars when present). The portal\ncan send a short context string like \"customer admin clicked\nSetup SSO Logins\". When omitted, the audit row records a\nstock reason naming the actor type.",
+            "example": "customer admin clicked Setup SSO Logins",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "return_url": {
+            "deprecated": true,
+            "description": "Deprecated and ignored. Accepting this field is preserved for\nAPI-compatibility with the route as originally shipped in\n#4567; the customer-admin self-serve surface always uses the\n`MOUNTTHOR_SIGNUP_INVITE_PUBLIC_BASE_URL`-derived default to\neliminate an open-redirect angle (a compromised customer-admin\ncredential could otherwise point WorkOS's post-flow redirect at\nan attacker-controlled origin, and an admin completing the\nWorkOS flow would land there with a fresh session cookie). The\noperator-only path keeps the field honored because operators\nare higher-trust and have legitimate incident-handoff reasons\nto direct a customer to a specific landing.",
+            "example": "https://api.mountthor.com/identity/setup-completed",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "IssueCustomerAdminIdentitySetupLinkResponse": {
+        "properties": {
+          "expires_at": {
+            "description": "RFC 3339 timestamp at which WorkOS will reject the link.",
+            "type": "string"
+          },
+          "identity_integration_id": {
+            "description": "UUID of the underlying identity integration the link is scoped to.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "intent": {
+            "description": "Echoed intent (`sso`, `dsync`, `domain_verification`).",
+            "example": "sso",
+            "type": "string"
+          },
+          "provider": {
+            "description": "Identity provider. Always `workos` today.",
+            "example": "workos",
+            "type": "string"
+          },
+          "url": {
+            "description": "WorkOS Admin Portal URL. One-time use; the portal should redirect\nthe customer admin's browser to it immediately and not log it.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "identity_integration_id",
+          "provider",
+          "intent",
+          "url",
+          "expires_at"
         ],
         "type": "object"
       },
@@ -2671,6 +2886,28 @@
             "description": "Tenant namespace inside the customer's dedicated control plane.",
             "type": "string"
           },
+          "refresh_token": {
+            "description": "Optional refresh token (`mt_refresh_*`). Returned only by grants\nthat issue one (the SPA authkit-authorization-code grant when\n`request_refresh_token=true`, and the refresh-token grant on\nrotation). Trade for a fresh session via the refresh-token grant\nbefore the session expires. Stored once; cannot be re-displayed.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "refresh_token_expires_at": {
+            "description": "RFC 3339 timestamp at which the refresh token expires (when set).",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "refresh_token_ttl_seconds": {
+            "description": "Refresh token TTL in seconds (when `refresh_token` is set).",
+            "format": "int32",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
           "scopes": {
             "description": "Scopes granted to the session.",
             "example": [
@@ -2725,7 +2962,6 @@
         "type": "object"
       },
       "RegistryGrantAuthMetadata": {
-        "description": "Non-secret registry credential metadata.",
         "properties": {
           "credential_fingerprint": {
             "description": "Non-secret fingerprint of the current credential material.",
@@ -2760,7 +2996,6 @@
         "type": "object"
       },
       "RegistryGrantAuthRequirements": {
-        "description": "Registry credential requirements.",
         "properties": {
           "accepted_auth_types": {
             "description": "Credential types accepted by `PATCH /v1/admin/registries/{id}`.",
@@ -2787,7 +3022,6 @@
             "description": "Minimum permission policy for registry pulls."
           },
           "required_scope": {
-            "description": "Registry host, repositories, and permissions Mount Thor needs.",
             "oneOf": [
               {
                 "type": "null"
@@ -2815,7 +3049,6 @@
       },
       "RegistryGrantCreateRequest": {
         "additionalProperties": false,
-        "description": "Registry connection create request.",
         "properties": {
           "image_format": {
             "description": "Image format used by the registry. Currently `tart-oci`.",
@@ -2846,25 +3079,6 @@
               "platform/macos-vm-images"
             ],
             "items": {
-              "description": "Repository path only. Do not include scheme, host, credentials, tag, digest, whitespace, traversal, or leading slash.",
-              "maxLength": 512,
-              "not": {
-                "anyOf": [
-                  {
-                    "pattern": "^/"
-                  },
-                  {
-                    "pattern": "/$"
-                  },
-                  {
-                    "pattern": "\\.\\."
-                  },
-                  {
-                    "pattern": "[:@\\s]"
-                  }
-                ]
-              },
-              "pattern": "^[!-~]+$",
               "type": "string"
             },
             "type": "array"
@@ -2879,7 +3093,6 @@
         "type": "object"
       },
       "RegistryGrantListResponse": {
-        "description": "Registry connection listing response.",
         "properties": {
           "customer_id": {
             "description": "Stable UUID for the customer account.",
@@ -2905,7 +3118,6 @@
         "type": "object"
       },
       "RegistryGrantPatchAuth": {
-        "description": "Registry credential update payload.",
         "oneOf": [
           {
             "properties": {
@@ -3029,7 +3241,6 @@
       },
       "RegistryGrantPatchRequest": {
         "additionalProperties": false,
-        "description": "Registry connection update request.",
         "properties": {
           "auth": {
             "$ref": "#/components/schemas/RegistryGrantPatchAuth",
@@ -3042,7 +3253,6 @@
         "type": "object"
       },
       "RegistryGrantRequiredScope": {
-        "description": "Registry permissions Mount Thor requires.",
         "properties": {
           "permissions": {
             "description": "Required registry actions.",
@@ -3071,10 +3281,8 @@
         "type": "object"
       },
       "RegistryGrantResponse": {
-        "description": "Registry connection response.",
         "properties": {
           "auth": {
-            "description": "Credential metadata. Secret material is never returned.",
             "oneOf": [
               {
                 "type": "null"
@@ -3086,7 +3294,6 @@
             ]
           },
           "auth_requirements": {
-            "description": "Setup requirements when credentials have not been supplied yet.",
             "oneOf": [
               {
                 "type": "null"
@@ -3129,7 +3336,6 @@
             "type": "string"
           },
           "pull_secret_ref": {
-            "description": "Opaque pull reference used by Mount Thor runtime components.",
             "oneOf": [
               {
                 "type": "null"
@@ -3196,7 +3402,6 @@
         "type": "object"
       },
       "RegistryPullReference": {
-        "description": "Opaque runtime pull reference for a registry connection.",
         "properties": {
           "name": {
             "description": "Opaque pull reference name. This is not a credential.",
@@ -3438,7 +3643,6 @@
         "type": "object"
       },
       "TrustedIssuerListResponse": {
-        "description": "Identity provider listing response.",
         "properties": {
           "customer_id": {
             "description": "Stable UUID for the customer account.",
@@ -3459,7 +3663,6 @@
         "type": "object"
       },
       "TrustedIssuerMetadata": {
-        "description": "Identity provider metadata.",
         "properties": {
           "allowed_clock_skew_seconds": {
             "description": "Clock skew allowed when validating token time claims.",
@@ -3607,11 +3810,9 @@
             ],
             "type": "object"
           }
-        ],
-        "description": "Identity provider detail response."
+        ]
       },
       "UsageBucket": {
-        "description": "Usage measurement for one resource group in a period.",
         "properties": {
           "bucket_start": {
             "description": "Start timestamp for this bucket.",
@@ -3633,7 +3834,6 @@
         "type": "object"
       },
       "UsageByClass": {
-        "description": "Usage measurement grouped by resource class.",
         "properties": {
           "billable_seconds": {
             "description": "Billable seconds after per-class minimums are applied to closed lifecycles.",
@@ -3671,7 +3871,6 @@
         "type": "object"
       },
       "UsagePeriod": {
-        "description": "Inclusive usage query period.",
         "properties": {
           "bucket": {
             "description": "`hour` for 24h window, `day` for 7d and month.",
@@ -3697,7 +3896,6 @@
         "type": "object"
       },
       "UsageSummary": {
-        "description": "Aggregate usage totals for the requested period.",
         "properties": {
           "billable_seconds": {
             "description": "Total billable seconds across the requested window.",
@@ -4628,13 +4826,11 @@
             "type": "object"
           },
           "display_name": {
-            "description": "Customer-facing principal label.",
             "example": "ci-prod-deploy",
             "maxLength": 200,
             "type": "string"
           },
           "issuer": {
-            "description": "Inline IdP material. Mutually exclusive with trusted_issuer_id.",
             "oneOf": [
               {
                 "type": "null"
@@ -4698,7 +4894,6 @@
         "type": "object"
       },
       "WorkloadPrincipalListResponse": {
-        "description": "Principal listing response.",
         "properties": {
           "customer_id": {
             "description": "Stable UUID for the customer account.",
@@ -4719,7 +4914,6 @@
         "type": "object"
       },
       "WorkloadPrincipalMetadata": {
-        "description": "Principal metadata.",
         "properties": {
           "claim_constraints": {
             "description": "Additional claim constraints used when `subject_match_type` is `claim-constraints`.",
@@ -4864,8 +5058,7 @@
             ],
             "type": "object"
           }
-        ],
-        "description": "Principal detail response."
+        ]
       }
     },
     "securitySchemes": {
@@ -4883,6 +5076,12 @@
         "in": "header",
         "name": "X-MountThor-Registration-Code",
         "type": "apiKey"
+      },
+      "api_key_bearer": {
+        "bearerFormat": "mthr_live_*",
+        "description": "Mount Thor customer bearer credential. Long-lived API keys use `mthr_live_*`; short-lived human sessions use `mt_session_*`. Plaintext API keys are shown to the customer once and are stored server-side only as hashed verifier material.",
+        "scheme": "bearer",
+        "type": "http"
       }
     }
   },
@@ -4929,16 +5128,7 @@
         "summary": "Get Account",
         "tags": [
           "account"
-        ],
-        "x-mountthor-owner": "admin-api",
-        "x-mountthor-secret-handling": {
-          "acceptsSecret": false,
-          "redactedFields": [],
-          "returnsSecret": false,
-          "returnsSecretOnce": false
-        },
-        "x-mountthor-source-path": "control-plane/admin-api/src/routes/me.rs",
-        "x-mountthor-stability": "v1alpha1"
+        ]
       },
       "patch": {
         "description": "This operation only updates customer-owned display metadata. It does not\nchange legal name, tenant bindings, namespaces, entitlements, routing, or\naccount status.",
@@ -4984,16 +5174,7 @@
         "summary": "Update Account",
         "tags": [
           "account"
-        ],
-        "x-mountthor-owner": "admin-api",
-        "x-mountthor-secret-handling": {
-          "acceptsSecret": false,
-          "redactedFields": [],
-          "returnsSecret": false,
-          "returnsSecretOnce": false
-        },
-        "x-mountthor-source-path": "control-plane/admin-api/src/routes/me.rs",
-        "x-mountthor-stability": "v1alpha1"
+        ]
       }
     },
     "/v1/admin/catalog": {
@@ -5028,16 +5209,7 @@
         "summary": "List Catalog",
         "tags": [
           "catalog"
-        ],
-        "x-mountthor-owner": "admin-api",
-        "x-mountthor-secret-handling": {
-          "acceptsSecret": false,
-          "redactedFields": [],
-          "returnsSecret": false,
-          "returnsSecretOnce": false
-        },
-        "x-mountthor-source-path": "control-plane/admin-api/src/routes/catalog.rs",
-        "x-mountthor-stability": "v1alpha1"
+        ]
       }
     },
     "/v1/admin/catalog/images/{sku}": {
@@ -5086,16 +5258,60 @@
         "summary": "Get Image",
         "tags": [
           "catalog"
-        ],
-        "x-mountthor-owner": "admin-api",
-        "x-mountthor-secret-handling": {
-          "acceptsSecret": false,
-          "redactedFields": [],
-          "returnsSecret": false,
-          "returnsSecretOnce": false
+        ]
+      }
+    },
+    "/v1/admin/customer-users/invite": {
+      "post": {
+        "operationId": "create_customer_user_invite",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCustomerUserInviteRequest"
+              }
+            }
+          },
+          "required": true
         },
-        "x-mountthor-source-path": "control-plane/admin-api/src/routes/catalog.rs",
-        "x-mountthor-stability": "v1alpha1"
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateCustomerUserInviteResponse"
+                }
+              }
+            },
+            "description": "Invitation issued"
+          },
+          "400": {
+            "description": "Request body failed validation"
+          },
+          "401": {
+            "description": "Missing or invalid customer credential"
+          },
+          "403": {
+            "description": "Credential is missing users:write scope"
+          },
+          "409": {
+            "description": "An active customer user already exists with this email, or the customer's identity integration is not yet configured"
+          },
+          "503": {
+            "description": "WorkOS AuthKit unavailable or rejected the invitation"
+          }
+        },
+        "security": [
+          {
+            "api_key_bearer": [
+              "users:write"
+            ]
+          }
+        ],
+        "summary": "Invite a teammate to join the caller's Mount Thor customer via WorkOS\nAuthKit.",
+        "tags": [
+          "customer-users"
+        ]
       }
     },
     "/v1/admin/fleet": {
@@ -5133,16 +5349,7 @@
         "summary": "List Fleet",
         "tags": [
           "fleet"
-        ],
-        "x-mountthor-owner": "admin-api",
-        "x-mountthor-secret-handling": {
-          "acceptsSecret": false,
-          "redactedFields": [],
-          "returnsSecret": false,
-          "returnsSecretOnce": false
-        },
-        "x-mountthor-source-path": "control-plane/admin-api/src/routes/fleet.rs",
-        "x-mountthor-stability": "v1alpha1"
+        ]
       }
     },
     "/v1/admin/fleet/capacity": {
@@ -5177,16 +5384,7 @@
         "summary": "List Capacity",
         "tags": [
           "fleet"
-        ],
-        "x-mountthor-owner": "admin-api",
-        "x-mountthor-secret-handling": {
-          "acceptsSecret": false,
-          "redactedFields": [],
-          "returnsSecret": false,
-          "returnsSecretOnce": false
-        },
-        "x-mountthor-source-path": "control-plane/admin-api/src/routes/fleet.rs",
-        "x-mountthor-stability": "v1alpha1"
+        ]
       }
     },
     "/v1/admin/fleet/usage": {
@@ -5235,16 +5433,96 @@
         "summary": "List Usage",
         "tags": [
           "fleet"
-        ],
-        "x-mountthor-owner": "admin-api",
-        "x-mountthor-secret-handling": {
-          "acceptsSecret": false,
-          "redactedFields": [],
-          "returnsSecret": false,
-          "returnsSecretOnce": false
+        ]
+      }
+    },
+    "/v1/admin/identity": {
+      "get": {
+        "description": "This is the read side of the portal Identity page. v1 returns only\nlocal state (integration status + allowed domains); a follow-up will\nenrich it with WorkOS list calls (connections, domains, AuthKit\nusers) once the basic Setup-SSO flow ships.",
+        "operationId": "get_customer_admin_identity",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerAdminIdentityResponse"
+                }
+              }
+            },
+            "description": "Identity setup status"
+          },
+          "401": {
+            "description": "Missing or invalid customer credential"
+          },
+          "403": {
+            "description": "Credential is missing account:read scope"
+          }
         },
-        "x-mountthor-source-path": "control-plane/admin-api/src/routes/usage.rs",
-        "x-mountthor-stability": "v1alpha1"
+        "security": [
+          {
+            "api_key_bearer": [
+              "account:read"
+            ]
+          }
+        ],
+        "summary": "Return the caller's customer's WorkOS identity setup state.",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/v1/admin/identity-setup-link": {
+      "post": {
+        "description": "The customer admin uses this to configure their org's SSO connection,\nadd a domain, or set up Directory Sync — same WorkOS Admin Portal the\noperator-driven `mtops customer identity-setup-link` flow opens, just\nwithout the operator middleman. The returned URL is one-time use and\nexpires within ~minutes per WorkOS's contract.",
+        "operationId": "issue_customer_admin_identity_setup_link",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueCustomerAdminIdentitySetupLinkRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueCustomerAdminIdentitySetupLinkResponse"
+                }
+              }
+            },
+            "description": "Setup link minted"
+          },
+          "400": {
+            "description": "Request body failed validation"
+          },
+          "401": {
+            "description": "Missing or invalid customer credential"
+          },
+          "403": {
+            "description": "Credential is missing users:write scope"
+          },
+          "404": {
+            "description": "No eligible identity integration for this customer"
+          },
+          "503": {
+            "description": "WorkOS Admin Portal unavailable"
+          }
+        },
+        "security": [
+          {
+            "api_key_bearer": [
+              "users:write"
+            ]
+          }
+        ],
+        "summary": "Mint a fresh WorkOS Admin Portal link for the caller's customer.",
+        "tags": [
+          "identity"
+        ]
       }
     },
     "/v1/admin/identity/principals": {
@@ -5279,16 +5557,7 @@
         "summary": "List Principals",
         "tags": [
           "identity-workload"
-        ],
-        "x-mountthor-owner": "admin-api",
-        "x-mountthor-secret-handling": {
-          "acceptsSecret": false,
-          "redactedFields": [],
-          "returnsSecret": false,
-          "returnsSecretOnce": false
-        },
-        "x-mountthor-source-path": "control-plane/admin-api/src/routes/identity_workload.rs",
-        "x-mountthor-stability": "v1alpha1"
+        ]
       },
       "post": {
         "description": "Creates a binding from a verified external OIDC token to Mount Thor session\nscopes. The request must reference an existing IdP or provide inline IdP\nmaterial that Mount Thor can register or reuse.",
@@ -5340,16 +5609,7 @@
         "summary": "Create Principal",
         "tags": [
           "identity-workload"
-        ],
-        "x-mountthor-owner": "admin-api",
-        "x-mountthor-secret-handling": {
-          "acceptsSecret": false,
-          "redactedFields": [],
-          "returnsSecret": false,
-          "returnsSecretOnce": false
-        },
-        "x-mountthor-source-path": "control-plane/admin-api/src/routes/identity_workload.rs",
-        "x-mountthor-stability": "v1alpha1"
+        ]
       }
     },
     "/v1/admin/identity/principals/{id}": {
@@ -5412,16 +5672,7 @@
         "summary": "Update Principal",
         "tags": [
           "identity-workload"
-        ],
-        "x-mountthor-owner": "admin-api",
-        "x-mountthor-secret-handling": {
-          "acceptsSecret": false,
-          "redactedFields": [],
-          "returnsSecret": false,
-          "returnsSecretOnce": false
-        },
-        "x-mountthor-source-path": "control-plane/admin-api/src/routes/identity_workload.rs",
-        "x-mountthor-stability": "v1alpha1"
+        ]
       }
     },
     "/v1/admin/identity/providers": {
@@ -5456,16 +5707,7 @@
         "summary": "List IdPs",
         "tags": [
           "identity-workload"
-        ],
-        "x-mountthor-owner": "admin-api",
-        "x-mountthor-secret-handling": {
-          "acceptsSecret": false,
-          "redactedFields": [],
-          "returnsSecret": false,
-          "returnsSecretOnce": false
-        },
-        "x-mountthor-source-path": "control-plane/admin-api/src/routes/identity_workload.rs",
-        "x-mountthor-stability": "v1alpha1"
+        ]
       },
       "post": {
         "description": "Adds an external OIDC issuer to the customer's trust boundary. The issuer URL\nis canonicalized on write, and active issuers must be unique per customer.",
@@ -5514,16 +5756,7 @@
         "summary": "Create IdP",
         "tags": [
           "identity-workload"
-        ],
-        "x-mountthor-owner": "admin-api",
-        "x-mountthor-secret-handling": {
-          "acceptsSecret": false,
-          "redactedFields": [],
-          "returnsSecret": false,
-          "returnsSecretOnce": false
-        },
-        "x-mountthor-source-path": "control-plane/admin-api/src/routes/identity_workload.rs",
-        "x-mountthor-stability": "v1alpha1"
+        ]
       }
     },
     "/v1/admin/identity/providers/{id}": {
@@ -5589,16 +5822,7 @@
         "summary": "Update IdP",
         "tags": [
           "identity-workload"
-        ],
-        "x-mountthor-owner": "admin-api",
-        "x-mountthor-secret-handling": {
-          "acceptsSecret": false,
-          "redactedFields": [],
-          "returnsSecret": false,
-          "returnsSecretOnce": false
-        },
-        "x-mountthor-source-path": "control-plane/admin-api/src/routes/identity_workload.rs",
-        "x-mountthor-stability": "v1alpha1"
+        ]
       }
     },
     "/v1/admin/keys": {
@@ -5633,16 +5857,7 @@
         "summary": "List Keys",
         "tags": [
           "api-keys"
-        ],
-        "x-mountthor-owner": "admin-api",
-        "x-mountthor-secret-handling": {
-          "acceptsSecret": false,
-          "redactedFields": [],
-          "returnsSecret": false,
-          "returnsSecretOnce": false
-        },
-        "x-mountthor-source-path": "control-plane/admin-api/src/routes/api_keys.rs",
-        "x-mountthor-stability": "v1alpha1"
+        ]
       },
       "post": {
         "description": "The plaintext `api_key` is returned exactly once. The requested scopes must\nbe covered by the caller's own API-key scopes.\nStore the returned value in a secret manager before discarding the response.",
@@ -5688,18 +5903,7 @@
         "summary": "Create Key",
         "tags": [
           "api-keys"
-        ],
-        "x-mountthor-owner": "admin-api",
-        "x-mountthor-secret-handling": {
-          "acceptsSecret": false,
-          "redactedFields": [
-            "api_key"
-          ],
-          "returnsSecret": true,
-          "returnsSecretOnce": true
-        },
-        "x-mountthor-source-path": "control-plane/admin-api/src/routes/api_keys.rs",
-        "x-mountthor-stability": "v1alpha1"
+        ]
       }
     },
     "/v1/admin/keys/{id}": {
@@ -5749,16 +5953,7 @@
         "summary": "Revoke Key",
         "tags": [
           "api-keys"
-        ],
-        "x-mountthor-owner": "admin-api",
-        "x-mountthor-secret-handling": {
-          "acceptsSecret": false,
-          "redactedFields": [],
-          "returnsSecret": false,
-          "returnsSecretOnce": false
-        },
-        "x-mountthor-source-path": "control-plane/admin-api/src/routes/api_keys.rs",
-        "x-mountthor-stability": "v1alpha1"
+        ]
       }
     },
     "/v1/admin/registrations": {
@@ -5799,19 +5994,7 @@
         "summary": "Register Account",
         "tags": [
           "registration"
-        ],
-        "x-mountthor-owner": "admin-api",
-        "x-mountthor-secret-handling": {
-          "acceptsSecret": true,
-          "redactedFields": [
-            "code",
-            "api_key"
-          ],
-          "returnsSecret": true,
-          "returnsSecretOnce": true
-        },
-        "x-mountthor-source-path": "control-plane/admin-api/src/routes/registration.rs",
-        "x-mountthor-stability": "v1alpha1"
+        ]
       }
     },
     "/v1/admin/registries": {
@@ -5846,16 +6029,7 @@
         "summary": "List Registries",
         "tags": [
           "registries"
-        ],
-        "x-mountthor-owner": "admin-api",
-        "x-mountthor-secret-handling": {
-          "acceptsSecret": false,
-          "redactedFields": [],
-          "returnsSecret": false,
-          "returnsSecretOnce": false
-        },
-        "x-mountthor-source-path": "control-plane/admin-api/src/routes/registries.rs",
-        "x-mountthor-stability": "v1alpha1"
+        ]
       },
       "post": {
         "description": "Creates the registry metadata and returns any provider-specific setup\nrequirements. Supply credentials later with `PATCH /v1/admin/registries/{id}`.",
@@ -5901,16 +6075,7 @@
         "summary": "Create Registry",
         "tags": [
           "registries"
-        ],
-        "x-mountthor-owner": "admin-api",
-        "x-mountthor-secret-handling": {
-          "acceptsSecret": false,
-          "redactedFields": [],
-          "returnsSecret": false,
-          "returnsSecretOnce": false
-        },
-        "x-mountthor-source-path": "control-plane/admin-api/src/routes/registries.rs",
-        "x-mountthor-stability": "v1alpha1"
+        ]
       }
     },
     "/v1/admin/registries/{id}": {
@@ -5959,16 +6124,7 @@
         "summary": "Delete Registry",
         "tags": [
           "registries"
-        ],
-        "x-mountthor-owner": "admin-api",
-        "x-mountthor-secret-handling": {
-          "acceptsSecret": false,
-          "redactedFields": [],
-          "returnsSecret": false,
-          "returnsSecretOnce": false
-        },
-        "x-mountthor-source-path": "control-plane/admin-api/src/routes/registries.rs",
-        "x-mountthor-stability": "v1alpha1"
+        ]
       },
       "get": {
         "description": "Returns metadata and credential fingerprints for one registry grant. Secret\nmaterial is never returned.",
@@ -6015,16 +6171,7 @@
         "summary": "Get Registry",
         "tags": [
           "registries"
-        ],
-        "x-mountthor-owner": "admin-api",
-        "x-mountthor-secret-handling": {
-          "acceptsSecret": false,
-          "redactedFields": [],
-          "returnsSecret": false,
-          "returnsSecretOnce": false
-        },
-        "x-mountthor-source-path": "control-plane/admin-api/src/routes/registries.rs",
-        "x-mountthor-stability": "v1alpha1"
+        ]
       },
       "patch": {
         "description": "Accepts new credential material for a registry grant. The server validates\nshape, stores only protected credential material and fingerprints, and never\nreturns the submitted secret.",
@@ -6084,20 +6231,7 @@
         "summary": "Update Registry",
         "tags": [
           "registries"
-        ],
-        "x-mountthor-owner": "admin-api",
-        "x-mountthor-secret-handling": {
-          "acceptsSecret": true,
-          "redactedFields": [
-            "token",
-            "password",
-            "credential"
-          ],
-          "returnsSecret": false,
-          "returnsSecretOnce": false
-        },
-        "x-mountthor-source-path": "control-plane/admin-api/src/routes/registries.rs",
-        "x-mountthor-stability": "v1alpha1"
+        ]
       }
     },
     "/v1/admin/sessions": {
@@ -6132,16 +6266,7 @@
         "summary": "List Sessions",
         "tags": [
           "sessions"
-        ],
-        "x-mountthor-owner": "admin-api",
-        "x-mountthor-secret-handling": {
-          "acceptsSecret": false,
-          "redactedFields": [],
-          "returnsSecret": false,
-          "returnsSecretOnce": false
-        },
-        "x-mountthor-source-path": "control-plane/admin-api/src/routes/sessions.rs",
-        "x-mountthor-stability": "v1alpha1"
+        ]
       },
       "post": {
         "description": "The returned `session_token` is the bearer credential used for the Compute\nAPI. It is returned once, expires automatically, and cannot be renewed; mint\na replacement session when it expires.",
@@ -6187,19 +6312,48 @@
         "summary": "Create Session",
         "tags": [
           "sessions"
-        ],
-        "x-mountthor-owner": "admin-api",
-        "x-mountthor-secret-handling": {
-          "acceptsSecret": false,
-          "redactedFields": [
-            "api_key",
-            "session_token"
-          ],
-          "returnsSecret": true,
-          "returnsSecretOnce": true
+        ]
+      }
+    },
+    "/v1/admin/sessions/authorize": {
+      "post": {
+        "description": "Returns the WorkOS authorization URL the CLI opens in the browser. The flow\ncompletes at `POST /v1/admin/sessions` with `grant_type=login-handoff`, which\nmints the `mt_session_*` token. The long-lived API-key grant on that same\nendpoint is unaffected.",
+        "operationId": "create_login_request",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLoginRequestRequest"
+              }
+            }
+          },
+          "required": true
         },
-        "x-mountthor-source-path": "control-plane/admin-api/src/routes/sessions.rs",
-        "x-mountthor-stability": "v1alpha1"
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateLoginRequestResponse"
+                }
+              }
+            },
+            "description": "SSO authorization started"
+          },
+          "400": {
+            "description": "Request body failed validation"
+          },
+          "404": {
+            "description": "Identity federation disabled, or customer / identity integration not found"
+          }
+        },
+        "security": [
+          {}
+        ],
+        "summary": "Begin a `mountthor login` browser-SSO authorization.",
+        "tags": [
+          "sessions"
+        ]
       }
     },
     "/v1/admin/sessions/{id}": {
@@ -6249,16 +6403,7 @@
         "summary": "Revoke Session",
         "tags": [
           "sessions"
-        ],
-        "x-mountthor-owner": "admin-api",
-        "x-mountthor-secret-handling": {
-          "acceptsSecret": false,
-          "redactedFields": [],
-          "returnsSecret": false,
-          "returnsSecretOnce": false
-        },
-        "x-mountthor-source-path": "control-plane/admin-api/src/routes/sessions.rs",
-        "x-mountthor-stability": "v1alpha1"
+        ]
       }
     },
     "/v1/compute/api/v1/namespaces/{namespace}/configmaps": {
@@ -9057,6 +9202,44 @@
     {
       "description": "Mount Thor customer API edge",
       "url": "https://api.mountthor.com"
+    }
+  ],
+  "tags": [
+    {
+      "description": "Authenticated customer identity, customer record, tenant context, and account capabilities.",
+      "name": "account"
+    },
+    {
+      "description": "Customer-facing API key creation, rotation, and revocation. Plaintext keys are returned exactly once.",
+      "name": "api-keys"
+    },
+    {
+      "description": "Tenant-scoped catalog of available image and bare-metal SKUs, derived from entitlements and capacity allocations.",
+      "name": "catalog"
+    },
+    {
+      "description": "Short-lived Mount Thor compute-session issuance for Kubernetes-compatible compute access.",
+      "name": "compute"
+    },
+    {
+      "description": "Customer fleet inventory, capacity, and usage views.",
+      "name": "fleet"
+    },
+    {
+      "description": "Customer workload identity: IdP registry (issuers:* scope) and per-tenant principal bindings (principals:* scope). Records carry no credential material — only which external tokens to trust and the scopes/TTL they may mint.",
+      "name": "identity-workload"
+    },
+    {
+      "description": "Customer activation flow that exchanges a Mount Thor signup invite for an active customer/tenant and a session token.",
+      "name": "registration"
+    },
+    {
+      "description": "Customer external image registry grants. Credential material is accepted only on write and never returned by read/list responses.",
+      "name": "registries"
+    },
+    {
+      "description": "Mount Thor session token issuance and revocation against a long-lived API key.",
+      "name": "sessions"
     }
   ],
   "x-mountthor-generated-from": {

@@ -376,7 +376,8 @@ curl -fsSL https://get.mountthor.com/install.sh | sh
 mountthor --version
 ```
 
-The VM SSH flow requires Mount Thor CLI `0.3.5` or newer.
+The VM SSH flow requires Mount Thor CLI `0.3.5` or newer. VM desktop access
+requires Mount Thor CLI `0.3.9` or newer.
 
 List the VM images enabled for your account:
 
@@ -445,6 +446,18 @@ KUBECONFIG="$KCFG" mountthor vm ssh "$VM" \
   --known-hosts-file "$KNOWN_HOSTS"
 ```
 
+Open desktop access:
+
+```bash
+KUBECONFIG="$KCFG" mountthor vm desktop "$VM" \
+  --namespace "$NS" \
+  --local-port 15900 \
+  --timeout 5m
+```
+
+The desktop command prints a local VNC URI. Keep it running while your desktop
+client is connected.
+
 See [Virtual Machines](/compute/virtual-machines) for the VM lifecycle, image
-catalog, optional non-secret bootstrap data, GUI access, reset and reimage, and
-the coming-soon customer-owned image flow.
+catalog, optional non-secret bootstrap data, desktop access, reset and reimage,
+and the coming-soon customer-owned image flow.
