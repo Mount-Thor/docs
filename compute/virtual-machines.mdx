@@ -43,10 +43,11 @@ What to know:
 - Cold starts can take several minutes when Mount Thor prepares the image on a
   host. Warm starts are faster because the selected image is already cached on
   the host.
-- Connect with the Mount Thor CLI over SSH, GUI tunnels, or application port
+- Connect with the Mount Thor CLI over SSH, desktop access, or application port
   tunnels. Mount Thor does not expose the guest IP as the connection interface.
-- The CLI adds a private `screen` tunnel by default. During alpha, you enable
-  macOS Screen Sharing inside the guest before using that tunnel.
+- The CLI brokers VM desktop access through a private `screen` tunnel and a
+  short-lived `VirtualMachineDesktopSession`. You do not set a VNC password in
+  the guest.
 - Deleting a VM removes the VM instance and its access tunnels. The image
   remains available, but future VM creation still depends on your reserved
   capacity or available on-demand capacity.
@@ -76,7 +77,8 @@ curl -fsSL https://get.mountthor.com/install.sh | sh
 mountthor --version
 ```
 
-The VM SSH flow requires Mount Thor CLI `0.3.5` or newer.
+The VM SSH flow requires Mount Thor CLI `0.3.5` or newer. VM desktop access
+requires Mount Thor CLI `0.3.9` or newer.
 
 Set your customer kubeconfig path and tenant namespace:
 
@@ -202,58 +204,28 @@ Run the returned `mountthor vm tunnel` command with a local port value. If the
 VM already exists and you need to publish a new port, recreate it with the full
 port list during alpha.
 
-## Open GUI Access
+## Open Desktop Access
 
-During alpha, GUI access uses a Screen Sharing tunnel after you enable Screen
-Sharing inside the VM.
-
-<Accordion title="Open GUI access during alpha">
-
-Start with SSH access as an admin-capable user. Inside the VM, set a temporary
-VNC password and enable Screen Sharing:
+Open desktop access from your workstation:
 
 ```bash
-REMOTE_USER="$(whoami)"
-
-printf "Temporary VNC password: "
-stty -echo
-IFS= read -r VNC_PW
-stty echo
-printf "\n"
-
-sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
-  -activate \
-  -configure -access -on -users "$REMOTE_USER" -privs -all \
-  -configure -clientopts -setvnclegacy -vnclegacy yes -setvncpw -vncpw "$VNC_PW" \
-  -restart -agent
-
-unset VNC_PW
-```
-
-Then open the local tunnel from your workstation:
-
-```bash
-KUBECONFIG="$KCFG" mountthor vm tunnel "$VM" \
+KUBECONFIG="$KCFG" mountthor vm desktop "$VM" \
   --namespace "$NS" \
-  --port-name screen \
-  --local-port 15900
+  --local-port 15900 \
+  --timeout 5m
 ```
 
-Open the VNC URI:
+The command creates a short-lived desktop session, opens a private tunnel to the
+VM `screen` port, and prints a VNC URI. Keep the command running while the
+desktop client is connected.
 
 ```bash
 open vnc://127.0.0.1:15900
 ```
 
-After the GUI session, disable the temporary VNC password inside the VM:
-
-```bash
-sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
-  -configure -clientopts -setvnclegacy -vnclegacy no \
-  -restart -agent
-```
-
-</Accordion>
+Use a VNC-compatible desktop client. The VM desktop session is passwordless
+because Mount Thor authorizes access through your compute session and the
+temporary `VirtualMachineDesktopSession`.
 
 ## Operate a VM
 
