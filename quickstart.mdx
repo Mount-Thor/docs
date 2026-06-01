@@ -455,8 +455,11 @@ KUBECONFIG="$KCFG" mountthor vm desktop "$VM" \
   --timeout 5m
 ```
 
-The desktop command prints a local VNC URI. Keep it running while your desktop
-client is connected.
+The desktop command prints an Apple Screen Sharing URI such as
+`vnc://:<local-password>@127.0.0.1:15900`. Keep the command running while your
+desktop client is connected, then open the printed URI with Screen Sharing.
+The local password exists only inside the loopback tunnel for your current CLI
+run; it is not a VM login password.
 
 See [Virtual Machines](/compute/virtual-machines) for the VM lifecycle, image
 catalog, optional non-secret bootstrap data, desktop access, reset and reimage,

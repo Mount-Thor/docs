@@ -47,7 +47,8 @@ What to know:
   tunnels. Mount Thor does not expose the guest IP as the connection interface.
 - The CLI brokers VM desktop access through a private `screen` tunnel and a
   short-lived `VirtualMachineDesktopSession`. You do not set a VNC password in
-  the guest.
+  the guest; the CLI generates a one-time local password only for the
+  loopback Apple Screen Sharing connection.
 - Deleting a VM removes the VM instance and its access tunnels. The image
   remains available, but future VM creation still depends on your reserved
   capacity or available on-demand capacity.
@@ -216,16 +217,19 @@ KUBECONFIG="$KCFG" mountthor vm desktop "$VM" \
 ```
 
 The command creates a short-lived desktop session, opens a private tunnel to the
-VM `screen` port, and prints a VNC URI. Keep the command running while the
+VM `screen` port, and prints an Apple Screen Sharing URI such as
+`vnc://:<local-password>@127.0.0.1:15900`. Keep the command running while the
 desktop client is connected.
 
 ```bash
-open vnc://127.0.0.1:15900
+open 'vnc://:<local-password>@127.0.0.1:15900'
 ```
 
-Use a VNC-compatible desktop client. The VM desktop session is passwordless
-because Mount Thor authorizes access through your compute session and the
-temporary `VirtualMachineDesktopSession`.
+Use the exact URI printed by the CLI. The local password is generated for that
+CLI run, is accepted only by the loopback tunnel, and is not a macOS user
+password or a Mount Thor API secret. The VM desktop session itself is
+authorized through your compute session and the temporary
+`VirtualMachineDesktopSession`.
 
 ## Operate a VM
 
