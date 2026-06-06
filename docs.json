@@ -147,18 +147,7 @@
                     "group": "FleetPolicy",
                     "pages": [
                       "GET /v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/fleetpolicies",
-                      "POST /v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/fleetpolicies",
-                      "GET /v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/fleetpolicies/{name}",
-                      "PATCH /v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/fleetpolicies/{name}"
-                    ]
-                  },
-                  {
-                    "group": "ConfigMap",
-                    "pages": [
-                      "GET /v1/compute/api/v1/namespaces/{namespace}/configmaps",
-                      "POST /v1/compute/api/v1/namespaces/{namespace}/configmaps",
-                      "GET /v1/compute/api/v1/namespaces/{namespace}/configmaps/{name}",
-                      "DELETE /v1/compute/api/v1/namespaces/{namespace}/configmaps/{name}"
+                      "GET /v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/fleetpolicies/{name}"
                     ]
                   }
                 ]
