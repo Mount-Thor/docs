@@ -1,25 +1,24 @@
 ---
 title: "Quickstart"
-description: "Access macOS and Apple Silicon compute for AI workloads"
+description: "Get started with Mount Thor bare-metal Macs and macOS virtual machines"
 ---
 
 Mount Thor is a cloud platform making datacenter-scale Apple hardware
 available, performant, and easy to use for reinforcement learning, agentic
 deployments, and enterprise inference. Choose [bare metal](/compute/bare-metal)
-compute for greater flexibility, or use our
-[virtual machines](/compute/virtual-machines) for faster provisioning. This
-page walks you through account setup, authentication, and launching your first
-instance.
+for dedicated hardware, or use [virtual machines](/compute/virtual-machines)
+for faster provisioning. This page walks you through account setup,
+authentication, and launching your first machine.
 
 <Note>
-  Mount Thor is in alpha. We are working closely with early developers, so APIs,
-  resource names, and workflows may evolve as the platform improves.
+  Mount Thor is in alpha. APIs, resource names, and workflows may evolve as
+  the platform improves.
 </Note>
 
 ## Create Account
 
 Mount Thor works directly with alpha customers to set up accounts. We will need
-the following information to set up your account:
+the following information:
 
 - Primary contact email
 - Preferred corporate display name
@@ -73,31 +72,159 @@ displays your first API key.
   shown only once.
 </Warning>
 
-You can manage API key lifecycle in [List Keys](/api-reference/api-keys/list-keys): list
-existing keys, create new keys for rotation, and revoke keys that are no longer
-needed.
+You can manage API keys in [List Keys](/api-reference/api-keys/list-keys):
+list existing keys, create new keys for rotation, and revoke keys that are no
+longer needed.
 
 When compute access is ready, Mount Thor will send a confirmation email to your
 account contact.
 
-## Generate Session Token
+## Install the CLI
 
-For better security, Mount Thor requires short-lived session tokens to access
-compute. Use your API key to generate a session token before making compute
-API calls.
+The `mthr` CLI is the primary interface for managing Mount Thor compute. Install
+it:
 
-Session tokens expire automatically and may not be renewed. When a token
-expires, generate a new one from your API key.
+```bash
+curl -fsSL https://get.mountthor.com/install.sh | sh
+mthr --version
+```
 
-Your session token authenticates API calls; it does not own the compute you
-create. Bare metal leases and virtual machines continue running when a session
-token expires.
+## Authenticate
 
-<Note>
-  Session tokens and access sessions are different. A session token lets
-  `kubectl` call the Compute API. A `MacAccessSession` controls a temporary SSH
-  or Screen Sharing window for an existing bare metal lease.
-</Note>
+Log in through your browser with SSO:
+
+```bash
+mthr login --customer <CUSTOMER_SLUG>
+```
+
+This opens your identity provider in a browser window. After you authenticate,
+the CLI stores a session locally.
+
+Check your identity:
+
+```bash
+mthr whoami
+```
+
+## Get Kubeconfig
+
+Mount Thor exposes compute through the Kubernetes API. The `mthr kubeconfig`
+command writes a kubeconfig that lets both `mthr` and `kubectl` talk to your
+Mount Thor control plane.
+
+```bash
+mthr kubeconfig
+```
+
+By default, the command prompts for a save path (default `~/.kube/mount-thor`).
+Use `--out <PATH>` to skip the prompt.
+
+Set the namespace for your tenant:
+
+```bash
+export MOUNTTHOR_NAMESPACE="tenant-example"
+```
+
+## Provision a Bare-Metal Mac
+
+Allocate a dedicated physical Mac with a single command. Mount Thor provisions
+the hardware, installs the image, and prepares it for access.
+
+Check available hardware classes and images:
+
+```bash
+mthr fleet images
+```
+
+Allocate a machine:
+
+```bash
+mthr bm allocate build-1 --class m4-24g --image xcode-16
+```
+
+This creates a `BareMetalMachine` resource in your Mount Thor control plane.
+Wait for it to become ready, then SSH in:
+
+```bash
+mthr bm ssh build-1
+```
+
+The CLI automatically waits for the machine to be ready (up to 30 seconds by
+default) and brokers a short-lived SSH grant — no separate access session
+needed.
+
+When you're done, release the machine:
+
+```bash
+mthr bm free build-1
+```
+
+Mount Thor revokes access, wipes the host, and returns it to the pool. For the
+full bare-metal lifecycle, see [Bare Metal](/compute/bare-metal).
+
+## Create a Virtual Machine
+
+For faster create/delete cycles, create a virtual machine. Mount Thor places
+the VM on eligible capacity, prepares the image, boots macOS, and publishes
+your requested ports.
+
+```bash
+mthr vm create dev --image macos-15-dev-base --cpu 4 --memory 8 --disk 100 \
+  --port ssh=tcp:22
+```
+
+Wait for the VM to start, then SSH in:
+
+```bash
+mthr vm ssh dev
+```
+
+Open a tunnel to an application port:
+
+```bash
+mthr vm tunnel dev --port-name app --local-port 8443
+```
+
+Delete the VM when you're done:
+
+```bash
+mthr vm delete dev
+```
+
+See [Virtual Machines](/compute/virtual-machines) for the full VM lifecycle,
+desktop access, port publishing, and bootstrap data.
+
+## Advanced: Direct Kubernetes Access
+
+Every `mthr` command maps to a Kubernetes Custom Resource under the
+`compute.mountthor.com/v1alpha1` API group. You can also manage resources
+directly with `kubectl` using the kubeconfig from `mthr kubeconfig`.
+
+List your bare-metal machines:
+
+```bash
+kubectl get baremetalmachines
+```
+
+List your VMs:
+
+```bash
+kubectl get virtualmachines
+```
+
+Browse the image catalog:
+
+```bash
+kubectl get images
+```
+
+See the [Bare Metal](/compute/bare-metal) and
+[Virtual Machines](/compute/virtual-machines) guides for full CRD examples.
+
+## Programmatic Access
+
+For CI/CD and automation, use API keys with session tokens instead of
+browser-based SSO.
 
 Generate a session token:
 
@@ -110,20 +237,17 @@ curl -X POST https://api.mountthor.com/v1/admin/sessions \
   -d '{ "session_ttl_seconds": 900 }'
 ```
 
-The response includes a `session_token` of the form `mt_session_*`. Session
-tokens can last from 5 to 60 minutes; the default is 15 minutes. They inherit
-the scopes on the API key, so you cannot use session token generation to expand
-access.
+Session tokens expire automatically (5–60 minutes, default 15 minutes). When a
+token expires, generate a new one from your API key.
+
+For headless CLI authentication (CI pipelines, automation), use principal-based
+login:
 
 ```bash
-export MT_SESSION_TOKEN="mt_session_01JZ8M7EXAMPLE"
+mthr login --principal <PRINCIPAL_ID>
 ```
 
-Refresh your session token before it expires. The helper below mints a new
-token, updates your local `kubectl` credential, and prints an `export` command
-for the current shell.
-
-<Accordion title="Automate Session Token Rotation">
+<Accordion title="Automate session token rotation">
 
 Set `MT_API_KEY` from your secret manager:
 
@@ -178,289 +302,4 @@ chmod +x mt-refresh-session.sh
 source <(./mt-refresh-session.sh)
 ```
 
-The helper requires `jq` and `kubectl`. It does not store your API key. To
-refresh your session token later, reload `MT_API_KEY` from your secret manager
-and run:
-
-```bash
-source <(./mt-refresh-session.sh)
-```
-
-To stop future session generation from an API key, revoke that API key in [List
-Keys](/api-reference/api-keys/list-keys).
-
 </Accordion>
-
-## Configure Compute API
-
-Mount Thor exposes compute through the Kubernetes API at `/v1/compute`.
-Instead of creating pods or jobs, you create Kubernetes Custom Resources:
-`MacLease` for bare metal hosts and `VirtualMachine` for virtual machines. This
-keeps compute management declarative: you submit the state you want, and Mount
-Thor provisions and reconciles the underlying Apple hardware.
-
-Mount Thor compute resources are namespaced. Set your tenant namespace so
-`kubectl` creates and reads `MacLease` and `VirtualMachine` resources in the
-right tenant.
-
-You will need your Mount Thor tenant namespace to configure the Compute API. You
-can retrieve it with this command:
-
-```bash
-curl -fsS https://api.mountthor.com/v1/admin/account \
-  -H "Authorization: Bearer $MT_API_KEY" \
-  | jq -r '.tenants[] | "\(.namespace_name)\t\(.status)"'
-```
-
-Use the `namespace_name` value for the tenant you want to manage, then configure
-`kubectl` with the Mount Thor compute API URL and your session token:
-
-```bash
-export NS="tenant-example"
-export KCFG="${HOME}/.kube/mount-thor"
-
-mkdir -p "$(dirname "$KCFG")"
-
-kubectl --kubeconfig "$KCFG" config set-cluster mount-thor \
-  --server=https://api.mountthor.com/v1/compute
-
-kubectl --kubeconfig "$KCFG" config set-credentials mount-thor-session \
-  --token="$MT_SESSION_TOKEN"
-
-kubectl --kubeconfig "$KCFG" config set-context mount-thor \
-  --cluster=mount-thor \
-  --user=mount-thor-session \
-  --namespace="$NS"
-
-kubectl --kubeconfig "$KCFG" config use-context mount-thor
-```
-
-## Provision a Physical Mac
-
-Provision a physical Mac by creating a `MacLease`.
-
-List the hardware profiles and macOS image channels enabled for your account:
-
-```bash
-kubectl --kubeconfig "$KCFG" get macleaseclasses
-kubectl --kubeconfig "$KCFG" get macimagechannels
-```
-
-Use one `MacLeaseClass` name for `leaseClassRef` and one `MacImageChannel` name
-for `imageChannelRef`. In this example, `m4-24g` is the hardware profile and
-`xcode-16-stable` is the macOS image.
-
-Save the following as `bm-01.json`:
-
-```json
-{
-  "apiVersion": "control.mountthor.dev/v1alpha1",
-  "kind": "MacLease",
-  "metadata": {
-    "name": "bm-01"
-  },
-  "spec": {
-    "leaseClassRef": "m4-24g",
-    "imageChannelRef": "xcode-16-stable",
-    "accessPolicy": {
-      "ssh": true,
-      "screenSharingOverSsh": true
-    },
-    "releasePolicy": "wipe-and-reenroll"
-  }
-}
-```
-
-Apply the `MacLease`:
-
-```bash
-kubectl --kubeconfig "$KCFG" -n "$NS" apply -f bm-01.json
-kubectl --kubeconfig "$KCFG" -n "$NS" wait maclease bm-01 \
-  --for=jsonpath='{.status.readyForAccess}'=true \
-  --timeout=30m
-```
-
-Check when the instance is ready for access:
-
-```bash
-kubectl --kubeconfig "$KCFG" -n "$NS" get maclease bm-01 \
-  -o jsonpath='{.status.phase}{" readyForAccess="}{.status.readyForAccess}{" failure="}{.status.failureCode}{"\n"}'
-```
-
-When the command returns `Ready readyForAccess=true`, the instance is ready to
-connect. If `failure` is populated, use that value when contacting Mount Thor.
-
-The `MacLease` keeps the bare metal instance allocated for you.
-`MacAccessSession` is separate: it creates a temporary connection grant for an
-existing, ready lease. You can create a new access session when an old one
-expires without reprovisioning the instance.
-
-Create a `MacAccessSession` for `bm-01`. Save the following as
-`bm-01-ssh.json`:
-
-```json
-{
-  "apiVersion": "control.mountthor.dev/v1alpha1",
-  "kind": "MacAccessSession",
-  "metadata": {
-    "name": "bm-01-ssh"
-  },
-  "spec": {
-    "leaseRef": "bm-01",
-    "principal": "alex@example.com",
-    "type": "ssh",
-    "requestedTTL": "2h",
-    "reason": "First-run smoke test."
-  }
-}
-```
-
-Replace `alex@example.com` with your approved work email.
-
-Mount Thor returns a CLI command for SSH access. The Mount Thor CLI is a v0
-product in early development.
-
-Install the CLI:
-
-```bash
-curl -fsSL https://get.mountthor.com/install.sh | sh
-mountthor --version
-```
-
-Apply the access session and read the SSH command:
-
-```bash
-kubectl --kubeconfig "$KCFG" -n "$NS" apply -f bm-01-ssh.json
-kubectl --kubeconfig "$KCFG" -n "$NS" wait macaccesssession bm-01-ssh \
-  --for=jsonpath='{.status.phase}'=Active \
-  --timeout=5m
-kubectl --kubeconfig "$KCFG" -n "$NS" get macaccesssession bm-01-ssh \
-  -o jsonpath='{.status.connectionInfo.command}{"\n"}'
-```
-
-Expected output:
-
-```bash
-mountthor lease ssh bm-01 --namespace tenant-example --access-session bm-01-ssh
-```
-
-Run the returned command to open SSH access to the bare metal instance.
-
-```bash
-export KUBECONFIG="$KCFG"
-
-mountthor lease ssh bm-01 --namespace "$NS" --access-session bm-01-ssh
-```
-
-For the full bare-metal lifecycle (release, ports, failure handling), see
-[Bare Metal](/compute/bare-metal).
-
-## Create a Virtual Machine
-
-For faster create/delete cycles, create a virtual machine with the Mount Thor
-CLI. The CLI creates the `VirtualMachine`, installs your SSH public key through
-non-secret bootstrap data, waits for the VM to start, and opens SSH through a
-private tunnel.
-
-During alpha, use a Mount Thor-provided VM image. Customer-owned VM images are
-not available yet; see [Virtual Machines](/compute/virtual-machines) for how
-the image catalog works.
-
-VM creation can take a few minutes. Mount Thor places the VM, prepares the
-image, boots macOS, and applies your SSH key before the SSH command succeeds.
-
-Install the CLI if you did not already install it for bare metal access:
-
-```bash
-curl -fsSL https://get.mountthor.com/install.sh | sh
-mountthor --version
-```
-
-The VM SSH flow requires Mount Thor CLI `0.3.5` or newer. VM desktop access
-requires Mount Thor CLI `0.3.9` or newer.
-
-List the VM images enabled for your account:
-
-```bash
-kubectl --kubeconfig "$KCFG" -n "$NS" get virtualmachineimages
-```
-
-Use one `VirtualMachineImage` name for `IMAGE`. In this example,
-`macos-15-dev-base` is the VM image.
-
-Set a VM name, image, and local SSH key path:
-
-```bash
-export VM="vm-01"
-export IMAGE="macos-15-dev-base"
-export KEY="$HOME/.ssh/mountthor-$VM"
-export KNOWN_HOSTS="$HOME/.ssh/mountthor-$VM-known-hosts"
-```
-
-Create a local SSH key for this VM:
-
-```bash
-mkdir -p "$HOME/.ssh"
-test -f "$KEY" || ssh-keygen -t ed25519 -f "$KEY" -N "" -C "mountthor-$VM"
-chmod 600 "$KEY"
-```
-
-Read the SSH username from the selected image:
-
-```bash
-export VM_USER="$(
-  kubectl --kubeconfig "$KCFG" -n "$NS" get virtualmachineimages.vm.mountthor.dev "$IMAGE" \
-    -o jsonpath='{.spec.guestBootstrap.username}'
-)"
-echo "$VM_USER"
-```
-
-Create the VM with SSH access:
-
-```bash
-KUBECONFIG="$KCFG" mountthor vm create "$VM" \
-  --namespace "$NS" \
-  --image "$IMAGE" \
-  --port ssh=tcp:22 \
-  --ssh-user "$VM_USER" \
-  --ssh-public-key-file "$KEY.pub" \
-  --wait
-```
-
-The command returns after Mount Thor creates the VM, installs your public key,
-and the VM reaches its running state.
-
-Inspect the VM:
-
-```bash
-KUBECONFIG="$KCFG" mountthor vm get "$VM" --namespace "$NS"
-```
-
-Connect with SSH:
-
-```bash
-KUBECONFIG="$KCFG" mountthor vm ssh "$VM" \
-  --namespace "$NS" \
-  --ssh-user "$VM_USER" \
-  --identity-file "$KEY" \
-  --known-hosts-file "$KNOWN_HOSTS"
-```
-
-Open desktop access:
-
-```bash
-KUBECONFIG="$KCFG" mountthor vm desktop "$VM" \
-  --namespace "$NS" \
-  --local-port 15900 \
-  --timeout 5m
-```
-
-The desktop command prints an Apple Screen Sharing URI such as
-`vnc://:<local-password>@127.0.0.1:15900`. Keep the command running while your
-desktop client is connected, then open the printed URI with Screen Sharing.
-The local password exists only inside the loopback tunnel for your current CLI
-run; it is not a VM login password.
-
-See [Virtual Machines](/compute/virtual-machines) for the VM lifecycle, image
-catalog, optional non-secret bootstrap data, desktop access, reset and reimage,
-and the coming-soon customer-owned image flow.
