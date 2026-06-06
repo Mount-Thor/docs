@@ -1,1082 +1,46 @@
 {
   "components": {
     "schemas": {
-      "ConfigMapV1": {
-        "additionalProperties": true,
-        "description": "Kubernetes core/v1 ConfigMap accepted only for Mount Thor customer VM bootstrap data. Tenant admission requires metadata.labels.vm.mountthor.dev/customer-bootstrap=true for customer create, update, patch, and delete.",
-        "properties": {
-          "apiVersion": {
-            "description": "Kubernetes API version for this bootstrap ConfigMap.",
-            "enum": [
-              "v1"
-            ],
-            "type": "string"
-          },
-          "binaryData": {
-            "additionalProperties": {
-              "contentEncoding": "base64",
-              "type": "string"
-            },
-            "description": "Non-secret binary bootstrap data encoded as base64 values.",
-            "type": "object"
-          },
-          "data": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "description": "Non-secret bootstrap key/value data. Do not place credentials or private keys here.",
-            "type": "object"
-          },
-          "immutable": {
-            "description": "Whether Kubernetes should prevent future changes to this ConfigMap.",
-            "type": "boolean"
-          },
-          "kind": {
-            "description": "Kubernetes resource kind. Must be `ConfigMap`.",
-            "enum": [
-              "ConfigMap"
-            ],
-            "type": "string"
-          },
-          "metadata": {
-            "additionalProperties": true,
-            "description": "Kubernetes object metadata. Customer-created bootstrap ConfigMaps must include the required Mount Thor bootstrap label.",
-            "properties": {
-              "annotations": {
-                "additionalProperties": {
-                  "type": "string"
-                },
-                "description": "Optional annotations attached to the ConfigMap.",
-                "type": "object"
-              },
-              "labels": {
-                "additionalProperties": {
-                  "type": "string"
-                },
-                "description": "Labels attached to the ConfigMap.",
-                "properties": {
-                  "vm.mountthor.dev/customer-bootstrap": {
-                    "description": "Required label proving this ConfigMap is customer bootstrap data.",
-                    "enum": [
-                      "true"
-                    ],
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "vm.mountthor.dev/customer-bootstrap"
-                ],
-                "type": "object"
-              },
-              "name": {
-                "description": "ConfigMap name inside the tenant namespace.",
-                "maxLength": 253,
-                "minLength": 1,
-                "type": "string"
-              },
-              "namespace": {
-                "description": "Must match the namespace bound to the Mount Thor compute session.",
-                "type": "string"
-              }
-            },
-            "required": [
-              "name",
-              "labels"
-            ],
-            "type": "object"
-          }
-        },
-        "required": [
-          "apiVersion",
-          "kind",
-          "metadata"
-        ],
-        "type": "object",
-        "x-mountthor-api-surface": "customer-v1",
-        "x-mountthor-source-path": "control-plane/manager/config/admission/validating-policies.yaml"
-      },
-      "MacAccessSessionV1ALPHA1": {
-        "description": "Customer request to open short-lived access to a ready MacLease.",
-        "properties": {
-          "apiVersion": {
-            "description": "Kubernetes API version for this MacAccessSession resource. Use `control.mountthor.dev/v1alpha1`.",
-            "type": "string"
-          },
-          "kind": {
-            "description": "Kubernetes resource kind. Must be `MacAccessSession`.",
-            "type": "string"
-          },
-          "metadata": {
-            "description": "Kubernetes object metadata for the MacAccessSession in the tenant namespace.",
-            "type": "object"
-          },
-          "spec": {
-            "description": "Desired customer-owned state for the MacAccessSession.",
-            "properties": {
-              "leaseRef": {
-                "description": "Name of the ready MacLease to open access for.",
-                "maxLength": 253,
-                "minLength": 1,
-                "type": "string"
-              },
-              "principal": {
-                "description": "Customer user or automation identity that will use the session.",
-                "maxLength": 256,
-                "minLength": 1,
-                "type": "string"
-              },
-              "reason": {
-                "description": "Optional audit reason for opening access.",
-                "maxLength": 512,
-                "type": "string"
-              },
-              "requestedTTL": {
-                "description": "Requested session lifetime.",
-                "pattern": "^[0-9]+(m|h)$",
-                "type": "string"
-              },
-              "type": {
-                "description": "Access type to open, such as SSH or Screen Sharing over SSH.",
-                "enum": [
-                  "ssh",
-                  "screen-sharing-over-ssh"
-                ],
-                "type": "string"
-              }
-            },
-            "required": [
-              "leaseRef",
-              "type",
-              "requestedTTL",
-              "principal"
-            ],
-            "type": "object"
-          },
-          "status": {
-            "description": "Observed Mount Thor status for the MacAccessSession. Customers read status; create and update requests should not set it.",
-            "properties": {
-              "conditions": {
-                "description": "Kubernetes-style readiness and failure conditions.",
-                "items": {
-                  "properties": {
-                    "lastTransitionTime": {
-                      "format": "date-time",
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    },
-                    "observedGeneration": {
-                      "format": "int64",
-                      "type": "integer"
-                    },
-                    "reason": {
-                      "type": "string"
-                    },
-                    "status": {
-                      "enum": [
-                        "True",
-                        "False",
-                        "Unknown"
-                      ],
-                      "type": "string"
-                    },
-                    "type": {
-                      "enum": [
-                        "LeaseResolved",
-                        "LeaseReady",
-                        "PrincipalResolved",
-                        "Granted",
-                        "Expired"
-                      ],
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "type",
-                    "status",
-                    "reason",
-                    "lastTransitionTime"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
-              },
-              "connectionInfo": {
-                "properties": {
-                  "clientUriTemplate": {
-                    "type": "string"
-                  },
-                  "command": {
-                    "type": "string"
-                  },
-                  "desktopCredential": {
-                    "properties": {
-                      "instructions": {
-                        "type": "string"
-                      },
-                      "username": {
-                        "type": "string"
-                      }
-                    },
-                    "type": "object"
-                  },
-                  "localPortStrategy": {
-                    "enum": [
-                      "caller_selects_free_loopback_port"
-                    ],
-                    "type": "string"
-                  },
-                  "login": {
-                    "type": "string"
-                  },
-                  "sessionCorrelationId": {
-                    "type": "string"
-                  },
-                  "targetHost": {
-                    "type": "string"
-                  },
-                  "targetPort": {
-                    "format": "int32",
-                    "maximum": 65535,
-                    "minimum": 1,
-                    "type": "integer"
-                  }
-                },
-                "type": "object"
-              },
-              "expiresAt": {
-                "format": "date-time",
-                "type": "string"
-              },
-              "failureCode": {
-                "description": "Customer-visible failure code when reconciliation fails.",
-                "enum": [
-                  "",
-                  "LeaseNotFound",
-                  "LeaseNotReady",
-                  "LeaseMaintenance",
-                  "LeaseReleased",
-                  "EnvironmentSuspended",
-                  "ConnectivityPathUnavailable",
-                  "UnsupportedSessionType",
-                  "PrincipalNotAllowed",
-                  "TTLTooLong",
-                  "InvalidTTL",
-                  "AccessSessionConcurrencyExceeded",
-                  "AccessBoundaryError",
-                  "SessionRevoked"
-                ],
-                "type": "string"
-              },
-              "grantedTTL": {
-                "type": "string"
-              },
-              "issuedAt": {
-                "format": "date-time",
-                "type": "string"
-              },
-              "observedGeneration": {
-                "format": "int64",
-                "type": "integer"
-              },
-              "phase": {
-                "description": "Current customer-visible lifecycle phase for the MacAccessSession.",
-                "enum": [
-                  "Pending",
-                  "Granting",
-                  "Active",
-                  "Expired",
-                  "Revoked",
-                  "Failed"
-                ],
-                "type": "string"
-              },
-              "transport": {
-                "type": "string"
-              }
-            },
-            "type": "object"
-          }
-        },
-        "required": [
-          "spec"
-        ],
-        "type": "object"
-      },
-      "MacImageChannelV1ALPHA1": {
-        "description": "Customer-visible macOS image channel available for bare-metal reinstall workflows.",
-        "properties": {
-          "apiVersion": {
-            "description": "Kubernetes API version for this MacImageChannel resource. Use `control.mountthor.dev/v1alpha1`.",
-            "type": "string"
-          },
-          "kind": {
-            "description": "Kubernetes resource kind. Must be `MacImageChannel`.",
-            "type": "string"
-          },
-          "metadata": {
-            "description": "Kubernetes object metadata for the MacImageChannel in the tenant namespace.",
-            "type": "object"
-          },
-          "spec": {
-            "description": "Desired customer-owned state for the MacImageChannel.",
-            "properties": {
-              "agentVersion": {
-                "type": "string"
-              },
-              "channel": {
-                "enum": [
-                  "stable",
-                  "candidate",
-                  "canary",
-                  "deprecated"
-                ],
-                "type": "string"
-              },
-              "displayName": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "macosVersion": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "reclaimBehavior": {
-                "type": "string"
-              },
-              "rolloutPolicy": {
-                "properties": {
-                  "maxParallelHostUpdates": {
-                    "format": "int32",
-                    "minimum": 1,
-                    "type": "integer"
-                  },
-                  "requireQualificationReport": {
-                    "type": "boolean"
-                  }
-                },
-                "type": "object"
-              },
-              "xcodeVersion": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "displayName",
-              "macosVersion",
-              "channel"
-            ],
-            "type": "object"
-          },
-          "status": {
-            "description": "Observed Mount Thor status for the MacImageChannel. Customers read status; create and update requests should not set it.",
-            "properties": {
-              "conditions": {
-                "description": "Kubernetes-style readiness and failure conditions.",
-                "items": {
-                  "properties": {
-                    "lastTransitionTime": {
-                      "format": "date-time",
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    },
-                    "observedGeneration": {
-                      "format": "int64",
-                      "type": "integer"
-                    },
-                    "reason": {
-                      "type": "string"
-                    },
-                    "status": {
-                      "enum": [
-                        "True",
-                        "False",
-                        "Unknown"
-                      ],
-                      "type": "string"
-                    },
-                    "type": {
-                      "enum": [
-                        "Published",
-                        "Qualified",
-                        "Deprecated"
-                      ],
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "type",
-                    "status",
-                    "reason",
-                    "lastTransitionTime"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
-              },
-              "currentRevision": {
-                "type": "string"
-              },
-              "deprecated": {
-                "type": "boolean"
-              },
-              "observedGeneration": {
-                "format": "int64",
-                "type": "integer"
-              }
-            },
-            "type": "object"
-          }
-        },
-        "required": [
-          "spec"
-        ],
-        "type": "object"
-      },
-      "MacIncidentV1ALPHA1": {
-        "description": "Customer-visible incident record for a bare-metal lease or access workflow.",
-        "properties": {
-          "apiVersion": {
-            "description": "Kubernetes API version for this MacIncident resource. Use `control.mountthor.dev/v1alpha1`.",
-            "type": "string"
-          },
-          "kind": {
-            "description": "Kubernetes resource kind. Must be `MacIncident`.",
-            "type": "string"
-          },
-          "metadata": {
-            "description": "Kubernetes object metadata for the MacIncident in the tenant namespace.",
-            "type": "object"
-          },
-          "spec": {
-            "description": "Desired customer-owned state for the MacIncident.",
-            "properties": {
-              "projectionKey": {
-                "maxLength": 253,
-                "minLength": 1,
-                "type": "string"
-              }
-            },
-            "type": "object"
-          },
-          "status": {
-            "description": "Observed Mount Thor status for the MacIncident. Customers read status; create and update requests should not set it.",
-            "properties": {
-              "category": {
-                "enum": [
-                  "Lease",
-                  "Access",
-                  "Site",
-                  "Maintenance",
-                  "Repair"
-                ],
-                "type": "string"
-              },
-              "conditions": {
-                "description": "Kubernetes-style readiness and failure conditions.",
-                "items": {
-                  "properties": {
-                    "lastTransitionTime": {
-                      "format": "date-time",
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    },
-                    "observedGeneration": {
-                      "format": "int64",
-                      "type": "integer"
-                    },
-                    "reason": {
-                      "type": "string"
-                    },
-                    "status": {
-                      "enum": [
-                        "True",
-                        "False",
-                        "Unknown"
-                      ],
-                      "type": "string"
-                    },
-                    "type": {
-                      "enum": [
-                        "Active",
-                        "Resolved"
-                      ],
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "type",
-                    "status",
-                    "reason",
-                    "lastTransitionTime"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
-              },
-              "customerImpact": {
-                "maxLength": 1024,
-                "type": "string"
-              },
-              "observedGeneration": {
-                "format": "int64",
-                "type": "integer"
-              },
-              "openedAt": {
-                "format": "date-time",
-                "type": "string"
-              },
-              "recommendedAction": {
-                "maxLength": 1024,
-                "type": "string"
-              },
-              "resolvedAt": {
-                "format": "date-time",
-                "type": "string"
-              },
-              "severity": {
-                "enum": [
-                  "Info",
-                  "Warning",
-                  "Critical"
-                ],
-                "type": "string"
-              },
-              "summary": {
-                "maxLength": 512,
-                "type": "string"
-              },
-              "targetRef": {
-                "properties": {
-                  "kind": {
-                    "enum": [
-                      "MacLease",
-                      "MacAccessSession",
-                      "Namespace"
-                    ],
-                    "type": "string"
-                  },
-                  "name": {
-                    "type": "string"
-                  }
-                },
-                "type": "object"
-              },
-              "updatedAt": {
-                "format": "date-time",
-                "type": "string"
-              }
-            },
-            "type": "object"
-          }
-        },
-        "type": "object"
-      },
-      "MacLeaseClassV1ALPHA1": {
-        "description": "Customer-visible bare-metal hardware class that can be requested by MacLease resources.",
-        "properties": {
-          "apiVersion": {
-            "description": "Kubernetes API version for this MacLeaseClass resource. Use `control.mountthor.dev/v1alpha1`.",
-            "type": "string"
-          },
-          "kind": {
-            "description": "Kubernetes resource kind. Must be `MacLeaseClass`.",
-            "type": "string"
-          },
-          "metadata": {
-            "description": "Kubernetes object metadata for the MacLeaseClass in the tenant namespace.",
-            "type": "object"
-          },
-          "spec": {
-            "description": "Desired customer-owned state for the MacLeaseClass.",
-            "properties": {
-              "allowedImageChannels": {
-                "items": {
-                  "maxLength": 253,
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              "aneCapable": {
-                "type": "boolean"
-              },
-              "architecture": {
-                "enum": [
-                  "arm64"
-                ],
-                "type": "string"
-              },
-              "cpuCores": {
-                "format": "int32",
-                "minimum": 1,
-                "type": "integer"
-              },
-              "displayName": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "memoryGiB": {
-                "format": "int32",
-                "minimum": 1,
-                "type": "integer"
-              },
-              "metalCapable": {
-                "type": "boolean"
-              },
-              "networkClass": {
-                "minLength": 1,
-                "type": "string"
-              },
-              "performanceExpectationClass": {
-                "enum": [
-                  "dedicated-host-best-effort-local-virtualization"
-                ],
-                "type": "string"
-              },
-              "storageDurabilityClass": {
-                "enum": [
-                  "host-local-ephemeral"
-                ],
-                "type": "string"
-              },
-              "storageGiB": {
-                "format": "int32",
-                "minimum": 1,
-                "type": "integer"
-              },
-              "virtualizationSupportClass": {
-                "enum": [
-                  "customer-local-unmanaged"
-                ],
-                "type": "string"
-              }
-            },
-            "required": [
-              "displayName",
-              "architecture",
-              "cpuCores",
-              "memoryGiB",
-              "storageGiB",
-              "storageDurabilityClass",
-              "virtualizationSupportClass",
-              "performanceExpectationClass",
-              "networkClass"
-            ],
-            "type": "object"
-          },
-          "status": {
-            "description": "Observed Mount Thor status for the MacLeaseClass. Customers read status; create and update requests should not set it.",
-            "properties": {
-              "conditions": {
-                "description": "Kubernetes-style readiness and failure conditions.",
-                "items": {
-                  "properties": {
-                    "lastTransitionTime": {
-                      "format": "date-time",
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    },
-                    "observedGeneration": {
-                      "format": "int64",
-                      "type": "integer"
-                    },
-                    "reason": {
-                      "type": "string"
-                    },
-                    "status": {
-                      "enum": [
-                        "True",
-                        "False",
-                        "Unknown"
-                      ],
-                      "type": "string"
-                    },
-                    "type": {
-                      "enum": [
-                        "Published",
-                        "Deprecated"
-                      ],
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "type",
-                    "status",
-                    "reason",
-                    "lastTransitionTime"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
-              },
-              "deprecationState": {
-                "enum": [
-                  "Active",
-                  "Deprecated",
-                  "Retired"
-                ],
-                "type": "string"
-              },
-              "observedGeneration": {
-                "format": "int64",
-                "type": "integer"
-              }
-            },
-            "type": "object"
-          }
-        },
-        "required": [
-          "spec"
-        ],
-        "type": "object"
-      },
-      "MacLeaseOperationV1ALPHA1": {
-        "description": "Customer request to run an explicit operation, such as reset or reinstall, against a MacLease.",
-        "properties": {
-          "apiVersion": {
-            "description": "Kubernetes API version for this MacLeaseOperation resource. Use `control.mountthor.dev/v1alpha1`.",
-            "type": "string"
-          },
-          "kind": {
-            "description": "Kubernetes resource kind. Must be `MacLeaseOperation`.",
-            "type": "string"
-          },
-          "metadata": {
-            "description": "Kubernetes object metadata for the MacLeaseOperation in the tenant namespace.",
-            "type": "object"
-          },
-          "spec": {
-            "description": "Desired customer-owned state for the MacLeaseOperation.",
-            "properties": {
-              "leaseRef": {
-                "description": "Name of the MacLease to operate on.",
-                "maxLength": 253,
-                "minLength": 1,
-                "type": "string"
-              },
-              "operation": {
-                "description": "Operation to run against the lease, such as reset or reinstall.",
-                "enum": [
-                  "reset",
-                  "reinstall"
-                ],
-                "type": "string"
-              },
-              "reason": {
-                "description": "Optional audit reason for the operation.",
-                "maxLength": 512,
-                "type": "string"
-              },
-              "targetImageChannelRef": {
-                "maxLength": 128,
-                "minLength": 1,
-                "type": "string"
-              }
-            },
-            "required": [
-              "leaseRef",
-              "operation"
-            ],
-            "type": "object",
-            "x-kubernetes-validations": [
-              {
-                "message": "reset must not set targetImageChannelRef",
-                "rule": "self.operation != 'reset' || !has(self.targetImageChannelRef)"
-              },
-              {
-                "message": "reinstall requires targetImageChannelRef",
-                "rule": "self.operation != 'reinstall' || has(self.targetImageChannelRef)"
-              }
-            ]
-          },
-          "status": {
-            "description": "Observed Mount Thor status for the MacLeaseOperation. Customers read status; create and update requests should not set it.",
-            "properties": {
-              "completedAt": {
-                "format": "date-time",
-                "type": "string"
-              },
-              "conditions": {
-                "description": "Kubernetes-style readiness and failure conditions.",
-                "items": {
-                  "properties": {
-                    "lastTransitionTime": {
-                      "format": "date-time",
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    },
-                    "observedGeneration": {
-                      "format": "int64",
-                      "type": "integer"
-                    },
-                    "reason": {
-                      "type": "string"
-                    },
-                    "status": {
-                      "enum": [
-                        "True",
-                        "False",
-                        "Unknown"
-                      ],
-                      "type": "string"
-                    },
-                    "type": {
-                      "enum": [
-                        "LeaseResolved",
-                        "LeaseReleased",
-                        "ReplacementReady",
-                        "Completed"
-                      ],
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "type",
-                    "status",
-                    "reason",
-                    "lastTransitionTime"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
-              },
-              "evidenceRef": {
-                "type": "string"
-              },
-              "failureCode": {
-                "description": "Customer-visible failure code when reconciliation fails.",
-                "enum": [
-                  "",
-                  "InvalidOperation",
-                  "LeaseNotFound",
-                  "LeaseAlreadyTerminated",
-                  "TargetImageMissing",
-                  "ActiveSessionsPresent",
-                  "ReplacementLeaseFailed"
-                ],
-                "type": "string"
-              },
-              "observedGeneration": {
-                "format": "int64",
-                "type": "integer"
-              },
-              "originalLeaseUid": {
-                "type": "string"
-              },
-              "phase": {
-                "description": "Current customer-visible lifecycle phase for the MacLeaseOperation.",
-                "enum": [
-                  "Pending",
-                  "Running",
-                  "Completed",
-                  "Failed"
-                ],
-                "type": "string"
-              },
-              "releaseRequestedAt": {
-                "format": "date-time",
-                "type": "string"
-              },
-              "replacementLeaseReadyForAccess": {
-                "type": "boolean"
-              },
-              "replacementLeaseUid": {
-                "type": "string"
-              },
-              "resolvedAccessPolicy": {
-                "properties": {
-                  "screenSharingOverSsh": {
-                    "type": "boolean"
-                  },
-                  "ssh": {
-                    "type": "boolean"
-                  }
-                },
-                "type": "object"
-              },
-              "resolvedImageChannelRef": {
-                "type": "string"
-              },
-              "resolvedLeaseClassRef": {
-                "type": "string"
-              },
-              "resolvedReleasePolicy": {
-                "enum": [
-                  "",
-                  "wipe-and-reenroll"
-                ],
-                "type": "string"
-              },
-              "startedAt": {
-                "format": "date-time",
-                "type": "string"
-              }
-            },
-            "type": "object"
-          }
-        },
-        "required": [
-          "spec"
-        ],
-        "type": "object"
-      },
-      "MacLeaseV1ALPHA1": {
+      "BareMetalMachineV1ALPHA1": {
         "description": "Customer-owned bare-metal Mac allocation managed through the Compute API.",
         "properties": {
           "apiVersion": {
-            "description": "Kubernetes API version for this MacLease resource. Use `control.mountthor.dev/v1alpha1`.",
+            "description": "Kubernetes API version for this BareMetalMachine resource. Use `compute.mountthor.com/v1alpha1`.",
             "type": "string"
           },
           "kind": {
-            "description": "Kubernetes resource kind. Must be `MacLease`.",
+            "description": "Kubernetes resource kind. Must be `BareMetalMachine`.",
             "type": "string"
           },
           "metadata": {
-            "description": "Kubernetes object metadata for the MacLease in the tenant namespace.",
+            "description": "Kubernetes object metadata for the BareMetalMachine in the tenant namespace.",
             "type": "object"
           },
           "spec": {
-            "description": "Desired customer-owned state for the MacLease.",
+            "description": "Desired customer-owned state for the BareMetalMachine.",
             "properties": {
-              "accessPolicy": {
-                "description": "Access methods to prepare for this lease.",
-                "properties": {
-                  "screenSharingOverSsh": {
-                    "default": false,
-                    "type": "boolean"
-                  },
-                  "ssh": {
-                    "default": true,
-                    "type": "boolean"
-                  }
-                },
-                "type": "object"
-              },
-              "imageChannelRef": {
-                "description": "macOS image channel to install before access is granted.",
-                "maxLength": 128,
-                "minLength": 1,
+              "class": {
                 "type": "string"
               },
-              "leaseClassRef": {
-                "description": "Bare-metal hardware class to allocate.",
-                "maxLength": 128,
-                "minLength": 1,
+              "image": {
                 "type": "string"
               },
-              "placement": {
-                "description": "Optional placement preferences for capacity selection.",
-                "properties": {
-                  "antiCoLocateWithLeases": {
-                    "items": {
-                      "maxLength": 253,
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "maxItems": 16,
-                    "type": "array",
-                    "x-kubernetes-list-type": "set"
-                  },
-                  "coLocateWithLeases": {
-                    "items": {
-                      "maxLength": 253,
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "maxItems": 16,
-                    "type": "array",
-                    "x-kubernetes-list-type": "set"
-                  },
-                  "preferredSelectors": {
-                    "additionalProperties": {
-                      "maxLength": 128,
-                      "type": "string"
-                    },
-                    "type": "object"
-                  },
-                  "requiredSelectors": {
-                    "additionalProperties": {
-                      "maxLength": 128,
-                      "type": "string"
-                    },
-                    "type": "object"
-                  },
-                  "spread": {
-                    "items": {
-                      "properties": {
-                        "maxSkew": {
-                          "format": "int32",
-                          "maximum": 8,
-                          "minimum": 1,
-                          "type": "integer"
-                        },
-                        "topologyKey": {
-                          "enum": [
-                            "topology.mountthor.dev/site",
-                            "topology.mountthor.dev/rack"
-                          ],
-                          "type": "string"
-                        },
-                        "whenUnsatisfiable": {
-                          "enum": [
-                            "DoNotSchedule",
-                            "ScheduleAnyway"
-                          ],
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "topologyKey",
-                        "maxSkew",
-                        "whenUnsatisfiable"
-                      ],
-                      "type": "object"
-                    },
-                    "maxItems": 4,
-                    "type": "array"
-                  }
-                },
-                "type": "object"
-              },
-              "releasePolicy": {
-                "description": "Host cleanup policy applied when the lease is deleted.",
-                "enum": [
-                  "wipe-and-reenroll"
-                ],
+              "region": {
                 "type": "string"
               }
             },
             "required": [
-              "leaseClassRef",
-              "imageChannelRef"
+              "class"
             ],
-            "type": "object",
-            "x-kubernetes-validations": [
-              {
-                "message": "screen sharing requires ssh access",
-                "rule": "!has(self.accessPolicy) || !has(self.accessPolicy.screenSharingOverSsh) || self.accessPolicy.screenSharingOverSsh == false || self.accessPolicy.ssh == true"
-              },
-              {
-                "message": "the same lease must not appear in both coLocateWithLeases and antiCoLocateWithLeases",
-                "rule": "!has(self.placement) || !has(self.placement.coLocateWithLeases) || !has(self.placement.antiCoLocateWithLeases) || self.placement.coLocateWithLeases.all(x, !(x in self.placement.antiCoLocateWithLeases))"
-              }
-            ]
+            "type": "object"
           },
           "status": {
-            "description": "Observed Mount Thor status for the MacLease. Customers read status; create and update requests should not set it.",
+            "description": "Observed Mount Thor status for the BareMetalMachine. Customers read status; create and update requests should not set it.",
             "properties": {
-              "allocatedAt": {
-                "format": "date-time",
+              "allocationDecisionID": {
+                "type": "string"
+              },
+              "capacitySource": {
                 "type": "string"
               },
               "conditions": {
@@ -1106,16 +70,6 @@
                       "type": "string"
                     },
                     "type": {
-                      "enum": [
-                        "LeaseClassResolved",
-                        "ImageChannelResolved",
-                        "PlacementFeasible",
-                        "HostBound",
-                        "HostPrepared",
-                        "ReadyForAccess",
-                        "Degraded",
-                        "Terminal"
-                      ],
                       "type": "string"
                     }
                   },
@@ -1129,256 +83,11 @@
                 },
                 "type": "array"
               },
-              "customerEndpoints": {
+              "desktopSession": {
+                "description": "Browser desktop access contract per ADR 0014. Ships the credential-side fields only in this PR; access-broker / launcher / expiration fields land with their reconciler in a later phase under provider-neutral names.",
                 "properties": {
-                  "sshHost": {
-                    "type": "string"
-                  },
-                  "sshPort": {
-                    "format": "int32",
-                    "maximum": 65535,
-                    "minimum": 1,
-                    "type": "integer"
-                  }
-                },
-                "type": "object"
-              },
-              "failureCode": {
-                "description": "Customer-visible failure code when reconciliation fails.",
-                "enum": [
-                  "",
-                  "LeaseClassMissing",
-                  "ImageChannelMissing",
-                  "NoMatchingHosts",
-                  "NoAllocatableHosts",
-                  "CommittedCapacityUnavailable",
-                  "ProviderStateStale",
-                  "ReclaimRequired",
-                  "TenantSuspended",
-                  "EntitlementMissing",
-                  "ControlPlaneNotAllowed",
-                  "CapacityStateMissing",
-                  "CommitmentShortfall",
-                  "SpareFloorProtected",
-                  "OnDemandCapacityUnavailable",
-                  "SpotCapacityUnavailable",
-                  "PreemptionRequired",
-                  "ProviderStateContradictory",
-                  "CanarySliceGuardrail",
-                  "NetworkConformanceBlocked",
-                  "AllocationNotFound",
-                  "InvalidState",
-                  "AppleDependencyUnavailable",
-                  "EnvironmentRestricted",
-                  "EnvironmentSuspended",
-                  "HostPreparationFailed",
-                  "HostMissing",
-                  "HostUnreachable",
-                  "HostNotManageable",
-                  "HostBaselineNotApplied",
-                  "HostImageChannelIncompatible",
-                  "RepairInProgress",
-                  "ReclaimFailed",
-                  "TerminalHostFailure"
-                ],
-                "type": "string"
-              },
-              "observedGeneration": {
-                "format": "int64",
-                "type": "integer"
-              },
-              "phase": {
-                "description": "Current customer-visible lifecycle phase for the MacLease.",
-                "enum": [
-                  "Pending",
-                  "Binding",
-                  "Ready",
-                  "Active",
-                  "Degraded",
-                  "Reclaiming",
-                  "Released",
-                  "Failed"
-                ],
-                "type": "string"
-              },
-              "readyAt": {
-                "format": "date-time",
-                "type": "string"
-              },
-              "readyForAccess": {
-                "type": "boolean"
-              },
-              "releasedAt": {
-                "format": "date-time",
-                "type": "string"
-              }
-            },
-            "type": "object"
-          }
-        },
-        "required": [
-          "spec"
-        ],
-        "type": "object"
-      },
-      "TenantCapacityStatusV1ALPHA1": {
-        "description": "Read-only customer capacity signal for the tenant namespace.",
-        "properties": {
-          "apiVersion": {
-            "description": "Kubernetes API version for this TenantCapacityStatus resource. Use `control.mountthor.dev/v1alpha1`.",
-            "type": "string"
-          },
-          "kind": {
-            "description": "Kubernetes resource kind. Must be `TenantCapacityStatus`.",
-            "type": "string"
-          },
-          "metadata": {
-            "description": "Kubernetes object metadata for the TenantCapacityStatus in the tenant namespace.",
-            "type": "object"
-          },
-          "spec": {
-            "description": "Desired customer-owned state for the TenantCapacityStatus.",
-            "properties": {
-              "product": {
-                "enum": [
-                  "bare-metal",
-                  "vm-backing"
-                ],
-                "type": "string"
-              },
-              "resourceClass": {
-                "maxLength": 128,
-                "minLength": 1,
-                "type": "string"
-              }
-            },
-            "type": "object"
-          },
-          "status": {
-            "description": "Observed Mount Thor status for the TenantCapacityStatus. Customers read status; create and update requests should not set it.",
-            "properties": {
-              "activeLeases": {
-                "format": "int64",
-                "minimum": 0,
-                "type": "integer"
-              },
-              "committedQuantity": {
-                "format": "int64",
-                "minimum": 0,
-                "type": "integer"
-              },
-              "maxActiveLeases": {
-                "format": "int64",
-                "minimum": 0,
-                "type": "integer"
-              },
-              "observedAt": {
-                "format": "date-time",
-                "type": "string"
-              },
-              "onDemandAllowed": {
-                "type": "boolean"
-              },
-              "projectionFresh": {
-                "type": "boolean"
-              },
-              "reservedReadyAvailable": {
-                "format": "int64",
-                "minimum": 0,
-                "type": "integer"
-              },
-              "reservedReclaiming": {
-                "format": "int64",
-                "minimum": 0,
-                "type": "integer"
-              },
-              "reservedRepairing": {
-                "format": "int64",
-                "minimum": 0,
-                "type": "integer"
-              },
-              "reservedUnavailable": {
-                "format": "int64",
-                "minimum": 0,
-                "type": "integer"
-              }
-            },
-            "type": "object"
-          }
-        },
-        "type": "object"
-      },
-      "VirtualMachineImageOperationV1ALPHA1": {
-        "description": "Customer request to run an explicit operation against a VM image.",
-        "properties": {
-          "apiVersion": {
-            "description": "Kubernetes API version for this VirtualMachineImageOperation resource. Use `vm.mountthor.dev/v1alpha1`.",
-            "type": "string"
-          },
-          "kind": {
-            "description": "Kubernetes resource kind. Must be `VirtualMachineImageOperation`.",
-            "type": "string"
-          },
-          "metadata": {
-            "description": "Kubernetes object metadata for the VirtualMachineImageOperation in the tenant namespace.",
-            "type": "object"
-          },
-          "spec": {
-            "description": "Desired customer-owned state for the VirtualMachineImageOperation.",
-            "properties": {
-              "architecture": {
-                "type": "string"
-              },
-              "defaultResources": {
-                "properties": {
-                  "cpu": {
-                    "format": "int32",
-                    "type": "integer"
-                  },
-                  "diskGiB": {
-                    "format": "int32",
-                    "type": "integer"
-                  },
-                  "memoryMiB": {
-                    "format": "int32",
-                    "type": "integer"
-                  }
-                },
-                "type": "object"
-              },
-              "displayName": {
-                "type": "string"
-              },
-              "guestBootstrap": {
-                "properties": {
-                  "transport": {
-                    "type": "string"
-                  },
-                  "username": {
-                    "type": "string"
-                  }
-                },
-                "type": "object"
-              },
-              "guestOs": {
-                "type": "string"
-              },
-              "guestVersion": {
-                "type": "string"
-              },
-              "operation": {
-                "description": "Operation requested by the customer.",
-                "enum": [
-                  "import"
-                ],
-                "type": "string"
-              },
-              "requestedImageRef": {
-                "type": "string"
-              },
-              "source": {
-                "properties": {
-                  "pullSecretRef": {
+                  "credentialSecretRef": {
+                    "description": "Reference to the Opaque Secret in the same namespace that the host-side bridge reads for the per-lease desktop password.",
                     "properties": {
                       "name": {
                         "type": "string"
@@ -1386,31 +95,77 @@
                     },
                     "type": "object"
                   },
-                  "ref": {
-                    "type": "string"
-                  },
-                  "sha256": {
-                    "type": "string"
-                  },
-                  "type": {
+                  "phase": {
+                    "description": "Pending | Active | Expired | Revoked | Failed.",
                     "type": "string"
                   }
                 },
                 "type": "object"
               },
-              "tartRegistryRef": {
+              "failureCode": {
+                "description": "Customer-visible failure code when reconciliation fails.",
                 "type": "string"
+              },
+              "failureMessage": {
+                "description": "Customer-visible failure message when reconciliation fails.",
+                "type": "string"
+              },
+              "observedGeneration": {
+                "format": "int64",
+                "type": "integer"
+              },
+              "phase": {
+                "description": "Current customer-visible lifecycle phase for the BareMetalMachine.",
+                "type": "string"
+              },
+              "readyForAccess": {
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "spec"
+        ],
+        "type": "object"
+      },
+      "FleetPolicyV1ALPHA1": {
+        "description": "Customer-visible FleetPolicy resource in the Mount Thor Compute API.",
+        "properties": {
+          "apiVersion": {
+            "description": "Kubernetes API version for this FleetPolicy resource. Use `compute.mountthor.com/v1alpha1`.",
+            "type": "string"
+          },
+          "kind": {
+            "description": "Kubernetes resource kind. Must be `FleetPolicy`.",
+            "type": "string"
+          },
+          "metadata": {
+            "description": "Kubernetes object metadata for the FleetPolicy in the tenant namespace.",
+            "type": "object"
+          },
+          "spec": {
+            "description": "Desired customer-owned state for the FleetPolicy.",
+            "properties": {
+              "spot": {
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "monthlySpendLimitCents": {
+                    "format": "int64",
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
               }
             },
             "type": "object"
           },
           "status": {
-            "description": "Observed Mount Thor status for the VirtualMachineImageOperation. Customers read status; create and update requests should not set it.",
+            "description": "Observed Mount Thor status for the FleetPolicy. Customers read status; create and update requests should not set it.",
             "properties": {
-              "completedAt": {
-                "format": "date-time",
-                "type": "string"
-              },
               "conditions": {
                 "description": "Kubernetes-style readiness and failure conditions.",
                 "items": {
@@ -1430,19 +185,22 @@
                       "type": "string"
                     },
                     "status": {
+                      "enum": [
+                        "True",
+                        "False",
+                        "Unknown"
+                      ],
                       "type": "string"
                     },
                     "type": {
-                      "description": "SourceResolved TargetImageReady Validated Completed",
                       "type": "string"
                     }
                   },
                   "required": [
-                    "lastTransitionTime",
-                    "message",
-                    "reason",
+                    "type",
                     "status",
-                    "type"
+                    "reason",
+                    "lastTransitionTime"
                   ],
                   "type": "object"
                 },
@@ -1450,44 +208,11 @@
               },
               "failureCode": {
                 "description": "Customer-visible failure code when reconciliation fails.",
-                "enum": [
-                  "InvalidOperation",
-                  "SourceRefMissing",
-                  "DigestMissing",
-                  "ImagePullDenied",
-                  "ImageValidationFailed",
-                  "PullSecretInvalid",
-                  "SourceDigestMismatch",
-                  "ValidationPolicyMissing",
-                  "ValidationPolicyInvalid",
-                  "GuestBootstrapInvalid",
-                  "TargetConflict",
-                  "ProviderMissing"
-                ],
                 "type": "string"
               },
               "observedGeneration": {
                 "format": "int64",
                 "type": "integer"
-              },
-              "phase": {
-                "description": "Current customer-visible lifecycle phase for the VirtualMachineImageOperation.",
-                "enum": [
-                  "Pending",
-                  "Ready",
-                  "Completed",
-                  "Failed"
-                ],
-                "type": "string"
-              },
-              "resolvedImageRef": {
-                "type": "string"
-              },
-              "validationEvidenceRef": {
-                "type": "string"
-              },
-              "verifiedDigest": {
-                "type": "string"
               }
             },
             "type": "object"
@@ -1495,23 +220,23 @@
         },
         "type": "object"
       },
-      "VirtualMachineImageV1ALPHA1": {
-        "description": "Customer-visible VM image available for VirtualMachine resources.",
+      "ImageV1ALPHA1": {
+        "description": "Customer-visible image available for bare-metal reinstall and VM workflows.",
         "properties": {
           "apiVersion": {
-            "description": "Kubernetes API version for this VirtualMachineImage resource. Use `vm.mountthor.dev/v1alpha1`.",
+            "description": "Kubernetes API version for this Image resource. Use `compute.mountthor.com/v1alpha1`.",
             "type": "string"
           },
           "kind": {
-            "description": "Kubernetes resource kind. Must be `VirtualMachineImage`.",
+            "description": "Kubernetes resource kind. Must be `Image`.",
             "type": "string"
           },
           "metadata": {
-            "description": "Kubernetes object metadata for the VirtualMachineImage in the tenant namespace.",
+            "description": "Kubernetes object metadata for the Image in the tenant namespace.",
             "type": "object"
           },
           "spec": {
-            "description": "Desired customer-owned state for the VirtualMachineImage.",
+            "description": "Desired customer-owned state for the Image.",
             "properties": {
               "approvedForDemo": {
                 "type": "boolean"
@@ -1537,8 +262,8 @@
                 "format": "int32",
                 "type": "integer"
               },
-              "digest": {
-                "type": "string"
+              "deprecated": {
+                "type": "boolean"
               },
               "displayName": {
                 "type": "string"
@@ -1546,9 +271,6 @@
               "guestBootstrap": {
                 "properties": {
                   "transport": {
-                    "type": "string"
-                  },
-                  "username": {
                     "type": "string"
                   }
                 },
@@ -1563,21 +285,42 @@
               "imageRef": {
                 "type": "string"
               },
-              "providerType": {
-                "default": "tart",
-                "type": "string"
-              },
               "sha256": {
                 "type": "string"
               },
-              "tartRegistryRef": {
-                "type": "string"
+              "source": {
+                "properties": {
+                  "pullSecretRef": {
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "ref": {
+                    "type": "string"
+                  },
+                  "sha256": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "targets": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
               }
             },
             "type": "object"
           },
           "status": {
-            "description": "Observed Mount Thor status for the VirtualMachineImage. Customers read status; create and update requests should not set it.",
+            "description": "Observed Mount Thor status for the Image. Customers read status; create and update requests should not set it.",
             "properties": {
               "conditions": {
                 "description": "Kubernetes-style readiness and failure conditions.",
@@ -1598,40 +341,42 @@
                       "type": "string"
                     },
                     "status": {
+                      "enum": [
+                        "True",
+                        "False",
+                        "Unknown"
+                      ],
                       "type": "string"
                     },
                     "type": {
-                      "description": "Approved Ready Cached PlacementPlanned",
                       "type": "string"
                     }
                   },
                   "required": [
-                    "lastTransitionTime",
-                    "message",
-                    "reason",
+                    "type",
                     "status",
-                    "type"
+                    "reason",
+                    "lastTransitionTime"
                   ],
                   "type": "object"
                 },
                 "type": "array"
               },
-              "observedGeneration": {
-                "format": "int64",
-                "type": "integer"
-              },
-              "phase": {
-                "description": "Current customer-visible lifecycle phase for the VirtualMachineImage.",
-                "enum": [
-                  "Pending",
-                  "Capturing",
-                  "Ready",
-                  "Failed"
-                ],
+              "digest": {
                 "type": "string"
               },
-              "validationResultRef": {
+              "failureCode": {
+                "description": "Customer-visible failure code when reconciliation fails.",
                 "type": "string"
+              },
+              "ready": {
+                "type": "boolean"
+              },
+              "targetReadiness": {
+                "additionalProperties": {
+                  "type": "boolean"
+                },
+                "type": "object"
               }
             },
             "type": "object"
@@ -1639,126 +384,36 @@
         },
         "type": "object"
       },
-      "VirtualMachineOperationV1ALPHA1": {
-        "description": "Customer request to run an explicit operation against a VirtualMachine.",
+      "MachineClassV1ALPHA1": {
+        "description": "Customer-visible bare-metal hardware class that can be requested by BareMetalMachine resources.",
         "properties": {
           "apiVersion": {
-            "description": "Kubernetes API version for this VirtualMachineOperation resource. Use `vm.mountthor.dev/v1alpha1`.",
+            "description": "Kubernetes API version for this MachineClass resource. Use `compute.mountthor.com/v1alpha1`.",
             "type": "string"
           },
           "kind": {
-            "description": "Kubernetes resource kind. Must be `VirtualMachineOperation`.",
+            "description": "Kubernetes resource kind. Must be `MachineClass`.",
             "type": "string"
           },
           "metadata": {
-            "description": "Kubernetes object metadata for the VirtualMachineOperation in the tenant namespace.",
+            "description": "Kubernetes object metadata for the MachineClass in the tenant namespace.",
             "type": "object"
           },
           "spec": {
-            "description": "Desired customer-owned state for the VirtualMachineOperation.",
+            "description": "Desired customer-owned state for the MachineClass.",
             "properties": {
-              "mode": {
+              "cpuFamily": {
                 "type": "string"
               },
-              "operation": {
-                "description": "Operation requested by the customer.",
-                "enum": [
-                  "reset",
-                  "reimage"
-                ],
-                "type": "string"
-              },
-              "reason": {
-                "description": "Optional audit reason for the operation.",
-                "type": "string"
-              },
-              "targetImageRef": {
-                "type": "string"
-              },
-              "virtualMachineRef": {
-                "type": "string"
-              }
-            },
-            "type": "object"
-          },
-          "status": {
-            "description": "Observed Mount Thor status for the VirtualMachineOperation. Customers read status; create and update requests should not set it.",
-            "properties": {
-              "completedAt": {
-                "format": "date-time",
-                "type": "string"
-              },
-              "conditions": {
-                "description": "Kubernetes-style readiness and failure conditions.",
-                "items": {
-                  "properties": {
-                    "lastTransitionTime": {
-                      "format": "date-time",
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    },
-                    "observedGeneration": {
-                      "format": "int64",
-                      "type": "integer"
-                    },
-                    "reason": {
-                      "type": "string"
-                    },
-                    "status": {
-                      "type": "string"
-                    },
-                    "type": {
-                      "description": "VirtualMachineResolved Completed",
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "lastTransitionTime",
-                    "message",
-                    "reason",
-                    "status",
-                    "type"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
-              },
-              "evidenceRef": {
-                "type": "string"
-              },
-              "failureCode": {
-                "description": "Customer-visible failure code when reconciliation fails.",
-                "enum": [
-                  "InvalidOperation",
-                  "VirtualMachineNotFound",
-                  "TargetImageMissing",
-                  "ProviderDeleteFailed",
-                  "ProviderUnavailable"
-                ],
-                "type": "string"
-              },
-              "observedGeneration": {
-                "format": "int64",
+              "memoryGiB": {
+                "format": "int32",
                 "type": "integer"
               },
-              "phase": {
-                "description": "Current customer-visible lifecycle phase for the VirtualMachineOperation.",
-                "enum": [
-                  "Pending",
-                  "Running",
-                  "Completed",
-                  "Failed"
-                ],
-                "type": "string"
-              },
-              "resolvedImageDigest": {
-                "type": "string"
-              },
-              "startedAt": {
-                "format": "date-time",
-                "type": "string"
+              "regions": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
               }
             },
             "type": "object"
@@ -1767,14 +422,14 @@
         "type": "object"
       },
       "VirtualMachineV1ALPHA1": {
-        "description": "Customer-owned macOS virtual machine managed through the Compute API.",
+        "description": "Customer-visible VirtualMachine resource in the Mount Thor Compute API.",
         "properties": {
           "apiVersion": {
-            "description": "Kubernetes API version for this VirtualMachine resource. Use `vm.mountthor.dev/v1alpha1`.",
+            "description": "APIVersion defines the versioned schema of this representation of an object.\nServers should convert recognized schemas to the latest internal value, and\nmay reject unrecognized values.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
             "type": "string"
           },
           "kind": {
-            "description": "Kubernetes resource kind. Must be `VirtualMachine`.",
+            "description": "Kind is a string value representing the REST resource this object represents.\nServers may infer this from the endpoint the client submits requests to.\nCannot be updated.\nIn CamelCase.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
             "type": "string"
           },
           "metadata": {
@@ -1782,104 +437,17 @@
             "type": "object"
           },
           "spec": {
-            "description": "Desired customer-owned state for the VirtualMachine.",
+            "description": "VirtualMachineSpec defines the desired state of a VirtualMachine.",
             "properties": {
-              "artifactPolicy": {
-                "properties": {
-                  "destinationRef": {
-                    "properties": {
-                      "name": {
-                        "type": "string"
-                      }
-                    },
-                    "type": "object"
-                  },
-                  "exportUri": {
-                    "type": "string"
-                  },
-                  "paths": {
-                    "items": {
-                      "type": "string"
-                    },
-                    "type": "array"
-                  },
-                  "redactionPolicyRef": {
-                    "type": "string"
-                  }
-                },
-                "type": "object"
-              },
-              "bootstrap": {
-                "description": "Optional non-secret bootstrap configuration.",
-                "properties": {
-                  "metadataService": {
-                    "properties": {
-                      "enabled": {
-                        "type": "boolean"
-                      }
-                    },
-                    "type": "object"
-                  },
-                  "userDataConfigMapRef": {
-                    "type": "string"
-                  }
-                },
-                "type": "object"
-              },
-              "cpu": {
-                "format": "int32",
-                "type": "integer"
-              },
-              "diskGiB": {
-                "format": "int32",
-                "type": "integer"
-              },
               "imageRef": {
-                "description": "Image reference used to boot the VM.",
                 "type": "string"
-              },
-              "memoryMiB": {
-                "format": "int32",
-                "type": "integer"
-              },
-              "networkPolicy": {
-                "properties": {
-                  "allow": {
-                    "items": {
-                      "properties": {
-                        "host": {
-                          "type": "string"
-                        },
-                        "name": {
-                          "type": "string"
-                        },
-                        "port": {
-                          "format": "int32",
-                          "type": "integer"
-                        },
-                        "protocol": {
-                          "type": "string"
-                        },
-                        "purpose": {
-                          "type": "string"
-                        }
-                      },
-                      "type": "object"
-                    },
-                    "type": "array"
-                  },
-                  "defaultAction": {
-                    "type": "string"
-                  }
-                },
-                "type": "object"
               },
               "ports": {
                 "items": {
+                  "description": "VMPort specifies a port to expose on a virtual machine.",
                   "properties": {
                     "exposure": {
                       "enum": [
-                        "",
                         "private-tunnel"
                       ],
                       "type": "string"
@@ -1891,16 +459,10 @@
                       "type": "integer"
                     },
                     "name": {
-                      "minLength": 1,
                       "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
                       "type": "string"
                     },
                     "protocol": {
-                      "default": "tcp",
-                      "enum": [
-                        "",
-                        "tcp"
-                      ],
                       "type": "string"
                     }
                   },
@@ -1910,79 +472,30 @@
                   ],
                   "type": "object"
                 },
-                "type": "array",
-                "x-kubernetes-list-map-keys": [
-                  "name"
-                ],
-                "x-kubernetes-list-type": "map"
-              },
-              "powerState": {
-                "default": "Running",
-                "enum": [
-                  "Running",
-                  "Stopped"
-                ],
-                "type": "string"
-              },
-              "resetPolicy": {
-                "properties": {
-                  "cleanupEvidence": {
-                    "type": "string"
-                  },
-                  "mode": {
-                    "type": "string"
-                  }
-                },
-                "type": "object"
-              },
-              "retentionPolicy": {
-                "properties": {
-                  "artifactDays": {
-                    "format": "int32",
-                    "type": "integer"
-                  },
-                  "imageCacheDays": {
-                    "format": "int32",
-                    "type": "integer"
-                  },
-                  "warmCapacityHold": {
-                    "type": "boolean"
-                  }
-                },
-                "type": "object"
-              },
-              "services": {
-                "items": {
-                  "properties": {
-                    "name": {
-                      "type": "string"
-                    },
-                    "portName": {
-                      "type": "string"
-                    },
-                    "readiness": {
-                      "properties": {
-                        "expectedStatus": {
-                          "format": "int32",
-                          "type": "integer"
-                        },
-                        "path": {
-                          "type": "string"
-                        },
-                        "timeoutSeconds": {
-                          "format": "int32",
-                          "type": "integer"
-                        },
-                        "type": {
-                          "type": "string"
-                        }
-                      },
-                      "type": "object"
-                    }
-                  },
-                  "type": "object"
-                },
                 "type": "array"
+              },
+              "resources": {
+                "description": "VMResources specifies the resource requirements for a virtual machine.",
+                "properties": {
+                  "cpu": {
+                    "format": "int32",
+                    "type": "integer"
+                  },
+                  "diskGiB": {
+                    "format": "int32",
+                    "type": "integer"
+                  },
+                  "memoryGiB": {
+                    "format": "int32",
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "cpu",
+                  "diskGiB",
+                  "memoryGiB"
+                ],
+                "type": "object"
               }
             },
             "required": [
@@ -1991,27 +504,13 @@
             "type": "object"
           },
           "status": {
-            "description": "Observed Mount Thor status for the VirtualMachine. Customers read status; create and update requests should not set it.",
+            "description": "VirtualMachineStatus defines the observed state of a VirtualMachine.",
             "properties": {
-              "artifactStatuses": {
-                "items": {
-                  "properties": {
-                    "exportUri": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    },
-                    "path": {
-                      "type": "string"
-                    },
-                    "phase": {
-                      "type": "string"
-                    }
-                  },
-                  "type": "object"
-                },
-                "type": "array"
+              "allocationDecisionID": {
+                "type": "string"
+              },
+              "capacitySource": {
+                "type": "string"
               },
               "cleanupEvidenceRef": {
                 "type": "string"
@@ -2019,26 +518,44 @@
               "conditions": {
                 "description": "Kubernetes-style readiness and failure conditions.",
                 "items": {
+                  "description": "Condition contains details for one aspect of the current state of this API Resource.",
                   "properties": {
                     "lastTransitionTime": {
+                      "description": "lastTransitionTime is the last time the condition transitioned from one status to another.\nThis should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.",
                       "format": "date-time",
                       "type": "string"
                     },
                     "message": {
+                      "description": "message is a human readable message indicating details about the transition.\nThis may be an empty string.",
+                      "maxLength": 32768,
                       "type": "string"
                     },
                     "observedGeneration": {
+                      "description": "observedGeneration represents the .metadata.generation that the condition was set based upon.\nFor instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date\nwith respect to the current state of the instance.",
                       "format": "int64",
+                      "minimum": 0,
                       "type": "integer"
                     },
                     "reason": {
+                      "description": "reason contains a programmatic identifier indicating the reason for the condition's last transition.\nProducers of specific condition types may define expected values and meanings for this field,\nand whether the values are considered a guaranteed API.\nThe value should be a CamelCase string.\nThis field may not be empty.",
+                      "maxLength": 1024,
+                      "minLength": 1,
+                      "pattern": "^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$",
                       "type": "string"
                     },
                     "status": {
+                      "description": "status of the condition, one of True, False, Unknown.",
+                      "enum": [
+                        "True",
+                        "False",
+                        "Unknown"
+                      ],
                       "type": "string"
                     },
                     "type": {
-                      "description": "PlacementResolved CapacityAdmitted HostResolved ImageResolved ImageReady ImageCachedOnHost ProviderBound PortsPublished MetricsPersisted Ready Terminal",
+                      "description": "type of condition in CamelCase or in foo.example.com/CamelCase.",
+                      "maxLength": 316,
+                      "pattern": "^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$",
                       "type": "string"
                     }
                   },
@@ -2055,34 +572,45 @@
               },
               "failureCode": {
                 "description": "Customer-visible failure code when reconciliation fails.",
-                "enum": [
-                  "NoCapacityAvailable",
-                  "PlacementUnavailable",
-                  "ImageNotFound",
-                  "ImageNotReady",
-                  "ImageNotApproved",
-                  "ProviderCreateFailed",
-                  "ProviderStartFailed",
-                  "ProviderStopFailed",
-                  "ProviderDeleteFailed",
-                  "ProviderIPUnavailable",
-                  "BootstrapFailed",
-                  "PortPublishFailed",
-                  "ProviderUnavailable",
-                  "ServiceProbeFailed",
-                  "ArtifactExportFailed",
-                  "ResetFailed",
-                  "GuestBootstrapMissing",
-                  "GuestBootstrapInvalid"
-                ],
                 "type": "string"
               },
               "failureMessage": {
                 "description": "Customer-visible failure message when reconciliation fails.",
                 "type": "string"
               },
-              "lastResetRef": {
-                "type": "string"
+              "imagePullProgress": {
+                "properties": {
+                  "bytesExpected": {
+                    "format": "int64",
+                    "type": "integer"
+                  },
+                  "bytesWritten": {
+                    "format": "int64",
+                    "type": "integer"
+                  },
+                  "elapsedSeconds": {
+                    "format": "int64",
+                    "type": "integer"
+                  },
+                  "layerCount": {
+                    "format": "int32",
+                    "type": "integer"
+                  },
+                  "operationId": {
+                    "type": "string"
+                  },
+                  "rateBps": {
+                    "format": "int64",
+                    "type": "integer"
+                  },
+                  "stage": {
+                    "type": "string"
+                  },
+                  "updatedAt": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
               },
               "observedGeneration": {
                 "format": "int64",
@@ -2090,31 +618,13 @@
               },
               "phase": {
                 "description": "Current customer-visible lifecycle phase for the VirtualMachine.",
-                "enum": [
-                  "Pending",
-                  "Creating",
-                  "Starting",
-                  "Running",
-                  "Stopping",
-                  "Stopped",
-                  "Deleting",
-                  "Failed"
-                ],
                 "type": "string"
               },
               "publishedPorts": {
                 "items": {
+                  "description": "VMPublishedPort describes a customer-safe private access command for a VM port.",
                   "properties": {
                     "accessCommand": {
-                      "type": "string"
-                    },
-                    "credentialInstructions": {
-                      "type": "string"
-                    },
-                    "credentialSource": {
-                      "type": "string"
-                    },
-                    "credentialUsername": {
                       "type": "string"
                     },
                     "exposure": {
@@ -2138,35 +648,14 @@
                 },
                 "type": "array"
               },
-              "readyAt": {
-                "format": "date-time",
-                "type": "string"
+              "readyForAccess": {
+                "type": "boolean"
               },
               "resolvedImageRef": {
                 "type": "string"
               },
-              "serviceStatuses": {
-                "items": {
-                  "properties": {
-                    "lastCheckedAt": {
-                      "format": "date-time",
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    },
-                    "name": {
-                      "type": "string"
-                    },
-                    "ready": {
-                      "type": "boolean"
-                    }
-                  },
-                  "type": "object"
-                },
-                "type": "array"
-              },
               "timings": {
+                "description": "VMTimingStatus records the native VM lifecycle milestones used for latency\nprofiling and readiness gating.",
                 "properties": {
                   "customerReadyAt": {
                     "format": "date-time",
@@ -2176,15 +665,27 @@
                     "format": "date-time",
                     "type": "string"
                   },
+                  "hostDurableAt": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "hostReservedAt": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "intentDurableAt": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
                   "portsPublishedAt": {
                     "format": "date-time",
                     "type": "string"
                   },
-                  "requestAcceptedAt": {
+                  "prepareInstanceStartedAt": {
                     "format": "date-time",
                     "type": "string"
                   },
-                  "servicesReadyAt": {
+                  "startSubmittedAt": {
                     "format": "date-time",
                     "type": "string"
                   }
@@ -2216,1293 +717,10 @@
   },
   "openapi": "3.1.0",
   "paths": {
-    "/v1/compute/api/v1/namespaces/{namespace}/configmaps": {
-      "get": {
-        "description": "Lists tenant-scoped, non-secret VM bootstrap ConfigMaps. Use only ConfigMaps labeled vm.mountthor.dev/customer-bootstrap=true for customer VM bootstrap data.",
-        "operationId": "listConfigMap",
-        "parameters": [
-          {
-            "description": "Tenant namespace returned by Get Account.",
-            "in": "path",
-            "name": "namespace",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Set true for Kubernetes watch semantics when the resource allows watch.",
-            "in": "query",
-            "name": "watch",
-            "required": false,
-            "schema": {
-              "type": "boolean"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConfigMapV1"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "201": {
-            "description": "Created"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "429": {
-            "description": "Rate Limited"
-          }
-        },
-        "security": [
-          {
-            "MountThorSession": [
-              "compute:read"
-            ]
-          }
-        ],
-        "summary": "List VM Bootstrap ConfigMaps",
-        "tags": [
-          "compute"
-        ],
-        "x-kubernetes-group-version-kind": {
-          "group": "",
-          "kind": "ConfigMap",
-          "version": "v1"
-        },
-        "x-mountthor-customer-safe-status": false,
-        "x-mountthor-owner": "manager",
-        "x-mountthor-source-path": "control-plane/manager/config/admission/validating-policies.yaml"
-      },
-      "post": {
-        "description": "Creates tenant-scoped, non-secret VM bootstrap data. The ConfigMap must include label vm.mountthor.dev/customer-bootstrap=true and must not contain credentials or private keys.",
-        "operationId": "createConfigMap",
-        "parameters": [
-          {
-            "description": "Tenant namespace returned by Get Account.",
-            "in": "path",
-            "name": "namespace",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConfigMapV1"
-              }
-            },
-            "application/yaml": {
-              "schema": {
-                "$ref": "#/components/schemas/ConfigMapV1"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConfigMapV1"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "201": {
-            "description": "Created"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "429": {
-            "description": "Rate Limited"
-          }
-        },
-        "security": [
-          {
-            "MountThorSession": [
-              "compute:write"
-            ]
-          }
-        ],
-        "summary": "Create VM Bootstrap ConfigMap",
-        "tags": [
-          "compute"
-        ],
-        "x-kubernetes-group-version-kind": {
-          "group": "",
-          "kind": "ConfigMap",
-          "version": "v1"
-        },
-        "x-mountthor-customer-safe-status": false,
-        "x-mountthor-owner": "manager",
-        "x-mountthor-source-path": "control-plane/manager/config/admission/validating-policies.yaml"
-      }
-    },
-    "/v1/compute/api/v1/namespaces/{namespace}/configmaps/{name}": {
-      "delete": {
-        "description": "Deletes one tenant-scoped VM bootstrap ConfigMap by name.",
-        "operationId": "deleteConfigMap",
-        "parameters": [
-          {
-            "description": "Tenant namespace returned by Get Account.",
-            "in": "path",
-            "name": "namespace",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Kubernetes object name for the ConfigMap.",
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConfigMapV1"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "201": {
-            "description": "Created"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "429": {
-            "description": "Rate Limited"
-          }
-        },
-        "security": [
-          {
-            "MountThorSession": [
-              "compute:write"
-            ]
-          }
-        ],
-        "summary": "Delete VM Bootstrap ConfigMap",
-        "tags": [
-          "compute"
-        ],
-        "x-kubernetes-group-version-kind": {
-          "group": "",
-          "kind": "ConfigMap",
-          "version": "v1"
-        },
-        "x-mountthor-customer-safe-status": false,
-        "x-mountthor-owner": "manager",
-        "x-mountthor-source-path": "control-plane/manager/config/admission/validating-policies.yaml"
-      },
-      "get": {
-        "description": "Returns one tenant-scoped, non-secret VM bootstrap ConfigMap. Generic ConfigMaps and Secrets are not part of the customer API.",
-        "operationId": "getConfigMap",
-        "parameters": [
-          {
-            "description": "Tenant namespace returned by Get Account.",
-            "in": "path",
-            "name": "namespace",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Kubernetes object name for the ConfigMap.",
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConfigMapV1"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "201": {
-            "description": "Created"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "429": {
-            "description": "Rate Limited"
-          }
-        },
-        "security": [
-          {
-            "MountThorSession": [
-              "compute:read"
-            ]
-          }
-        ],
-        "summary": "Get VM Bootstrap ConfigMap",
-        "tags": [
-          "compute"
-        ],
-        "x-kubernetes-group-version-kind": {
-          "group": "",
-          "kind": "ConfigMap",
-          "version": "v1"
-        },
-        "x-mountthor-customer-safe-status": false,
-        "x-mountthor-owner": "manager",
-        "x-mountthor-source-path": "control-plane/manager/config/admission/validating-policies.yaml"
-      }
-    },
-    "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macaccesssessions": {
-      "get": {
-        "description": "Lists short-lived access sessions for ready Mac leases in the tenant namespace.",
-        "operationId": "listMacAccessSession",
-        "parameters": [
-          {
-            "description": "Tenant namespace returned by Get Account.",
-            "in": "path",
-            "name": "namespace",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Set true for Kubernetes watch semantics when the resource allows watch.",
-            "in": "query",
-            "name": "watch",
-            "required": false,
-            "schema": {
-              "type": "boolean"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MacAccessSessionV1ALPHA1"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "201": {
-            "description": "Created"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "429": {
-            "description": "Rate Limited"
-          }
-        },
-        "security": [
-          {
-            "MountThorSession": [
-              "compute:read"
-            ]
-          }
-        ],
-        "summary": "List MacAccessSessions",
-        "tags": [
-          "compute"
-        ],
-        "x-kubernetes-group-version-kind": {
-          "group": "control.mountthor.dev",
-          "kind": "MacAccessSession",
-          "version": "v1alpha1"
-        },
-        "x-mountthor-customer-safe-status": true,
-        "x-mountthor-owner": "manager",
-        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macaccesssessions.yaml"
-      },
-      "post": {
-        "description": "Creates a short-lived SSH or Screen Sharing access session for a ready Mac lease.",
-        "operationId": "createMacAccessSession",
-        "parameters": [
-          {
-            "description": "Tenant namespace returned by Get Account.",
-            "in": "path",
-            "name": "namespace",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MacAccessSessionV1ALPHA1"
-              }
-            },
-            "application/yaml": {
-              "schema": {
-                "$ref": "#/components/schemas/MacAccessSessionV1ALPHA1"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MacAccessSessionV1ALPHA1"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "201": {
-            "description": "Created"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "429": {
-            "description": "Rate Limited"
-          }
-        },
-        "security": [
-          {
-            "MountThorSession": [
-              "compute:write"
-            ]
-          }
-        ],
-        "summary": "Create MacAccessSession",
-        "tags": [
-          "compute"
-        ],
-        "x-kubernetes-group-version-kind": {
-          "group": "control.mountthor.dev",
-          "kind": "MacAccessSession",
-          "version": "v1alpha1"
-        },
-        "x-mountthor-customer-safe-status": true,
-        "x-mountthor-owner": "manager",
-        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macaccesssessions.yaml"
-      }
-    },
-    "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macaccesssessions/{name}": {
-      "delete": {
-        "description": "Deletes one access session by name and closes the corresponding access path.",
-        "operationId": "deleteMacAccessSession",
-        "parameters": [
-          {
-            "description": "Tenant namespace returned by Get Account.",
-            "in": "path",
-            "name": "namespace",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Kubernetes object name for the MacAccessSession.",
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MacAccessSessionV1ALPHA1"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "201": {
-            "description": "Created"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "429": {
-            "description": "Rate Limited"
-          }
-        },
-        "security": [
-          {
-            "MountThorSession": [
-              "compute:write"
-            ]
-          }
-        ],
-        "summary": "Delete MacAccessSession",
-        "tags": [
-          "compute"
-        ],
-        "x-kubernetes-group-version-kind": {
-          "group": "control.mountthor.dev",
-          "kind": "MacAccessSession",
-          "version": "v1alpha1"
-        },
-        "x-mountthor-customer-safe-status": true,
-        "x-mountthor-owner": "manager",
-        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macaccesssessions.yaml"
-      },
-      "get": {
-        "description": "Returns one access session by name, including endpoint and lifecycle status when available.",
-        "operationId": "getMacAccessSession",
-        "parameters": [
-          {
-            "description": "Tenant namespace returned by Get Account.",
-            "in": "path",
-            "name": "namespace",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Kubernetes object name for the MacAccessSession.",
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MacAccessSessionV1ALPHA1"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "201": {
-            "description": "Created"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "429": {
-            "description": "Rate Limited"
-          }
-        },
-        "security": [
-          {
-            "MountThorSession": [
-              "compute:read"
-            ]
-          }
-        ],
-        "summary": "Get MacAccessSession",
-        "tags": [
-          "compute"
-        ],
-        "x-kubernetes-group-version-kind": {
-          "group": "control.mountthor.dev",
-          "kind": "MacAccessSession",
-          "version": "v1alpha1"
-        },
-        "x-mountthor-customer-safe-status": true,
-        "x-mountthor-owner": "manager",
-        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macaccesssessions.yaml"
-      }
-    },
-    "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macimagechannels": {
-      "get": {
-        "description": "Lists customer-visible macOS image channels that can be used for bare-metal lease workflows.",
-        "operationId": "listMacImageChannel",
-        "parameters": [
-          {
-            "description": "Tenant namespace returned by Get Account.",
-            "in": "path",
-            "name": "namespace",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Set true for Kubernetes watch semantics when the resource allows watch.",
-            "in": "query",
-            "name": "watch",
-            "required": false,
-            "schema": {
-              "type": "boolean"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MacImageChannelV1ALPHA1"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "201": {
-            "description": "Created"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "429": {
-            "description": "Rate Limited"
-          }
-        },
-        "security": [
-          {
-            "MountThorSession": [
-              "compute:read"
-            ]
-          }
-        ],
-        "summary": "List MacImageChannels",
-        "tags": [
-          "compute"
-        ],
-        "x-kubernetes-group-version-kind": {
-          "group": "control.mountthor.dev",
-          "kind": "MacImageChannel",
-          "version": "v1alpha1"
-        },
-        "x-mountthor-customer-safe-status": true,
-        "x-mountthor-owner": "manager",
-        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_catalogs.yaml"
-      }
-    },
-    "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macimagechannels/{name}": {
-      "get": {
-        "description": "Returns one macOS image channel by name.",
-        "operationId": "getMacImageChannel",
-        "parameters": [
-          {
-            "description": "Tenant namespace returned by Get Account.",
-            "in": "path",
-            "name": "namespace",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Kubernetes object name for the MacImageChannel.",
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MacImageChannelV1ALPHA1"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "201": {
-            "description": "Created"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "429": {
-            "description": "Rate Limited"
-          }
-        },
-        "security": [
-          {
-            "MountThorSession": [
-              "compute:read"
-            ]
-          }
-        ],
-        "summary": "Get MacImageChannel",
-        "tags": [
-          "compute"
-        ],
-        "x-kubernetes-group-version-kind": {
-          "group": "control.mountthor.dev",
-          "kind": "MacImageChannel",
-          "version": "v1alpha1"
-        },
-        "x-mountthor-customer-safe-status": true,
-        "x-mountthor-owner": "manager",
-        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_catalogs.yaml"
-      }
-    },
-    "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macincidents": {
-      "get": {
-        "description": "Lists customer-visible incidents related to bare-metal lease or access workflows.",
-        "operationId": "listMacIncident",
-        "parameters": [
-          {
-            "description": "Tenant namespace returned by Get Account.",
-            "in": "path",
-            "name": "namespace",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Set true for Kubernetes watch semantics when the resource allows watch.",
-            "in": "query",
-            "name": "watch",
-            "required": false,
-            "schema": {
-              "type": "boolean"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MacIncidentV1ALPHA1"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "201": {
-            "description": "Created"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "429": {
-            "description": "Rate Limited"
-          }
-        },
-        "security": [
-          {
-            "MountThorSession": [
-              "compute:read"
-            ]
-          }
-        ],
-        "summary": "List MacIncidents",
-        "tags": [
-          "compute"
-        ],
-        "x-kubernetes-group-version-kind": {
-          "group": "control.mountthor.dev",
-          "kind": "MacIncident",
-          "version": "v1alpha1"
-        },
-        "x-mountthor-customer-safe-status": true,
-        "x-mountthor-owner": "manager",
-        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macincidents.yaml"
-      }
-    },
-    "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macincidents/{name}": {
-      "get": {
-        "description": "Returns one customer-visible bare-metal incident by name.",
-        "operationId": "getMacIncident",
-        "parameters": [
-          {
-            "description": "Tenant namespace returned by Get Account.",
-            "in": "path",
-            "name": "namespace",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Kubernetes object name for the MacIncident.",
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MacIncidentV1ALPHA1"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "201": {
-            "description": "Created"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "429": {
-            "description": "Rate Limited"
-          }
-        },
-        "security": [
-          {
-            "MountThorSession": [
-              "compute:read"
-            ]
-          }
-        ],
-        "summary": "Get MacIncident",
-        "tags": [
-          "compute"
-        ],
-        "x-kubernetes-group-version-kind": {
-          "group": "control.mountthor.dev",
-          "kind": "MacIncident",
-          "version": "v1alpha1"
-        },
-        "x-mountthor-customer-safe-status": true,
-        "x-mountthor-owner": "manager",
-        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macincidents.yaml"
-      }
-    },
-    "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleaseclasses": {
-      "get": {
-        "description": "Lists customer-visible bare-metal hardware classes available for MacLease requests.",
-        "operationId": "listMacLeaseClass",
-        "parameters": [
-          {
-            "description": "Tenant namespace returned by Get Account.",
-            "in": "path",
-            "name": "namespace",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Set true for Kubernetes watch semantics when the resource allows watch.",
-            "in": "query",
-            "name": "watch",
-            "required": false,
-            "schema": {
-              "type": "boolean"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MacLeaseClassV1ALPHA1"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "201": {
-            "description": "Created"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "429": {
-            "description": "Rate Limited"
-          }
-        },
-        "security": [
-          {
-            "MountThorSession": [
-              "compute:read"
-            ]
-          }
-        ],
-        "summary": "List MacLeaseClasses",
-        "tags": [
-          "compute"
-        ],
-        "x-kubernetes-group-version-kind": {
-          "group": "control.mountthor.dev",
-          "kind": "MacLeaseClass",
-          "version": "v1alpha1"
-        },
-        "x-mountthor-customer-safe-status": true,
-        "x-mountthor-owner": "manager",
-        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_catalogs.yaml"
-      }
-    },
-    "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleaseclasses/{name}": {
-      "get": {
-        "description": "Returns one bare-metal hardware class by name.",
-        "operationId": "getMacLeaseClass",
-        "parameters": [
-          {
-            "description": "Tenant namespace returned by Get Account.",
-            "in": "path",
-            "name": "namespace",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Kubernetes object name for the MacLeaseClass.",
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MacLeaseClassV1ALPHA1"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "201": {
-            "description": "Created"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "429": {
-            "description": "Rate Limited"
-          }
-        },
-        "security": [
-          {
-            "MountThorSession": [
-              "compute:read"
-            ]
-          }
-        ],
-        "summary": "Get MacLeaseClass",
-        "tags": [
-          "compute"
-        ],
-        "x-kubernetes-group-version-kind": {
-          "group": "control.mountthor.dev",
-          "kind": "MacLeaseClass",
-          "version": "v1alpha1"
-        },
-        "x-mountthor-customer-safe-status": true,
-        "x-mountthor-owner": "manager",
-        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_catalogs.yaml"
-      }
-    },
-    "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleaseoperations": {
-      "get": {
-        "description": "Lists explicit operations requested for Mac leases, such as reset or reinstall.",
-        "operationId": "listMacLeaseOperation",
-        "parameters": [
-          {
-            "description": "Tenant namespace returned by Get Account.",
-            "in": "path",
-            "name": "namespace",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Set true for Kubernetes watch semantics when the resource allows watch.",
-            "in": "query",
-            "name": "watch",
-            "required": false,
-            "schema": {
-              "type": "boolean"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MacLeaseOperationV1ALPHA1"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "201": {
-            "description": "Created"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "429": {
-            "description": "Rate Limited"
-          }
-        },
-        "security": [
-          {
-            "MountThorSession": [
-              "compute:read"
-            ]
-          }
-        ],
-        "summary": "List MacLeaseOperations",
-        "tags": [
-          "compute"
-        ],
-        "x-kubernetes-group-version-kind": {
-          "group": "control.mountthor.dev",
-          "kind": "MacLeaseOperation",
-          "version": "v1alpha1"
-        },
-        "x-mountthor-customer-safe-status": true,
-        "x-mountthor-owner": "manager",
-        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macleaseoperations.yaml"
-      },
-      "post": {
-        "description": "Creates an explicit operation request for a Mac lease. Use this for reset or reinstall workflows that should be audited separately from lease deletion.",
-        "operationId": "createMacLeaseOperation",
-        "parameters": [
-          {
-            "description": "Tenant namespace returned by Get Account.",
-            "in": "path",
-            "name": "namespace",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MacLeaseOperationV1ALPHA1"
-              }
-            },
-            "application/yaml": {
-              "schema": {
-                "$ref": "#/components/schemas/MacLeaseOperationV1ALPHA1"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MacLeaseOperationV1ALPHA1"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "201": {
-            "description": "Created"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "429": {
-            "description": "Rate Limited"
-          }
-        },
-        "security": [
-          {
-            "MountThorSession": [
-              "compute:write"
-            ]
-          }
-        ],
-        "summary": "Create MacLeaseOperation",
-        "tags": [
-          "compute"
-        ],
-        "x-kubernetes-group-version-kind": {
-          "group": "control.mountthor.dev",
-          "kind": "MacLeaseOperation",
-          "version": "v1alpha1"
-        },
-        "x-mountthor-customer-safe-status": true,
-        "x-mountthor-owner": "manager",
-        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macleaseoperations.yaml"
-      }
-    },
-    "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleaseoperations/{name}": {
-      "get": {
-        "description": "Returns one Mac lease operation by name, including operation status and failure details when present.",
-        "operationId": "getMacLeaseOperation",
-        "parameters": [
-          {
-            "description": "Tenant namespace returned by Get Account.",
-            "in": "path",
-            "name": "namespace",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Kubernetes object name for the MacLeaseOperation.",
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MacLeaseOperationV1ALPHA1"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "201": {
-            "description": "Created"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "429": {
-            "description": "Rate Limited"
-          }
-        },
-        "security": [
-          {
-            "MountThorSession": [
-              "compute:read"
-            ]
-          }
-        ],
-        "summary": "Get MacLeaseOperation",
-        "tags": [
-          "compute"
-        ],
-        "x-kubernetes-group-version-kind": {
-          "group": "control.mountthor.dev",
-          "kind": "MacLeaseOperation",
-          "version": "v1alpha1"
-        },
-        "x-mountthor-customer-safe-status": true,
-        "x-mountthor-owner": "manager",
-        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macleaseoperations.yaml"
-      }
-    },
-    "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleases": {
+    "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/baremetalmachines": {
       "get": {
         "description": "Lists bare-metal Mac leases in the tenant namespace, including lifecycle status and customer-visible allocation details.",
-        "operationId": "listMacLease",
+        "operationId": "listBareMetalMachine",
         "parameters": [
           {
             "description": "Tenant namespace returned by Get Account.",
@@ -3528,7 +746,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MacLeaseV1ALPHA1"
+                  "$ref": "#/components/schemas/BareMetalMachineV1ALPHA1"
                 }
               }
             },
@@ -3560,22 +778,22 @@
             ]
           }
         ],
-        "summary": "List MacLeases",
+        "summary": "List BareMetalMachines",
         "tags": [
           "compute"
         ],
         "x-kubernetes-group-version-kind": {
-          "group": "control.mountthor.dev",
-          "kind": "MacLease",
+          "group": "compute.mountthor.com",
+          "kind": "BareMetalMachine",
           "version": "v1alpha1"
         },
         "x-mountthor-customer-safe-status": true,
         "x-mountthor-owner": "manager",
-        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macleases.yaml"
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_baremetalmachines.yaml"
       },
       "post": {
         "description": "Creates a bare-metal Mac lease request. The request selects a lease class, image channel, access policy, and optional placement preferences.",
-        "operationId": "createMacLease",
+        "operationId": "createBareMetalMachine",
         "parameters": [
           {
             "description": "Tenant namespace returned by Get Account.",
@@ -3591,12 +809,12 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/MacLeaseV1ALPHA1"
+                "$ref": "#/components/schemas/BareMetalMachineV1ALPHA1"
               }
             },
             "application/yaml": {
               "schema": {
-                "$ref": "#/components/schemas/MacLeaseV1ALPHA1"
+                "$ref": "#/components/schemas/BareMetalMachineV1ALPHA1"
               }
             }
           },
@@ -3607,7 +825,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MacLeaseV1ALPHA1"
+                  "$ref": "#/components/schemas/BareMetalMachineV1ALPHA1"
                 }
               }
             },
@@ -3639,24 +857,24 @@
             ]
           }
         ],
-        "summary": "Create MacLease",
+        "summary": "Create BareMetalMachine",
         "tags": [
           "compute"
         ],
         "x-kubernetes-group-version-kind": {
-          "group": "control.mountthor.dev",
-          "kind": "MacLease",
+          "group": "compute.mountthor.com",
+          "kind": "BareMetalMachine",
           "version": "v1alpha1"
         },
         "x-mountthor-customer-safe-status": true,
         "x-mountthor-owner": "manager",
-        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macleases.yaml"
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_baremetalmachines.yaml"
       }
     },
-    "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleases/{name}": {
+    "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/baremetalmachines/{name}": {
       "delete": {
         "description": "Deletes one bare-metal Mac lease by name and starts the configured cleanup policy.",
-        "operationId": "deleteMacLease",
+        "operationId": "deleteBareMetalMachine",
         "parameters": [
           {
             "description": "Tenant namespace returned by Get Account.",
@@ -3668,7 +886,7 @@
             }
           },
           {
-            "description": "Kubernetes object name for the MacLease.",
+            "description": "Kubernetes object name for the BareMetalMachine.",
             "in": "path",
             "name": "name",
             "required": true,
@@ -3682,7 +900,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MacLeaseV1ALPHA1"
+                  "$ref": "#/components/schemas/BareMetalMachineV1ALPHA1"
                 }
               }
             },
@@ -3714,22 +932,22 @@
             ]
           }
         ],
-        "summary": "Delete MacLease",
+        "summary": "Delete BareMetalMachine",
         "tags": [
           "compute"
         ],
         "x-kubernetes-group-version-kind": {
-          "group": "control.mountthor.dev",
-          "kind": "MacLease",
+          "group": "compute.mountthor.com",
+          "kind": "BareMetalMachine",
           "version": "v1alpha1"
         },
         "x-mountthor-customer-safe-status": true,
         "x-mountthor-owner": "manager",
-        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macleases.yaml"
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_baremetalmachines.yaml"
       },
       "get": {
         "description": "Returns one bare-metal Mac lease by name, including desired state and customer-visible status.",
-        "operationId": "getMacLease",
+        "operationId": "getBareMetalMachine",
         "parameters": [
           {
             "description": "Tenant namespace returned by Get Account.",
@@ -3741,7 +959,7 @@
             }
           },
           {
-            "description": "Kubernetes object name for the MacLease.",
+            "description": "Kubernetes object name for the BareMetalMachine.",
             "in": "path",
             "name": "name",
             "required": true,
@@ -3755,7 +973,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MacLeaseV1ALPHA1"
+                  "$ref": "#/components/schemas/BareMetalMachineV1ALPHA1"
                 }
               }
             },
@@ -3787,24 +1005,24 @@
             ]
           }
         ],
-        "summary": "Get MacLease",
+        "summary": "Get BareMetalMachine",
         "tags": [
           "compute"
         ],
         "x-kubernetes-group-version-kind": {
-          "group": "control.mountthor.dev",
-          "kind": "MacLease",
+          "group": "compute.mountthor.com",
+          "kind": "BareMetalMachine",
           "version": "v1alpha1"
         },
         "x-mountthor-customer-safe-status": true,
         "x-mountthor-owner": "manager",
-        "x-mountthor-source-path": "governance/specs/crds/control.mountthor.dev_macleases.yaml"
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_baremetalmachines.yaml"
       }
     },
-    "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/tenantcapacitystatuses": {
+    "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/fleetpolicies": {
       "get": {
-        "description": "Lists read-only capacity status resources for the tenant namespace.",
-        "operationId": "listTenantCapacityStatus",
+        "description": "Lists FleetPolicys in the tenant namespace.",
+        "operationId": "listFleetPolicy",
         "parameters": [
           {
             "description": "Tenant namespace returned by Get Account.",
@@ -3830,7 +1048,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TenantCapacityStatusV1ALPHA1"
+                  "$ref": "#/components/schemas/FleetPolicyV1ALPHA1"
                 }
               }
             },
@@ -3862,24 +1080,24 @@
             ]
           }
         ],
-        "summary": "List TenantCapacityStatuses",
+        "summary": "List FleetPolicys",
         "tags": [
           "compute"
         ],
         "x-kubernetes-group-version-kind": {
-          "group": "control.mountthor.dev",
-          "kind": "TenantCapacityStatus",
+          "group": "compute.mountthor.com",
+          "kind": "FleetPolicy",
           "version": "v1alpha1"
         },
         "x-mountthor-customer-safe-status": true,
-        "x-mountthor-owner": "customer-compute-gateway",
-        "x-mountthor-source-path": "governance/specs/synthetic/control.mountthor.dev_tenantcapacitystatuses.yaml"
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_fleetpolicies.yaml"
       }
     },
-    "/v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/tenantcapacitystatuses/{name}": {
+    "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/fleetpolicies/{name}": {
       "get": {
-        "description": "Returns one read-only capacity status resource by name.",
-        "operationId": "getTenantCapacityStatus",
+        "description": "Returns one FleetPolicy by name from the tenant namespace.",
+        "operationId": "getFleetPolicy",
         "parameters": [
           {
             "description": "Tenant namespace returned by Get Account.",
@@ -3891,7 +1109,7 @@
             }
           },
           {
-            "description": "Kubernetes object name for the TenantCapacityStatus.",
+            "description": "Kubernetes object name for the FleetPolicy.",
             "in": "path",
             "name": "name",
             "required": true,
@@ -3905,7 +1123,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TenantCapacityStatusV1ALPHA1"
+                  "$ref": "#/components/schemas/FleetPolicyV1ALPHA1"
                 }
               }
             },
@@ -3937,24 +1155,24 @@
             ]
           }
         ],
-        "summary": "Get TenantCapacityStatus",
+        "summary": "Get FleetPolicy",
         "tags": [
           "compute"
         ],
         "x-kubernetes-group-version-kind": {
-          "group": "control.mountthor.dev",
-          "kind": "TenantCapacityStatus",
+          "group": "compute.mountthor.com",
+          "kind": "FleetPolicy",
           "version": "v1alpha1"
         },
         "x-mountthor-customer-safe-status": true,
-        "x-mountthor-owner": "customer-compute-gateway",
-        "x-mountthor-source-path": "governance/specs/synthetic/control.mountthor.dev_tenantcapacitystatuses.yaml"
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_fleetpolicies.yaml"
       }
     },
-    "/v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineimageoperations": {
+    "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/images": {
       "get": {
-        "description": "Lists explicit operations requested for customer-visible VM images.",
-        "operationId": "listVirtualMachineImageOperation",
+        "description": "Lists customer-visible images available for bare-metal and VM workflows.",
+        "operationId": "listImage",
         "parameters": [
           {
             "description": "Tenant namespace returned by Get Account.",
@@ -3980,7 +1198,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/VirtualMachineImageOperationV1ALPHA1"
+                  "$ref": "#/components/schemas/ImageV1ALPHA1"
                 }
               }
             },
@@ -4012,176 +1230,24 @@
             ]
           }
         ],
-        "summary": "List VirtualMachineImageOperations",
+        "summary": "List Images",
         "tags": [
           "compute"
         ],
         "x-kubernetes-group-version-kind": {
-          "group": "vm.mountthor.dev",
-          "kind": "VirtualMachineImageOperation",
+          "group": "compute.mountthor.com",
+          "kind": "Image",
           "version": "v1alpha1"
         },
         "x-mountthor-customer-safe-status": true,
         "x-mountthor-owner": "manager",
-        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachineimageoperations.yaml"
-      },
-      "post": {
-        "description": "Creates an explicit operation request for a customer-visible VM image.",
-        "operationId": "createVirtualMachineImageOperation",
-        "parameters": [
-          {
-            "description": "Tenant namespace returned by Get Account.",
-            "in": "path",
-            "name": "namespace",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/VirtualMachineImageOperationV1ALPHA1"
-              }
-            },
-            "application/yaml": {
-              "schema": {
-                "$ref": "#/components/schemas/VirtualMachineImageOperationV1ALPHA1"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/VirtualMachineImageOperationV1ALPHA1"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "201": {
-            "description": "Created"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "429": {
-            "description": "Rate Limited"
-          }
-        },
-        "security": [
-          {
-            "MountThorSession": [
-              "compute:write"
-            ]
-          }
-        ],
-        "summary": "Create VirtualMachineImageOperation",
-        "tags": [
-          "compute"
-        ],
-        "x-kubernetes-group-version-kind": {
-          "group": "vm.mountthor.dev",
-          "kind": "VirtualMachineImageOperation",
-          "version": "v1alpha1"
-        },
-        "x-mountthor-customer-safe-status": true,
-        "x-mountthor-owner": "manager",
-        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachineimageoperations.yaml"
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_images.yaml"
       }
     },
-    "/v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineimageoperations/{name}": {
-      "delete": {
-        "description": "Deletes one VM image operation request by name.",
-        "operationId": "deleteVirtualMachineImageOperation",
-        "parameters": [
-          {
-            "description": "Tenant namespace returned by Get Account.",
-            "in": "path",
-            "name": "namespace",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Kubernetes object name for the VirtualMachineImageOperation.",
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/VirtualMachineImageOperationV1ALPHA1"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "201": {
-            "description": "Created"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "429": {
-            "description": "Rate Limited"
-          }
-        },
-        "security": [
-          {
-            "MountThorSession": [
-              "compute:write"
-            ]
-          }
-        ],
-        "summary": "Delete VirtualMachineImageOperation",
-        "tags": [
-          "compute"
-        ],
-        "x-kubernetes-group-version-kind": {
-          "group": "vm.mountthor.dev",
-          "kind": "VirtualMachineImageOperation",
-          "version": "v1alpha1"
-        },
-        "x-mountthor-customer-safe-status": true,
-        "x-mountthor-owner": "manager",
-        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachineimageoperations.yaml"
-      },
+    "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/images/{name}": {
       "get": {
-        "description": "Returns one VM image operation by name, including operation status and failure details when present.",
-        "operationId": "getVirtualMachineImageOperation",
+        "description": "Returns one customer-visible image by name.",
+        "operationId": "getImage",
         "parameters": [
           {
             "description": "Tenant namespace returned by Get Account.",
@@ -4193,7 +1259,7 @@
             }
           },
           {
-            "description": "Kubernetes object name for the VirtualMachineImageOperation.",
+            "description": "Kubernetes object name for the Image.",
             "in": "path",
             "name": "name",
             "required": true,
@@ -4207,7 +1273,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/VirtualMachineImageOperationV1ALPHA1"
+                  "$ref": "#/components/schemas/ImageV1ALPHA1"
                 }
               }
             },
@@ -4239,24 +1305,24 @@
             ]
           }
         ],
-        "summary": "Get VirtualMachineImageOperation",
+        "summary": "Get Image",
         "tags": [
           "compute"
         ],
         "x-kubernetes-group-version-kind": {
-          "group": "vm.mountthor.dev",
-          "kind": "VirtualMachineImageOperation",
+          "group": "compute.mountthor.com",
+          "kind": "Image",
           "version": "v1alpha1"
         },
         "x-mountthor-customer-safe-status": true,
         "x-mountthor-owner": "manager",
-        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachineimageoperations.yaml"
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_images.yaml"
       }
     },
-    "/v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineimages": {
+    "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/machineclasses": {
       "get": {
-        "description": "Lists customer-visible VM images that can be used for VirtualMachine requests.",
-        "operationId": "listVirtualMachineImage",
+        "description": "Lists customer-visible bare-metal hardware classes available for BareMetalMachine requests.",
+        "operationId": "listMachineClass",
         "parameters": [
           {
             "description": "Tenant namespace returned by Get Account.",
@@ -4282,7 +1348,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/VirtualMachineImageV1ALPHA1"
+                  "$ref": "#/components/schemas/MachineClassV1ALPHA1"
                 }
               }
             },
@@ -4314,24 +1380,24 @@
             ]
           }
         ],
-        "summary": "List VirtualMachineImages",
+        "summary": "List MachineClasses",
         "tags": [
           "compute"
         ],
         "x-kubernetes-group-version-kind": {
-          "group": "vm.mountthor.dev",
-          "kind": "VirtualMachineImage",
+          "group": "compute.mountthor.com",
+          "kind": "MachineClass",
           "version": "v1alpha1"
         },
         "x-mountthor-customer-safe-status": true,
         "x-mountthor-owner": "manager",
-        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachineimages.yaml"
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_machineclasses.yaml"
       }
     },
-    "/v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineimages/{name}": {
+    "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/machineclasses/{name}": {
       "get": {
-        "description": "Returns one customer-visible VM image by name.",
-        "operationId": "getVirtualMachineImage",
+        "description": "Returns one bare-metal hardware class by name.",
+        "operationId": "getMachineClass",
         "parameters": [
           {
             "description": "Tenant namespace returned by Get Account.",
@@ -4343,7 +1409,7 @@
             }
           },
           {
-            "description": "Kubernetes object name for the VirtualMachineImage.",
+            "description": "Kubernetes object name for the MachineClass.",
             "in": "path",
             "name": "name",
             "required": true,
@@ -4357,7 +1423,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/VirtualMachineImageV1ALPHA1"
+                  "$ref": "#/components/schemas/MachineClassV1ALPHA1"
                 }
               }
             },
@@ -4389,325 +1455,23 @@
             ]
           }
         ],
-        "summary": "Get VirtualMachineImage",
+        "summary": "Get MachineClass",
         "tags": [
           "compute"
         ],
         "x-kubernetes-group-version-kind": {
-          "group": "vm.mountthor.dev",
-          "kind": "VirtualMachineImage",
+          "group": "compute.mountthor.com",
+          "kind": "MachineClass",
           "version": "v1alpha1"
         },
         "x-mountthor-customer-safe-status": true,
         "x-mountthor-owner": "manager",
-        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachineimages.yaml"
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_machineclasses.yaml"
       }
     },
-    "/v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineoperations": {
+    "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/virtualmachines": {
       "get": {
-        "description": "Lists explicit operations requested for macOS virtual machines.",
-        "operationId": "listVirtualMachineOperation",
-        "parameters": [
-          {
-            "description": "Tenant namespace returned by Get Account.",
-            "in": "path",
-            "name": "namespace",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Set true for Kubernetes watch semantics when the resource allows watch.",
-            "in": "query",
-            "name": "watch",
-            "required": false,
-            "schema": {
-              "type": "boolean"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/VirtualMachineOperationV1ALPHA1"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "201": {
-            "description": "Created"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "429": {
-            "description": "Rate Limited"
-          }
-        },
-        "security": [
-          {
-            "MountThorSession": [
-              "compute:read"
-            ]
-          }
-        ],
-        "summary": "List VirtualMachineOperations",
-        "tags": [
-          "compute"
-        ],
-        "x-kubernetes-group-version-kind": {
-          "group": "vm.mountthor.dev",
-          "kind": "VirtualMachineOperation",
-          "version": "v1alpha1"
-        },
-        "x-mountthor-customer-safe-status": true,
-        "x-mountthor-owner": "manager",
-        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachineoperations.yaml"
-      },
-      "post": {
-        "description": "Creates an explicit operation request for a macOS virtual machine.",
-        "operationId": "createVirtualMachineOperation",
-        "parameters": [
-          {
-            "description": "Tenant namespace returned by Get Account.",
-            "in": "path",
-            "name": "namespace",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/VirtualMachineOperationV1ALPHA1"
-              }
-            },
-            "application/yaml": {
-              "schema": {
-                "$ref": "#/components/schemas/VirtualMachineOperationV1ALPHA1"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/VirtualMachineOperationV1ALPHA1"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "201": {
-            "description": "Created"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "429": {
-            "description": "Rate Limited"
-          }
-        },
-        "security": [
-          {
-            "MountThorSession": [
-              "compute:write"
-            ]
-          }
-        ],
-        "summary": "Create VirtualMachineOperation",
-        "tags": [
-          "compute"
-        ],
-        "x-kubernetes-group-version-kind": {
-          "group": "vm.mountthor.dev",
-          "kind": "VirtualMachineOperation",
-          "version": "v1alpha1"
-        },
-        "x-mountthor-customer-safe-status": true,
-        "x-mountthor-owner": "manager",
-        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachineoperations.yaml"
-      }
-    },
-    "/v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineoperations/{name}": {
-      "delete": {
-        "description": "Deletes one virtual machine operation request by name.",
-        "operationId": "deleteVirtualMachineOperation",
-        "parameters": [
-          {
-            "description": "Tenant namespace returned by Get Account.",
-            "in": "path",
-            "name": "namespace",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Kubernetes object name for the VirtualMachineOperation.",
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/VirtualMachineOperationV1ALPHA1"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "201": {
-            "description": "Created"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "429": {
-            "description": "Rate Limited"
-          }
-        },
-        "security": [
-          {
-            "MountThorSession": [
-              "compute:write"
-            ]
-          }
-        ],
-        "summary": "Delete VirtualMachineOperation",
-        "tags": [
-          "compute"
-        ],
-        "x-kubernetes-group-version-kind": {
-          "group": "vm.mountthor.dev",
-          "kind": "VirtualMachineOperation",
-          "version": "v1alpha1"
-        },
-        "x-mountthor-customer-safe-status": true,
-        "x-mountthor-owner": "manager",
-        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachineoperations.yaml"
-      },
-      "get": {
-        "description": "Returns one virtual machine operation by name, including operation status and failure details when present.",
-        "operationId": "getVirtualMachineOperation",
-        "parameters": [
-          {
-            "description": "Tenant namespace returned by Get Account.",
-            "in": "path",
-            "name": "namespace",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Kubernetes object name for the VirtualMachineOperation.",
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/VirtualMachineOperationV1ALPHA1"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "201": {
-            "description": "Created"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "429": {
-            "description": "Rate Limited"
-          }
-        },
-        "security": [
-          {
-            "MountThorSession": [
-              "compute:read"
-            ]
-          }
-        ],
-        "summary": "Get VirtualMachineOperation",
-        "tags": [
-          "compute"
-        ],
-        "x-kubernetes-group-version-kind": {
-          "group": "vm.mountthor.dev",
-          "kind": "VirtualMachineOperation",
-          "version": "v1alpha1"
-        },
-        "x-mountthor-customer-safe-status": true,
-        "x-mountthor-owner": "manager",
-        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachineoperations.yaml"
-      }
-    },
-    "/v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachines": {
-      "get": {
-        "description": "Lists macOS virtual machines in the tenant namespace, including desired resources and customer-visible status.",
+        "description": "Lists VirtualMachines in the tenant namespace.",
         "operationId": "listVirtualMachine",
         "parameters": [
           {
@@ -4771,16 +1535,16 @@
           "compute"
         ],
         "x-kubernetes-group-version-kind": {
-          "group": "vm.mountthor.dev",
+          "group": "compute.mountthor.com",
           "kind": "VirtualMachine",
           "version": "v1alpha1"
         },
         "x-mountthor-customer-safe-status": true,
         "x-mountthor-owner": "manager",
-        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachines.yaml"
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_virtualmachines.yaml"
       },
       "post": {
-        "description": "Creates a macOS virtual machine request using a customer-visible image, resource shape, and optional bootstrap data.",
+        "description": "Creates one VirtualMachine in the tenant namespace.",
         "operationId": "createVirtualMachine",
         "parameters": [
           {
@@ -4850,18 +1614,18 @@
           "compute"
         ],
         "x-kubernetes-group-version-kind": {
-          "group": "vm.mountthor.dev",
+          "group": "compute.mountthor.com",
           "kind": "VirtualMachine",
           "version": "v1alpha1"
         },
         "x-mountthor-customer-safe-status": true,
         "x-mountthor-owner": "manager",
-        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachines.yaml"
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_virtualmachines.yaml"
       }
     },
-    "/v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachines/{name}": {
+    "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/virtualmachines/{name}": {
       "delete": {
-        "description": "Deletes one macOS virtual machine by name and starts VM cleanup.",
+        "description": "Deletes one VirtualMachine by name from the tenant namespace.",
         "operationId": "deleteVirtualMachine",
         "parameters": [
           {
@@ -4925,16 +1689,16 @@
           "compute"
         ],
         "x-kubernetes-group-version-kind": {
-          "group": "vm.mountthor.dev",
+          "group": "compute.mountthor.com",
           "kind": "VirtualMachine",
           "version": "v1alpha1"
         },
         "x-mountthor-customer-safe-status": true,
         "x-mountthor-owner": "manager",
-        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachines.yaml"
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_virtualmachines.yaml"
       },
       "get": {
-        "description": "Returns one macOS virtual machine by name, including desired state and customer-visible status.",
+        "description": "Returns one VirtualMachine by name from the tenant namespace.",
         "operationId": "getVirtualMachine",
         "parameters": [
           {
@@ -4998,13 +1762,13 @@
           "compute"
         ],
         "x-kubernetes-group-version-kind": {
-          "group": "vm.mountthor.dev",
+          "group": "compute.mountthor.com",
           "kind": "VirtualMachine",
           "version": "v1alpha1"
         },
         "x-mountthor-customer-safe-status": true,
         "x-mountthor-owner": "manager",
-        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/vm.mountthor.dev_virtualmachines.yaml"
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_virtualmachines.yaml"
       }
     }
   },
