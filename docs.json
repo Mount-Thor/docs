@@ -2,7 +2,7 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "Mount Thor",
-  "description": "Customer documentation for Mount Thor: Apple hardware at datacenter scale for bare-metal leases and macOS virtual machines.",
+  "description": "Customer documentation for Mount Thor: Apple hardware at datacenter scale for bare-metal machines and macOS virtual machines.",
   "colors": {
     "primary": "#C9A84C",
     "light": "#D4B45A",
@@ -82,111 +82,72 @@
                 ]
               },
               {
+                "group": "Access Grants",
+                "pages": [
+                  "POST /v1/admin/access/grants/ssh",
+                  "POST /v1/admin/access/grants/tunnel",
+                  "DELETE /v1/admin/access/grants/{grant_id}"
+                ]
+              },
+              {
                 "group": "Fleet",
                 "pages": [
                   "GET /v1/admin/fleet",
                   "GET /v1/admin/fleet/capacity",
+                  "GET /v1/admin/fleet/summary",
                   "GET /v1/admin/fleet/usage"
                 ]
               },
               {
-                "group": "Catalog",
+                "group": "Billing",
                 "pages": [
-                  "GET /v1/admin/catalog",
-                  "GET /v1/admin/catalog/images/{sku}"
+                  "GET /v1/admin/billing/usage",
+                  "GET /v1/admin/billing/costs",
+                  "GET /v1/admin/billing/invoices",
+                  "GET /v1/admin/billing/invoices/{invoice_id}",
+                  "GET /v1/admin/billing/price-catalog"
                 ]
               },
               {
                 "group": "Compute",
                 "pages": [
                   {
-                    "group": "ConfigMap",
+                    "group": "BareMetalMachine",
                     "pages": [
-                      "GET /v1/compute/api/v1/namespaces/{namespace}/configmaps",
-                      "POST /v1/compute/api/v1/namespaces/{namespace}/configmaps",
-                      "GET /v1/compute/api/v1/namespaces/{namespace}/configmaps/{name}",
-                      "DELETE /v1/compute/api/v1/namespaces/{namespace}/configmaps/{name}"
-                    ]
-                  },
-                  {
-                    "group": "MacAccessSession",
-                    "pages": [
-                      "GET /v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macaccesssessions",
-                      "POST /v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macaccesssessions",
-                      "GET /v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macaccesssessions/{name}",
-                      "DELETE /v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macaccesssessions/{name}"
-                    ]
-                  },
-                  {
-                    "group": "MacImageChannel",
-                    "pages": [
-                      "GET /v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macimagechannels",
-                      "GET /v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macimagechannels/{name}"
-                    ]
-                  },
-                  {
-                    "group": "MacLease",
-                    "pages": [
-                      "GET /v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleases",
-                      "POST /v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleases",
-                      "GET /v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleases/{name}",
-                      "DELETE /v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleases/{name}"
-                    ]
-                  },
-                  {
-                    "group": "MacLeaseClass",
-                    "pages": [
-                      "GET /v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleaseclasses",
-                      "GET /v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleaseclasses/{name}"
-                    ]
-                  },
-                  {
-                    "group": "MacLeaseOperation",
-                    "pages": [
-                      "GET /v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleaseoperations",
-                      "POST /v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleaseoperations",
-                      "GET /v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/macleaseoperations/{name}"
-                    ]
-                  },
-                  {
-                    "group": "TenantCapacityStatus",
-                    "pages": [
-                      "GET /v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/tenantcapacitystatuses",
-                      "GET /v1/compute/apis/control.mountthor.dev/v1alpha1/namespaces/{namespace}/tenantcapacitystatuses/{name}"
+                      "GET /v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/baremetalmachines",
+                      "POST /v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/baremetalmachines",
+                      "GET /v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/baremetalmachines/{name}",
+                      "DELETE /v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/baremetalmachines/{name}"
                     ]
                   },
                   {
                     "group": "VirtualMachine",
                     "pages": [
-                      "GET /v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachines",
-                      "POST /v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachines",
-                      "GET /v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachines/{name}",
-                      "DELETE /v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachines/{name}"
+                      "GET /v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/virtualmachines",
+                      "POST /v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/virtualmachines",
+                      "GET /v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/virtualmachines/{name}",
+                      "DELETE /v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/virtualmachines/{name}"
                     ]
                   },
                   {
-                    "group": "VirtualMachineImage",
+                    "group": "Image",
                     "pages": [
-                      "GET /v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineimages",
-                      "GET /v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineimages/{name}"
+                      "GET /v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/images",
+                      "GET /v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/images/{name}"
                     ]
                   },
                   {
-                    "group": "VirtualMachineImageOperation",
+                    "group": "MachineClass",
                     "pages": [
-                      "GET /v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineimageoperations",
-                      "POST /v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineimageoperations",
-                      "GET /v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineimageoperations/{name}",
-                      "DELETE /v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineimageoperations/{name}"
+                      "GET /v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/machineclasses",
+                      "GET /v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/machineclasses/{name}"
                     ]
                   },
                   {
-                    "group": "VirtualMachineOperation",
+                    "group": "FleetPolicy",
                     "pages": [
-                      "GET /v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineoperations",
-                      "POST /v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineoperations",
-                      "GET /v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineoperations/{name}",
-                      "DELETE /v1/compute/apis/vm.mountthor.dev/v1alpha1/namespaces/{namespace}/virtualmachineoperations/{name}"
+                      "GET /v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/fleetpolicies",
+                      "GET /v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/fleetpolicies/{name}"
                     ]
                   }
                 ]

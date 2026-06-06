@@ -38,8 +38,8 @@ jobs:
           set -euo pipefail
           curl -fsSL https://api.mountthor.com/openapi.json -o /tmp/live-admin.openapi.json
           jq -S '[.paths | keys[]]' /tmp/live-admin.openapi.json > /tmp/live-admin-paths.json
-          jq -S '[.paths | keys[] | select(startswith("/v1/admin"))]' api-reference/mount-thor-local.openapi.json > /tmp/docs-admin-paths.json
+          jq -S '[.paths | keys[] | select(startswith("/v1/admin"))]' api-reference/customer-api.v1.openapi.json > /tmp/docs-admin-paths.json
           diff -u /tmp/live-admin-paths.json /tmp/docs-admin-paths.json
           jq -S '[.paths | keys[]]' api-reference/customer-compute-crds.v1.openapi.json > /tmp/compute-paths.json
-          jq -S '[.paths | keys[] | select(startswith("/v1/compute"))]' api-reference/mount-thor-local.openapi.json > /tmp/docs-compute-paths.json
+          jq -S '[.paths | keys[] | select(startswith("/v1/compute"))]' api-reference/customer-api.v1.openapi.json > /tmp/docs-compute-paths.json
           diff -u /tmp/compute-paths.json /tmp/docs-compute-paths.json

@@ -52,7 +52,7 @@ Do not add unsupported marketing claims such as "no virtualization layer" or
 "no shared hypervisor" because Mount Thor serves both bare-metal Apple
 hardware and macOS virtual machines. Use the current source phrasing: Apple
 hardware at datacenter scale, programmable infrastructure for AI workloads,
-with bare-metal leases and macOS virtual machines managed through the Mount
+with bare-metal machines and macOS virtual machines managed through the Mount
 Thor API and CLI.
 
 ## Conventions
@@ -72,10 +72,13 @@ Customer-facing MDX must present one supported path:
 1. Activate with `POST /v1/admin/registrations` using the one-time
    registration code.
 2. Use the returned `mthr_live_*` API key for admin routes.
-3. Mint an `mt_session_*` session with `POST /v1/admin/sessions`.
-4. Use that session for `/v1/compute/*` resources through `kubectl`.
-5. Create `MacLease` / `MacAccessSession` for bare metal or
-   `VirtualMachine` / `VirtualMachineOperation` for VMs.
+3. Install the `mthr` CLI and run `mthr login` for browser-based SSO.
+4. Run `mthr kubeconfig` to write a kubeconfig for `kubectl` access.
+5. Use `mthr bm allocate` / `mthr bm ssh` / `mthr bm free` for bare metal,
+   or `mthr vm create` / `mthr vm ssh` / `mthr vm delete` for VMs.
+   All commands map to `BareMetalMachine`, `VirtualMachine`, `Image`,
+   `MachineClass`, and `FleetPolicy` CRDs under
+   `compute.mountthor.com/v1alpha1`.
 
 Do not mention legacy aliases, target/current route distinctions,
 implementation migrations, internal route names, `[live]`, or `[todo]` in
@@ -91,7 +94,7 @@ bare-metal, VM, or resource release coverage.
 The published compute OpenAPI document is intentionally narrower than the raw
 generated artifact when the raw artifact includes Kubernetes plumbing or
 non-workflow support projections. Publish `ConfigMap` only while VM bootstrap
-docs make it part of the customer workflow. Do not publish `MacIncident`
+docs make it part of the customer workflow. Do not publish internal CRD
 reference pages unless there is a customer-facing guide that makes them part of
 the canonical workflow.
 
