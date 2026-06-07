@@ -102,8 +102,11 @@ brew install Mount-Thor/mountthor/mthr
 Log in through your browser with SSO:
 
 ```bash
-mthr login
+mthr login --customer <CUSTOMER_IDENTIFIER>
 ```
+
+Use the Mount Thor customer identifier from your onboarding or account record.
+This is not your username or tenant namespace.
 
 This opens your identity provider in a browser window. After you authenticate,
 the CLI stores a session locally.
