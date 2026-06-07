@@ -74,30 +74,23 @@ mthr vm ssh dev
 The CLI waits for the VM to be ready (up to 30 seconds by default), brokers
 a short-lived SSH grant, and launches `ssh`.
 
-To run a command instead of opening an interactive session:
-
-```bash
-mthr vm ssh dev -- uname -a
-```
-
 ### Desktop Access
 
 Open desktop access from your workstation:
 
 ```bash
-mthr vm desktop --name dev --local-port 15900 --timeout 5m
+mthr vm desktop --name dev --local-port 15900 --ttl 5m
 ```
 
-The command opens a private tunnel to the VM screen port and opens an Apple
-Screen Sharing URI such as `vnc://127.0.0.1:15900`. Keep the command running
-while your desktop client is connected.
+The command opens a private tunnel to the VM screen port and automatically
+launches Apple Screen Sharing. Keep the CLI running while your desktop client
+is connected.
+
+Use `--print` to print the VNC URL instead of opening it automatically:
 
 ```bash
-open 'vnc://127.0.0.1:15900'
+mthr vm desktop --name dev --local-port 15900 --print
 ```
-
-Use `--print` to print the local VNC URI instead of opening it.
-
 ### Application Port Tunnels
 
 Open a tunnel to a published application port:
