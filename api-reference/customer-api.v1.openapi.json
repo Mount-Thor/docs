@@ -275,7 +275,7 @@
             "type": "string"
           },
           "tenant_slug": {
-            "description": "Human-readable tenant slug.",
+            "description": "Human-readable tenant identifier.",
             "example": "acme-prod",
             "type": "string"
           },
@@ -503,7 +503,7 @@
             "type": "string"
           },
           "role_slug": {
-            "description": "Optional WorkOS role slug to pre-bind on acceptance. Must match\na role configured on the WorkOS workspace (e.g.\n`mountthor-cluster-admin`, `mountthor-cluster-readonly`). When\nomitted, WorkOS leaves the invitee without a Mount Thor role\nand the customer admin assigns one later from the WorkOS\ndashboard.",
+            "description": "Optional WorkOS role identifier to pre-bind on acceptance. Must match\na role configured on the WorkOS workspace (e.g.\n`mountthor-cluster-admin`, `mountthor-cluster-readonly`). When\nomitted, WorkOS leaves the invitee without a Mount Thor role\nand the customer admin assigns one later from the WorkOS\ndashboard.",
             "example": "mountthor-cluster-readonly",
             "type": [
               "string",
@@ -606,14 +606,14 @@
       },
       "CreateLoginRequestRequest": {
         "additionalProperties": false,
-        "description": "Request body for `POST /v1/admin/login-requests`.\n\n`localhost_state_sha256` and `cli_verifier_sha256` are SHA-256 digests of\nrandom values held by the CLI; the plaintext never crosses the wire on this\nroute. The eventual session-mint route (`POST /v1/admin/sessions` with\n`grant_type=login-handoff`) re-presents the plaintext, and admin-api\nre-hashes and matches.",
+        "description": "Request body for `POST /v1/admin/sessions/authorize`.\n\n`localhost_state_sha256` and `cli_verifier_sha256` are SHA-256 digests of\nrandom values held by the CLI; the plaintext never crosses the wire on this\nroute. The eventual session-mint route (`POST /v1/admin/sessions` with\n`grant_type=login-handoff`) re-presents the plaintext, and admin-api\nre-hashes and matches.",
         "properties": {
           "cli_verifier_sha256": {
             "description": "SHA-256 hex digest of the CLI's verifier random value.",
             "type": "string"
           },
           "customer_slug": {
-            "description": "Customer slug recorded with the registration. Format: kebab-case.\n\nOptional under umbrella #4362 PR 3 consumer-shape flow: when\nomitted the CLI lands on WorkOS's hosted AuthKit UI without an\n`organization_id` pre-bound. The admin-api resolves the Mount\nThor customer post-callback from the WorkOS user's resolved\n`organization_id`. Requires `MOUNTTHOR_AUTHKIT_ENABLED`. When\nprovided, the legacy per-customer SSO path runs unchanged.",
+            "description": "Customer identifier recorded with the registration. Format: lowercase hyphenated text.\n\nOptional under umbrella #4362 PR 3 consumer-shape flow: when\nomitted the CLI lands on WorkOS's hosted AuthKit UI without an\n`organization_id` pre-bound. The admin-api resolves the Mount\nThor customer post-callback from the WorkOS user's resolved\n`organization_id`. Requires `MOUNTTHOR_AUTHKIT_ENABLED`. When\nprovided, the legacy per-customer SSO path runs unchanged.",
             "example": "acme",
             "type": [
               "string",
@@ -630,7 +630,7 @@
             "type": "string"
           },
           "tenant_slug": {
-            "description": "Optional tenant slug to scope the eventual session to a specific\ntenant. When omitted the human session is account-scoped.\n\nOnly valid alongside `customer_slug` — the no-slug consumer flow\ncannot pre-bind a tenant because the customer is unresolved\nuntil callback. The resolved session in the consumer flow is\nalways account-scoped.",
+            "description": "Optional tenant identifier to scope the eventual session to a specific\ntenant. When omitted the human session is account-scoped.\n\nOnly valid when a customer identifier is supplied. The consumer flow without\na preselected customer cannot pre-bind a tenant because the customer is unresolved\nuntil callback. The resolved session in the consumer flow is\nalways account-scoped.",
             "example": "acme-prod",
             "type": [
               "string",
@@ -646,7 +646,7 @@
         "type": "object"
       },
       "CreateLoginRequestResponse": {
-        "description": "Response body for `POST /v1/admin/login-requests`.",
+        "description": "Response body for `POST /v1/admin/sessions/authorize`.",
         "properties": {
           "authorization_url": {
             "description": "WorkOS authorization URL the CLI opens in the customer's browser.",
@@ -1083,7 +1083,7 @@
             "type": "string"
           },
           "line_items": {
-            "description": "Itemized line items, ordered by (tenant_slug, resource_kind,\nresource_class, usage_model) for stable client rendering.",
+            "description": "Itemized line items, ordered by tenant, resource kind,\nresource class, and usage model for stable client rendering.",
             "items": {
               "$ref": "#/components/schemas/BillingCostLineItem"
             },
@@ -1094,7 +1094,7 @@
             "description": "Window covered by the response."
           },
           "price_book_slug": {
-            "description": "The customer's active price book slug at the time of the\ncomputation (e.g. `alpha-2026`). Surfaced so the response is\nself-explanatory when amounts are 0.",
+            "description": "The customer's active price book identifier at the time of the\ncomputation (e.g. `alpha-2026`). Surfaced so the response is\nself-explanatory when amounts are 0.",
             "example": "alpha-2026",
             "type": "string"
           },
@@ -1182,7 +1182,7 @@
             "type": "array"
           },
           "price_book_slug": {
-            "description": "Active price book slug (e.g. `alpha-2026`). Surfaced so the\nresponse is self-explanatory when prices are 0.",
+            "description": "Active price book identifier (e.g. `alpha-2026`). Surfaced so the\nresponse is self-explanatory when prices are 0.",
             "example": "alpha-2026",
             "type": "string"
           }
@@ -1206,7 +1206,7 @@
             "type": "array"
           },
           "by_tenant": {
-            "description": "Per-tenant rollup ordered by `tenant_slug` for stable client display.\nTenants with no usage in the window are included with empty\n`by_class` and zero totals so client UIs do not need to special-case\nthe missing-tenant rendering.",
+            "description": "Per-tenant rollup ordered by tenant identifier for stable client display.\nTenants with no usage in the window are included with empty\n`by_class` and zero totals so client UIs do not need to special-case\nthe missing-tenant rendering.",
             "items": {
               "$ref": "#/components/schemas/TenantUsageBreakdown"
             },
@@ -2456,7 +2456,7 @@
             "type": "string"
           },
           "invoice_number": {
-            "description": "Human-readable invoice number\n(`INV-{customer_slug}-{YYYY}-{MM}-{NNNN}`).",
+            "description": "Human-readable invoice number\n(`INV-{customer}-{YYYY}-{MM}-{NNNN}`).",
             "example": "INV-acme-2026-05-0001",
             "type": "string"
           },
@@ -3710,7 +3710,7 @@
             "type": "string"
           },
           "tenant_slug": {
-            "description": "Human-readable tenant slug (e.g. `acme-prod`).",
+            "description": "Human-readable tenant identifier (e.g. `acme-prod`).",
             "example": "acme-prod",
             "type": "string"
           }
@@ -4690,7 +4690,7 @@
             ]
           }
         ],
-        "summary": "Create a desktop access grant.",
+        "summary": "Create Desktop Access Grant",
         "tags": [
           "access"
         ],
@@ -4758,7 +4758,7 @@
             ]
           }
         ],
-        "summary": "Create an SSH access grant.",
+        "summary": "Create SSH Access Grant",
         "tags": [
           "access"
         ],
@@ -4826,7 +4826,7 @@
             ]
           }
         ],
-        "summary": "Create a tunnel access grant.",
+        "summary": "Create Tunnel Access Grant",
         "tags": [
           "access"
         ],
@@ -4887,7 +4887,7 @@
             ]
           }
         ],
-        "summary": "Revoke an access grant.",
+        "summary": "Revoke Access Grant",
         "tags": [
           "access"
         ],
@@ -5278,7 +5278,7 @@
     },
     "/v1/admin/billing/price-catalog": {
       "get": {
-        "description": "Returns the active price book slug + every priced\n(resource_kind, resource_class, usage_model) triple, ordered by\nthat key for stable client rendering. Independent of usage —\nsurfaces what the customer *would* be billed if they ran a given\nclass, so the portal's Create Bare Metal Machine / Create VM flows can\nrender a per-class price hint before submission.",
+        "description": "Returns the active price book identifier and every priced\n(resource_kind, resource_class, usage_model) triple, ordered by\nthat key for stable client rendering. Independent of usage —\nsurfaces what the customer *would* be billed if they ran a given\nclass, so the portal's Create Bare Metal Machine / Create VM flows can\nrender a per-class price hint before submission.",
         "operationId": "get_customer_billing_price_catalog",
         "responses": {
           "200": {
@@ -5410,7 +5410,7 @@
             ]
           }
         ],
-        "summary": "List the customer users belonging to the calling customer.",
+        "summary": "List Customer Users",
         "tags": [
           "customer-users"
         ],
@@ -5472,7 +5472,7 @@
             ]
           }
         ],
-        "summary": "Invite a teammate to join the caller's Mount Thor customer via WorkOS\nAuthKit.",
+        "summary": "Invite Customer User",
         "tags": [
           "customer-users"
         ],
@@ -5709,7 +5709,7 @@
             ]
           }
         ],
-        "summary": "Return the caller's customer's WorkOS identity setup state.",
+        "summary": "Get Identity Setup",
         "tags": [
           "identity"
         ],
@@ -5772,7 +5772,7 @@
             ]
           }
         ],
-        "summary": "Mint a fresh WorkOS Admin Portal link for the caller's customer.",
+        "summary": "Create Identity Setup Link",
         "tags": [
           "identity"
         ],
@@ -6908,7 +6908,7 @@
         "security": [
           {}
         ],
-        "summary": "Begin a `mthr login` browser-SSO authorization.",
+        "summary": "Create Login Authorization",
         "tags": [
           "sessions"
         ],
