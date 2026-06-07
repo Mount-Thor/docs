@@ -80,30 +80,23 @@ To run a command instead of opening an interactive session:
 mthr vm ssh dev -- uname -a
 ```
 
-Pass an identity file and SSH user if needed:
-
-```bash
-mthr vm ssh dev --ssh-user admin --identity-file ~/.ssh/my-key
-```
-
 ### Desktop Access
 
 Open desktop access from your workstation:
 
 ```bash
-mthr vm desktop dev --local-port 15900 --timeout 5m
+mthr vm desktop --name dev --local-port 15900 --timeout 5m
 ```
 
-The command opens a private tunnel to the VM screen port and prints an Apple
-Screen Sharing URI such as `vnc://:<local-password>@127.0.0.1:15900`. Keep the
-command running while your desktop client is connected.
+The command opens a private tunnel to the VM screen port and opens an Apple
+Screen Sharing URI such as `vnc://127.0.0.1:15900`. Keep the command running
+while your desktop client is connected.
 
 ```bash
-open 'vnc://:<local-password>@127.0.0.1:15900'
+open 'vnc://127.0.0.1:15900'
 ```
 
-The local password is generated for that CLI run and accepted only by the
-loopback tunnel — it is not a macOS user password or an API secret.
+Use `--print` to print the local VNC URI instead of opening it.
 
 ### Application Port Tunnels
 
