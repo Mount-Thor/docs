@@ -17,9 +17,9 @@ goes in MDX pages, not here.
 - **Auth gate:** Mintlify Pro universal password (set in dashboard). Custom
   OAuth via WorkOS is deferred to Mintlify Enterprise.
 - **API reference sources:** `docs.json` points at
-  `api-reference/mount-thor-local.openapi.json`, a checked-in combined OpenAPI
-  artifact. Refresh it from the live admin API at
-  `https://api.mountthor.com/openapi.json` plus the checked-in compute API at
+  `api-reference/customer-api.v1.openapi.json`, a checked-in combined OpenAPI
+  artifact. Refresh it from `Mount-Thor/mount-thor`'s generated customer API
+  artifact plus the checked-in compute API at
   `api-reference/customer-compute-crds.v1.openapi.json`.
 
 ## Manual one-time setup
@@ -93,9 +93,10 @@ fresh deployment for the merge commit, click the dashboard deploy button for
 ### When the OpenAPI spec changes upstream
 
 The admin `/openapi.json` URL is not fetched directly by Mintlify. Refresh the
-checked-in combined artifact at `api-reference/mount-thor-local.openapi.json`
-from the live admin OpenAPI and the checked compute OpenAPI, then merge the
-updated artifact with the docs change.
+checked-in combined artifact at `api-reference/customer-api.v1.openapi.json`
+from `Mount-Thor/mount-thor`'s generated
+`dist/api-specs/customer-api/v1/openapi.json`, then merge the updated artifact
+with the docs change.
 
 The compute OpenAPI document is checked into this repo. When the monorepo
 changes `governance/generated/customer-compute-crds.v1.openapi.json`, copy the
@@ -119,8 +120,9 @@ glance how stale a page might be relative to the source.
 - **Missing image / link:** `mint broken-links` should have caught this
   pre-merge. If it didn't, file-level fixes only.
 - **OpenAPI drift check failure:** confirm the live admin endpoint is healthy
-  (`curl -i https://api.mountthor.com/openapi.json`), regenerate
-  `api-reference/mount-thor-local.openapi.json`, and rerun validation.
+  (`curl -i https://api.mountthor.com/openapi.json`), refresh
+  `api-reference/customer-api.v1.openapi.json` from the generated monorepo
+  artifact, and rerun validation.
 
 ### Custom domain stops resolving
 

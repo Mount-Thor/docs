@@ -199,7 +199,7 @@
                 "description": "Browser desktop access contract per ADR 0014. Ships the credential-side fields only in this PR; access-broker / launcher / expiration fields land with their reconciler in a later phase under provider-neutral names.",
                 "properties": {
                   "credentialSecretRef": {
-                    "description": "Reference to the Opaque Secret in the same namespace that the host-side bridge reads for the per-machine desktop access password.",
+                    "description": "Reference to the Opaque Secret in the same namespace that the host-side bridge reads for the desktop credential.",
                     "properties": {
                       "name": {
                         "type": "string"
@@ -265,8 +265,8 @@
             "type": "string"
           },
           "resource_kind": {
-            "description": "Resource billing kind. Current contract values include `bare_metal` for bare-metal machine usage and `vm` for virtual machine usage.",
-            "example": "bare_metal",
+            "description": "`bare_metal_machine` or `vm`.",
+            "example": "bare_metal_machine",
             "type": "string"
           },
           "tenant_id": {
@@ -275,7 +275,7 @@
             "type": "string"
           },
           "tenant_slug": {
-            "description": "Human-readable tenant identifier.",
+            "description": "Human-readable tenant slug.",
             "example": "acme-prod",
             "type": "string"
           },
@@ -326,6 +326,70 @@
           "start",
           "end",
           "requested"
+        ],
+        "type": "object"
+      },
+      "CreateBareMetalMachineRequest": {
+        "additionalProperties": false,
+        "description": "Request body for creating a bare-metal machine through the admin API.",
+        "properties": {
+          "idempotency_key": {
+            "description": "Caller-supplied idempotency key. Scoped per-customer: two\nportal submissions with the same key from the same customer\nreturn the same `operation_id` (and do not double-enqueue);\ntwo customers may collide without interference.",
+            "example": "portal-create-bare-metal-machine-2026-06-05T19:00:00Z-abc123",
+            "type": "string"
+          },
+          "image": {
+            "description": "Entitled image ref (e.g. `macos-14`). Same enforcement shape\nas `machine_class`.",
+            "example": "macos-14",
+            "type": "string"
+          },
+          "machine_class": {
+            "description": "Entitled machine class identifier (e.g. `m1.metal`). Validated\nagainst the customer's `machine-class` entitlement at apply time\nin admin-worker; this route only enforces non-empty.",
+            "example": "m1.metal",
+            "type": "string"
+          },
+          "name": {
+            "description": "Human-readable bare-metal machine name. Becomes the\nBareMetalMachine CRD `metadata.name` in the customer's\nnamespace. Must be a valid RFC 1123 label.",
+            "example": "alice-builder",
+            "type": "string"
+          },
+          "reason": {
+            "description": "Optional audit reason (8..=1000 chars when present). Surfaces\nin the activity feed's detail panel.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "machine_class",
+          "image",
+          "idempotency_key"
+        ],
+        "type": "object"
+      },
+      "CreateBareMetalMachineResponse": {
+        "description": "Response returned after a bare-metal machine create request is accepted.",
+        "properties": {
+          "newly_enqueued": {
+            "description": "`true` when this call newly inserted the queue row; `false`\nwhen an existing row was returned via idempotency_key match.\nLets the portal distinguish a fresh submit from a retry-of-\nretry without inspecting timestamps.",
+            "type": "boolean"
+          },
+          "operation_id": {
+            "description": "Server-generated operation id. The portal long-polls\n`GET /v1/admin/operations` to render lifecycle transitions\nfor this id.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "status": {
+            "description": "Initial status, always `\"pending\"` for a fresh enqueue. For\nidempotent retries it's whatever the existing row's status\nis at lookup time.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "operation_id",
+          "status",
+          "newly_enqueued"
         ],
         "type": "object"
       },
@@ -439,7 +503,7 @@
             "type": "string"
           },
           "role_slug": {
-            "description": "Optional WorkOS role identifier to pre-bind on acceptance. Must match\na role configured on the WorkOS workspace (e.g.\n`mountthor-cluster-admin`, `mountthor-cluster-readonly`). When\nomitted, WorkOS leaves the invitee without a Mount Thor role\nand the customer admin assigns one later from the WorkOS\ndashboard.",
+            "description": "Optional WorkOS role slug to pre-bind on acceptance. Must match\na role configured on the WorkOS workspace (e.g.\n`mountthor-cluster-admin`, `mountthor-cluster-readonly`). When\nomitted, WorkOS leaves the invitee without a Mount Thor role\nand the customer admin assigns one later from the WorkOS\ndashboard.",
             "example": "mountthor-cluster-readonly",
             "type": [
               "string",
@@ -540,70 +604,6 @@
         ],
         "type": "object"
       },
-      "CreateLeaseRequest": {
-        "additionalProperties": false,
-        "description": "Request body for creating a bare-metal machine through the admin API.",
-        "properties": {
-          "idempotency_key": {
-            "description": "Caller-supplied idempotency key. Scoped per-customer: two\nportal submissions with the same key from the same customer\nreturn the same `operation_id` (and do not double-enqueue);\ntwo customers may collide without interference.",
-            "example": "portal-create-machine-2026-06-05T19:00:00Z-abc123",
-            "type": "string"
-          },
-          "image": {
-            "description": "Entitled image ref (e.g. `macos-14`). Same enforcement shape\nas `machine_class`.",
-            "example": "macos-14",
-            "type": "string"
-          },
-          "machine_class": {
-            "description": "Entitled machine class identifier (e.g. `m1.metal`). Validated\nagainst the customer's `machine-class` entitlement at apply\ntime in admin-worker (PR-B2); this route only enforces\nnon-empty.",
-            "example": "m1.metal",
-            "type": "string"
-          },
-          "name": {
-            "description": "Human-readable machine name. Becomes the BareMetalMachine CRD\n`metadata.name` in the customer namespace. Must be a valid\nRFC 1123 label (handled by admin-worker at apply time; this\nroute enforces non-empty + length cap so a malformed name\nfails fast at enqueue rather than after one worker poll).",
-            "example": "alice-builder",
-            "type": "string"
-          },
-          "reason": {
-            "description": "Optional audit reason (8..=1000 chars when present). Surfaces\nin the activity feed's detail panel.",
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "name",
-          "machine_class",
-          "image",
-          "idempotency_key"
-        ],
-        "type": "object"
-      },
-      "CreateLeaseResponse": {
-        "description": "Response returned after a bare-metal machine create request is accepted.",
-        "properties": {
-          "newly_enqueued": {
-            "description": "`true` when this call newly inserted the queue row; `false`\nwhen an existing row was returned via idempotency_key match.\nLets the portal distinguish a fresh submit from a retry-of-\nretry without inspecting timestamps.",
-            "type": "boolean"
-          },
-          "operation_id": {
-            "description": "Server-generated operation id. The portal long-polls\n`GET /v1/admin/operations` to render lifecycle transitions\nfor this id.",
-            "format": "uuid",
-            "type": "string"
-          },
-          "status": {
-            "description": "Initial status, always `\"pending\"` for a fresh enqueue. For\nidempotent retries it's whatever the existing row's status\nis at lookup time.",
-            "type": "string"
-          }
-        },
-        "required": [
-          "operation_id",
-          "status",
-          "newly_enqueued"
-        ],
-        "type": "object"
-      },
       "CreateLoginRequestRequest": {
         "additionalProperties": false,
         "description": "Request body for `POST /v1/admin/login-requests`.\n\n`localhost_state_sha256` and `cli_verifier_sha256` are SHA-256 digests of\nrandom values held by the CLI; the plaintext never crosses the wire on this\nroute. The eventual session-mint route (`POST /v1/admin/sessions` with\n`grant_type=login-handoff`) re-presents the plaintext, and admin-api\nre-hashes and matches.",
@@ -613,7 +613,7 @@
             "type": "string"
           },
           "customer_slug": {
-            "description": "Customer identifier recorded with the registration. Format: kebab-case.\n\nOptional under umbrella #4362 PR 3 consumer-shape flow: when\nomitted the CLI lands on WorkOS's hosted AuthKit UI without an\n`organization_id` pre-bound. The admin-api resolves the Mount\nThor customer post-callback from the WorkOS user's resolved\n`organization_id`. Requires `MOUNTTHOR_AUTHKIT_ENABLED`. When\nprovided, the legacy per-customer SSO path runs unchanged.",
+            "description": "Customer slug recorded with the registration. Format: kebab-case.\n\nOptional under umbrella #4362 PR 3 consumer-shape flow: when\nomitted the CLI lands on WorkOS's hosted AuthKit UI without an\n`organization_id` pre-bound. The admin-api resolves the Mount\nThor customer post-callback from the WorkOS user's resolved\n`organization_id`. Requires `MOUNTTHOR_AUTHKIT_ENABLED`. When\nprovided, the legacy per-customer SSO path runs unchanged.",
             "example": "acme",
             "type": [
               "string",
@@ -630,7 +630,7 @@
             "type": "string"
           },
           "tenant_slug": {
-            "description": "Optional tenant identifier to scope the eventual session to a specific\ntenant. When omitted the human session is account-scoped.\n\nOnly valid when a customer identifier is provided — the consumer flow without a pre-bound customer\ncannot pre-bind a tenant because the customer is unresolved\nuntil callback. The resolved session in the consumer flow is\nalways account-scoped.",
+            "description": "Optional tenant slug to scope the eventual session to a specific\ntenant. When omitted the human session is account-scoped.\n\nOnly valid alongside `customer_slug` — the no-slug consumer flow\ncannot pre-bind a tenant because the customer is unresolved\nuntil callback. The resolved session in the consumer flow is\nalways account-scoped.",
             "example": "acme-prod",
             "type": [
               "string",
@@ -777,7 +777,7 @@
             "type": "string"
           },
           "feature_flags": {
-            "description": "Feature-flag identifiers currently enabled for this customer's\nWorkOS organization. Resolved by admin-api at request time\nagainst WorkOS's `/organizations/{orgId}/feature-flags` endpoint\nwith a TTL cache. Empty when the WorkOS organization id cannot\nbe resolved (e.g. before customer onboarding completes) or when\nthe WorkOS lookup transiently fails (callers see a stable\n\"no flags\" rather than an outage-driven 500). The portal hands\nthis list to OpenFeature's `StaticListProvider`. #5230.",
+            "description": "Slugs of feature flags currently enabled for this customer's\nWorkOS organization. Resolved by admin-api at request time\nagainst WorkOS's `/organizations/{orgId}/feature-flags` endpoint\nwith a TTL cache. Empty when the WorkOS organization id cannot\nbe resolved (e.g. before customer onboarding completes) or when\nthe WorkOS lookup transiently fails (callers see a stable\n\"no flags\" rather than an outage-driven 500). The portal hands\nthis list to OpenFeature's `StaticListProvider`. #5230.",
             "items": {
               "type": "string"
             },
@@ -1083,7 +1083,7 @@
             "type": "string"
           },
           "line_items": {
-            "description": "Itemized line items, ordered by tenant identifier, resource kind, resource class, and usage model for stable client rendering.",
+            "description": "Itemized line items, ordered by (tenant_slug, resource_kind,\nresource_class, usage_model) for stable client rendering.",
             "items": {
               "$ref": "#/components/schemas/BillingCostLineItem"
             },
@@ -1094,7 +1094,7 @@
             "description": "Window covered by the response."
           },
           "price_book_slug": {
-            "description": "The customer's active price book identifier at the time of the\ncomputation (e.g. `alpha-2026`). Surfaced so the response is\nself-explanatory when amounts are 0.",
+            "description": "The customer's active price book slug at the time of the\ncomputation (e.g. `alpha-2026`). Surfaced so the response is\nself-explanatory when amounts are 0.",
             "example": "alpha-2026",
             "type": "string"
           },
@@ -1163,7 +1163,7 @@
         "type": "object"
       },
       "CustomerBillingPriceCatalogResponse": {
-        "description": "Customer-facing price-book catalog response. Surfaces the catalog\nindependently of any usage rollup so creation flows (Create Bare Metal Machine,\nCreate VM) can render \"this class costs $X/second\" before the\ncustomer commits to running anything.",
+        "description": "Customer-facing price-book catalog response. Surfaces the catalog\nindependently of any usage rollup so creation flows (Create Bare Metal\nMachine, Create VM) can render \"this class costs $X/second\" before the\ncustomer commits to running anything.",
         "properties": {
           "currency": {
             "description": "ISO 4217 currency code; today always `USD` per umbrella\nscoping decision.",
@@ -1182,7 +1182,7 @@
             "type": "array"
           },
           "price_book_slug": {
-            "description": "Active price book identifier (e.g. `alpha-2026`). Surfaced so the\nresponse is self-explanatory when prices are 0.",
+            "description": "Active price book slug (e.g. `alpha-2026`). Surfaced so the\nresponse is self-explanatory when prices are 0.",
             "example": "alpha-2026",
             "type": "string"
           }
@@ -1206,7 +1206,7 @@
             "type": "array"
           },
           "by_tenant": {
-            "description": "Per-tenant rollup ordered by tenant identifier for stable client display.\nTenants with no usage in the window are included with empty\n`by_class` and zero totals so client UIs do not need to special-case\nthe missing-tenant rendering.",
+            "description": "Per-tenant rollup ordered by `tenant_slug` for stable client display.\nTenants with no usage in the window are included with empty\n`by_class` and zero totals so client UIs do not need to special-case\nthe missing-tenant rendering.",
             "items": {
               "$ref": "#/components/schemas/TenantUsageBreakdown"
             },
@@ -1265,16 +1265,16 @@
       "CustomerFleetResponse": {
         "description": "Fleet listing response for account-scoped compute resources.",
         "properties": {
+          "bare_metal_machines": {
+            "description": "Bare-metal machines currently visible in the tenant namespace.",
+            "items": {
+              "$ref": "#/components/schemas/FleetBareMetalMachineSummary"
+            },
+            "type": "array"
+          },
           "customer_id": {
             "description": "Stable UUID for the customer account.",
             "type": "string"
-          },
-          "leases": {
-            "description": "Bare-metal machines currently visible in the tenant namespace.",
-            "items": {
-              "$ref": "#/components/schemas/FleetLeaseSummary"
-            },
-            "type": "array"
           },
           "namespace": {
             "description": "Kubernetes namespace used for the tenant's compute resources.",
@@ -1297,7 +1297,7 @@
           "customer_id",
           "tenant_id",
           "namespace",
-          "leases",
+          "bare_metal_machines",
           "virtual_machines"
         ],
         "type": "object"
@@ -1526,7 +1526,7 @@
             "description": "Activated account metadata."
           },
           "account_setup_url": {
-            "description": "Optional WorkOS AuthKit \"complete your account setup\" URL — the\nsame `accept_invitation_url` WorkOS emails the customer admin\nfrom its own infrastructure as part of `send_authkit_invitation`.\nSurfacing it inline lets `mthr setup` deep-link the customer\nadmin straight to AuthKit's hosted UI to set a password / sign\nin via social / magic-link without having to context-switch to\nthe WorkOS-sent email. The email path remains the authoritative\nrecovery if the CLI tab is closed before setup completes;\nreturning this URL does not change WorkOS's email delivery.\n\n`None` when AuthKit is disabled in this deployment, the WorkOS\nsecret could not be loaded, or the invitation send 4xx'd (in\nwhich case the operator-side `mtops customer authkit-invitation-\nreissue` recovery path remains available).",
+            "description": "Optional WorkOS AuthKit \"complete your account setup\" URL — the\nsame `accept_invitation_url` WorkOS emails the customer admin\nfrom its own infrastructure as part of `send_authkit_invitation`.\nSurfacing it inline lets `mountthor setup` deep-link the customer\nadmin straight to AuthKit's hosted UI to set a password / sign\nin via social / magic-link without having to context-switch to\nthe WorkOS-sent email. The email path remains the authoritative\nrecovery if the CLI tab is closed before setup completes;\nreturning this URL does not change WorkOS's email delivery.\n\n`None` when AuthKit is disabled in this deployment, the WorkOS\nsecret could not be loaded, or the invitation send 4xx'd (in\nwhich case the operator-side `mtops customer authkit-invitation-\nreissue` recovery path remains available).",
             "example": "https://example.authkit.app/sign-up?invite=01HF...",
             "type": [
               "string",
@@ -1758,8 +1758,69 @@
         ],
         "type": "object"
       },
+      "FleetBareMetalMachineSummary": {
+        "description": "Summary of a bare-metal machine in the account fleet.",
+        "properties": {
+          "created_at": {
+            "description": "Kubernetes creation timestamp.",
+            "example": "2026-05-25T17:30:00Z",
+            "type": "string"
+          },
+          "failure_code": {
+            "description": "Customer-visible failure code when provisioning fails.",
+            "example": "ReservedCapacityUnavailable",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "failure_message": {
+            "description": "Customer-visible failure detail when provisioning fails.",
+            "example": "capacity allocation is missing for bare-metal class m4-24g",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "image": {
+            "description": "macOS image requested by the machine.",
+            "example": "xcode-16-stable",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "machine_class": {
+            "description": "Hardware class for the machine.",
+            "example": "m4-24g",
+            "type": "string"
+          },
+          "name": {
+            "description": "Kubernetes object name for the bare-metal machine.",
+            "example": "bm-01",
+            "type": "string"
+          },
+          "phase": {
+            "description": "Current machine phase, such as `Pending`, `Ready`, `Failed`, or `Reclaiming`.",
+            "example": "Ready",
+            "type": "string"
+          },
+          "ready_for_access": {
+            "description": "Whether an access session can be opened for the machine.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "machine_class",
+          "phase",
+          "ready_for_access",
+          "created_at"
+        ],
+        "type": "object"
+      },
       "FleetCapacityAllocation": {
-        "description": "Account capacity allocation for one machine class or resource shape.",
+        "description": "Account capacity allocation for one resource shape.",
         "properties": {
           "committed_quantity": {
             "description": "Reserved quantity available for the class. Null means no committed quantity.",
@@ -1786,7 +1847,7 @@
             ]
           },
           "max_concurrent_access_grants": {
-            "description": "Maximum concurrently active access grants for this allocation.",
+            "description": "Maximum concurrently active access sessions for this allocation.",
             "format": "int32",
             "type": [
               "integer",
@@ -1833,7 +1894,7 @@
         "description": "Account capacity listing response.",
         "properties": {
           "capacity_allocations": {
-            "description": "Capacity allocations that govern machine and access-grant limits.",
+            "description": "Capacity allocations that govern bare-metal machine and access-session limits.",
             "items": {
               "$ref": "#/components/schemas/FleetCapacityAllocation"
             },
@@ -1852,59 +1913,6 @@
           "customer_id",
           "tenant_id",
           "capacity_allocations"
-        ],
-        "type": "object"
-      },
-      "FleetLeaseSummary": {
-        "description": "Summary of a bare-metal machine in the account fleet.",
-        "properties": {
-          "created_at": {
-            "description": "Kubernetes creation timestamp.",
-            "example": "2026-05-25T17:30:00Z",
-            "type": "string"
-          },
-          "failure_code": {
-            "description": "Customer-visible failure code when provisioning fails.",
-            "example": "ReservedCapacityUnavailable",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "image": {
-            "description": "macOS image requested by the machine.",
-            "example": "xcode-16-stable",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "machine_class": {
-            "description": "Hardware class for the machine.",
-            "example": "m4-24g",
-            "type": "string"
-          },
-          "name": {
-            "description": "Kubernetes object name for the bare-metal machine.",
-            "example": "bm-01",
-            "type": "string"
-          },
-          "phase": {
-            "description": "Current machine phase, such as `Pending`, `Ready`, `Failed`, or `Reclaiming`.",
-            "example": "Ready",
-            "type": "string"
-          },
-          "ready_for_access": {
-            "description": "Whether an access session can be opened for the machine.",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "name",
-          "machine_class",
-          "phase",
-          "ready_for_access",
-          "created_at"
         ],
         "type": "object"
       },
@@ -2082,6 +2090,14 @@
           "failure_code": {
             "description": "Customer-visible failure code when provisioning fails.",
             "example": "ImageUnavailable",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "failure_message": {
+            "description": "Customer-visible failure detail when provisioning fails.",
+            "example": "provider VM image was not available on the selected host",
             "type": [
               "string",
               "null"
@@ -2378,9 +2394,8 @@
             "type": "string"
           },
           "resource_kind": {
-            "description": "Resource billing kind. Current contract values include `bare_metal` for bare-metal machine usage and `vm` for virtual machine usage.",
-            "type": "string",
-            "example": "bare_metal"
+            "description": "`bare_metal_machine` or `vm`.",
+            "type": "string"
           },
           "tenant_id": {
             "description": "Tenant the line attributes usage to.",
@@ -2441,7 +2456,7 @@
             "type": "string"
           },
           "invoice_number": {
-            "description": "Human-readable invoice number in the customer-period sequence format..",
+            "description": "Human-readable invoice number\n(`INV-{customer_slug}-{YYYY}-{MM}-{NNNN}`).",
             "example": "INV-acme-2026-05-0001",
             "type": "string"
           },
@@ -2546,7 +2561,31 @@
         ],
         "type": "object"
       },
-      "LeaseAvailabilityResponse": {
+      "ListOperationsResponse": {
+        "properties": {
+          "customer_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/OperationListEntry"
+            },
+            "type": "array"
+          },
+          "total_count": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "customer_id",
+          "items",
+          "total_count"
+        ],
+        "type": "object"
+      },
+      "MachineAvailabilityResponse": {
         "description": "Binary collapse of the per-class reserved-available count.\n\n`available` ⇔ at least one host is `reserved_unbound` for the\ncaller's tenant + this class right now (summed across sites).\n`unavailable` ⇔ no reserved capacity is currently available for\nthis class; the machine request will queue and admin-worker will surface a\n`CommittedCapacityUnavailable` failure on the activity feed if the\nqueue cannot drain.",
         "properties": {
           "as_of": {
@@ -2570,30 +2609,6 @@
           "availability",
           "as_of",
           "ttl_seconds"
-        ],
-        "type": "object"
-      },
-      "ListOperationsResponse": {
-        "properties": {
-          "customer_id": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/OperationListEntry"
-            },
-            "type": "array"
-          },
-          "total_count": {
-            "format": "int64",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "customer_id",
-          "items",
-          "total_count"
         ],
         "type": "object"
       },
@@ -2880,8 +2895,8 @@
             "type": "string"
           },
           "resource_kind": {
-            "description": "Resource billing kind. Current contract values include `bare_metal` for bare-metal machine usage and `vm` for virtual machine usage.",
-            "example": "bare_metal",
+            "description": "`bare_metal_machine` or `vm`.",
+            "example": "bare_metal_machine",
             "type": "string"
           },
           "unit_price_cents": {
@@ -3695,7 +3710,7 @@
             "type": "string"
           },
           "tenant_slug": {
-            "description": "Human-readable tenant identifier (e.g. `acme-prod`).",
+            "description": "Human-readable tenant slug (e.g. `acme-prod`).",
             "example": "acme-prod",
             "type": "string"
           }
@@ -4675,7 +4690,7 @@
             ]
           }
         ],
-        "summary": "Create Desktop Access Grant",
+        "summary": "Create a desktop access grant.",
         "tags": [
           "access"
         ],
@@ -4743,7 +4758,7 @@
             ]
           }
         ],
-        "summary": "Create SSH Access Grant",
+        "summary": "Create an SSH access grant.",
         "tags": [
           "access"
         ],
@@ -4811,7 +4826,7 @@
             ]
           }
         ],
-        "summary": "Create Tunnel Access Grant",
+        "summary": "Create a tunnel access grant.",
         "tags": [
           "access"
         ],
@@ -4872,7 +4887,7 @@
             ]
           }
         ],
-        "summary": "Revoke Access Grant",
+        "summary": "Revoke an access grant.",
         "tags": [
           "access"
         ],
@@ -4983,6 +4998,72 @@
           "returnsSecretOnce": false
         },
         "x-mountthor-source-path": "control-plane/admin-api/src/routes/me.rs",
+        "x-mountthor-stability": "v1alpha1"
+      }
+    },
+    "/v1/admin/bare-metal-machines": {
+      "post": {
+        "operationId": "create_customer_admin_bare_metal_machine",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBareMetalMachineRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateBareMetalMachineResponse"
+                }
+              }
+            },
+            "description": "Idempotent retry; existing operation returned"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateBareMetalMachineResponse"
+                }
+              }
+            },
+            "description": "Operation enqueued"
+          },
+          "400": {
+            "description": "Request validation failed"
+          },
+          "401": {
+            "description": "Missing or invalid customer credential"
+          },
+          "403": {
+            "description": "Credential is missing compute:write scope"
+          }
+        },
+        "security": [
+          {
+            "api_key_bearer": [
+              "compute:write"
+            ]
+          }
+        ],
+        "summary": "Create Bare Metal Machine",
+        "tags": [
+          "bare-metal"
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/customer_admin_operations.rs",
         "x-mountthor-stability": "v1alpha1"
       }
     },
@@ -5197,7 +5278,7 @@
     },
     "/v1/admin/billing/price-catalog": {
       "get": {
-        "description": "Returns the active price book identifier + every priced\n(resource_kind, resource_class, usage_model) triple, ordered by\nthat key for stable client rendering. Independent of usage —\nsurfaces what the customer *would* be billed if they ran a given\nclass, so the portal's Create Bare Metal Machine / Create VM flows can render a\nper-class price hint before submission.",
+        "description": "Returns the active price book slug + every priced\n(resource_kind, resource_class, usage_model) triple, ordered by\nthat key for stable client rendering. Independent of usage —\nsurfaces what the customer *would* be billed if they ran a given\nclass, so the portal's Create Bare Metal Machine / Create VM flows can\nrender a per-class price hint before submission.",
         "operationId": "get_customer_billing_price_catalog",
         "responses": {
           "200": {
@@ -5329,7 +5410,7 @@
             ]
           }
         ],
-        "summary": "List Customer Users",
+        "summary": "List the customer users belonging to the calling customer.",
         "tags": [
           "customer-users"
         ],
@@ -5391,7 +5472,7 @@
             ]
           }
         ],
-        "summary": "Invite Customer User",
+        "summary": "Invite a teammate to join the caller's Mount Thor customer via WorkOS\nAuthKit.",
         "tags": [
           "customer-users"
         ],
@@ -5455,7 +5536,7 @@
     },
     "/v1/admin/fleet/capacity": {
       "get": {
-        "description": "Returns commercial and operational limits that apply to the tenant's fleet:\ncommitted quantities, whether on-demand use is allowed, machine caps, and\naccess-grant caps.",
+        "description": "Returns commercial and operational limits that apply to the tenant's fleet:\ncommitted quantities, whether on-demand use is allowed, bare-metal machine\ncaps, and access-session caps.",
         "operationId": "get_customer_fleet_capacity",
         "responses": {
           "200": {
@@ -5482,7 +5563,7 @@
             ]
           }
         ],
-        "summary": "Get Fleet Capacity",
+        "summary": "List Fleet Capacity",
         "tags": [
           "fleet"
         ],
@@ -5526,7 +5607,7 @@
             ]
           }
         ],
-        "summary": "Get Fleet Overview",
+        "summary": "Get Fleet Summary",
         "tags": [
           "fleet"
         ],
@@ -5584,7 +5665,7 @@
             ]
           }
         ],
-        "summary": "Get Fleet Usage",
+        "summary": "List Usage",
         "tags": [
           "fleet"
         ],
@@ -5628,7 +5709,7 @@
             ]
           }
         ],
-        "summary": "Get Identity Setup",
+        "summary": "Return the caller's customer's WorkOS identity setup state.",
         "tags": [
           "identity"
         ],
@@ -5691,7 +5772,7 @@
             ]
           }
         ],
-        "summary": "Create Identity Setup Link",
+        "summary": "Mint a fresh WorkOS Admin Portal link for the caller's customer.",
         "tags": [
           "identity"
         ],
@@ -6222,10 +6303,10 @@
         "x-mountthor-stability": "v1alpha1"
       }
     },
-    "/v1/admin/lease-availability": {
+    "/v1/admin/machine-availability": {
       "get": {
         "description": "Returns a binary capacity signal for the caller's tenant + the\nrequested machine class. Designed to be cheap to call (server-side\n30-second cache) and never to disclose numeric capacity counts.\n\nBehavior:\n- 200 with `{availability, as_of, ttl_seconds}` on success.\n- 404 when the customer is not entitled to the class (we do not\n  distinguish \"not entitled\" from \"no such class\" — entitlement\n  existence is itself sensitive).",
-        "operationId": "get_lease_availability",
+        "operationId": "get_machine_availability",
         "parameters": [
           {
             "description": "Customer-entitled machine-class identifier. 404 if the customer is not entitled.",
@@ -6242,7 +6323,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/LeaseAvailabilityResponse"
+                  "$ref": "#/components/schemas/MachineAvailabilityResponse"
                 }
               }
             },
@@ -6255,7 +6336,7 @@
             "description": "API key is missing compute:read scope."
           },
           "404": {
-            "description": "Customer is not entitled to this class, or the machine-availability surface is disabled by feature flag."
+            "description": "Customer is not entitled to this class."
           }
         },
         "security": [
@@ -6276,73 +6357,7 @@
           "returnsSecret": false,
           "returnsSecretOnce": false
         },
-        "x-mountthor-source-path": "control-plane/admin-api/src/routes/lease_availability.rs",
-        "x-mountthor-stability": "v1alpha1"
-      }
-    },
-    "/v1/admin/leases": {
-      "post": {
-        "operationId": "create_customer_admin_lease",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateLeaseRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreateLeaseResponse"
-                }
-              }
-            },
-            "description": "Idempotent retry; existing operation returned"
-          },
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreateLeaseResponse"
-                }
-              }
-            },
-            "description": "Operation enqueued"
-          },
-          "400": {
-            "description": "Request validation failed"
-          },
-          "401": {
-            "description": "Missing or invalid customer credential"
-          },
-          "403": {
-            "description": "Credential is missing leases:write scope"
-          }
-        },
-        "security": [
-          {
-            "api_key_bearer": [
-              "leases:write"
-            ]
-          }
-        ],
-        "summary": "Create Bare Metal Machine",
-        "tags": [
-          "leases"
-        ],
-        "x-mountthor-owner": "admin-api",
-        "x-mountthor-secret-handling": {
-          "acceptsSecret": false,
-          "redactedFields": [],
-          "returnsSecret": false,
-          "returnsSecretOnce": false
-        },
-        "x-mountthor-source-path": "control-plane/admin-api/src/routes/customer_admin_operations.rs",
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/machine_availability.rs",
         "x-mountthor-stability": "v1alpha1"
       }
     },
@@ -6404,7 +6419,7 @@
         ],
         "summary": "List Operations",
         "tags": [
-          "leases"
+          "bare-metal"
         ],
         "x-mountthor-owner": "admin-api",
         "x-mountthor-secret-handling": {
@@ -6893,7 +6908,7 @@
         "security": [
           {}
         ],
-        "summary": "Create Session Authorization",
+        "summary": "Begin a `mthr login` browser-SSO authorization.",
         "tags": [
           "sessions"
         ],
@@ -7042,7 +7057,7 @@
         "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_baremetalmachines.yaml"
       },
       "post": {
-        "description": "Creates a bare-metal Mac machine request. The request selects a machine class, image channel, access policy, and optional placement preferences.",
+        "description": "Creates a bare-metal machine request. The request selects a machine class, image channel, access policy, and optional placement preferences.",
         "operationId": "createBareMetalMachine",
         "parameters": [
           {
@@ -7271,7 +7286,7 @@
     },
     "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/fleetpolicies": {
       "get": {
-        "description": "Lists fleet policies in the tenant namespace.",
+        "description": "Lists Fleet Policies in the tenant namespace.",
         "operationId": "listFleetPolicy",
         "parameters": [
           {
@@ -7346,7 +7361,7 @@
     },
     "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/fleetpolicies/{name}": {
       "get": {
-        "description": "Returns one fleet policy by name from the tenant namespace.",
+        "description": "Returns one Fleet Policy by name from the tenant namespace.",
         "operationId": "getFleetPolicy",
         "parameters": [
           {
@@ -7359,7 +7374,7 @@
             }
           },
           {
-            "description": "Kubernetes object name for the fleet policy.",
+            "description": "Kubernetes object name for the FleetPolicy.",
             "in": "path",
             "name": "name",
             "required": true,
@@ -7721,7 +7736,7 @@
     },
     "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/virtualmachines": {
       "get": {
-        "description": "Lists VirtualMachines in the tenant namespace.",
+        "description": "Lists Virtual Machines in the tenant namespace.",
         "operationId": "listVirtualMachine",
         "parameters": [
           {
@@ -7794,7 +7809,7 @@
         "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_virtualmachines.yaml"
       },
       "post": {
-        "description": "Creates one VirtualMachine in the tenant namespace.",
+        "description": "Creates one Virtual Machine in the tenant namespace.",
         "operationId": "createVirtualMachine",
         "parameters": [
           {
@@ -7875,7 +7890,7 @@
     },
     "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/virtualmachines/{name}": {
       "delete": {
-        "description": "Deletes one VirtualMachine by name from the tenant namespace.",
+        "description": "Deletes one Virtual Machine by name from the tenant namespace.",
         "operationId": "deleteVirtualMachine",
         "parameters": [
           {
@@ -7948,7 +7963,7 @@
         "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_virtualmachines.yaml"
       },
       "get": {
-        "description": "Returns one VirtualMachine by name from the tenant namespace.",
+        "description": "Returns one Virtual Machine by name from the tenant namespace.",
         "operationId": "getVirtualMachine",
         "parameters": [
           {

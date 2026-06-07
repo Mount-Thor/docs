@@ -20,7 +20,7 @@ There is no repo-local production deploy command. GitHub Actions validates the d
 - **`docs.json`** is the source of truth for site structure. Adding a new MDX page is a two-step change: create the file *and* register it under `navigation.tabs[].pages` in `docs.json`. Pages omitted from `docs.json` are not reachable from the nav.
 - **Tabs and groups**: top-level navigation currently uses one `Documentation` tab with L1 pages plus an `API Reference` group. Page paths in `docs.json` are routes (no `.mdx` extension, no leading slash).
 - **MDX frontmatter** drives page metadata (`title`, `description`, `icon`). The `icon` value is a Font Awesome name.
-- **API reference** pages are generated from `api-reference/mount-thor-local.openapi.json` — refresh the checked-in OpenAPI artifact when endpoint shapes change rather than hand-editing generated pages.
+- **API reference** pages are generated from `api-reference/customer-api.v1.openapi.json` — refresh the checked-in OpenAPI artifact when endpoint shapes change rather than hand-editing generated pages.
 - **Reusable content** lives in `snippets/` and is imported into MDX pages; `images/` and `logo/` hold static assets referenced by absolute path (e.g. `/images/foo.png`).
 - **`.mintignore`** excludes `drafts/` and `*.draft.mdx` from the build in addition to Mintlify's built-in ignores (`.git`, `.github`, `.claude`, `node_modules`, `README.md`, `LICENSE.md`, `CHANGELOG.md`, `CONTRIBUTING.md`).
 

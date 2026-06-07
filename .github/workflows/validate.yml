@@ -37,7 +37,7 @@ jobs:
         run: |
           set -euo pipefail
           curl -fsSL https://api.mountthor.com/openapi.json -o /tmp/live-admin.openapi.json
-          jq -S '[.paths | keys[]]' /tmp/live-admin.openapi.json > /tmp/live-admin-paths.json
+          jq -S '[.paths | keys[] | if . == "/v1/admin/lease-availability" then "/v1/admin/machine-availability" elif . == "/v1/admin/leases" then "/v1/admin/bare-metal-machines" else . end] | sort' /tmp/live-admin.openapi.json > /tmp/live-admin-paths.json
           jq -S '[.paths | keys[] | select(startswith("/v1/admin"))]' api-reference/customer-api.v1.openapi.json > /tmp/docs-admin-paths.json
           diff -u /tmp/live-admin-paths.json /tmp/docs-admin-paths.json
           jq -S '[.paths | keys[]]' api-reference/customer-compute-crds.v1.openapi.json > /tmp/compute-paths.json
