@@ -79,12 +79,14 @@
                 "pages": [
                   "GET /v1/admin/sessions",
                   "POST /v1/admin/sessions",
+                  "POST /v1/admin/sessions/authorize",
                   "DELETE /v1/admin/sessions/{id}"
                 ]
               },
               {
                 "group": "Access",
                 "pages": [
+                  "POST /v1/admin/access/grants/desktop",
                   "POST /v1/admin/access/grants/ssh",
                   "POST /v1/admin/access/grants/tunnel",
                   "DELETE /v1/admin/access/grants/{grant_id}"
@@ -95,8 +97,23 @@
                 "pages": [
                   "GET /v1/admin/fleet",
                   "GET /v1/admin/fleet/capacity",
+                  "GET /v1/admin/lease-availability",
                   "GET /v1/admin/fleet/summary",
                   "GET /v1/admin/fleet/usage"
+                ]
+              },
+              {
+                "group": "Bare Metal",
+                "pages": [
+                  "POST /v1/admin/leases",
+                  "GET /v1/admin/operations"
+                ]
+              },
+              {
+                "group": "Customer Users",
+                "pages": [
+                  "GET /v1/admin/customer-users",
+                  "POST /v1/admin/customer-users/invite"
                 ]
               },
               {
@@ -154,8 +171,10 @@
                 ]
               },
               {
-                "group": "Identity Providers",
+                "group": "Identity",
                 "pages": [
+                  "GET /v1/admin/identity",
+                  "POST /v1/admin/identity-setup-link",
                   "GET /v1/admin/identity/providers",
                   "POST /v1/admin/identity/providers",
                   "PATCH /v1/admin/identity/providers/{id}"
