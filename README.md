@@ -8,10 +8,10 @@ config; published through the Mintlify dashboard deployment for
 
 The customer-facing API reference is generated from checked-in OpenAPI:
 
-- Combined docs artifact: `api-reference/mount-thor-local.openapi.json`, used
+- Combined docs artifact: `api-reference/customer-api.v1.openapi.json`, used
   by `docs.json` for the generated API Reference navigation.
-- Admin API source: [`https://api.mountthor.com/openapi.json`](https://api.mountthor.com/openapi.json),
-  copied into the combined docs artifact when the docs are refreshed.
+- Admin API source: `dist/api-specs/customer-api/v1/openapi.json` from
+  `Mount-Thor/mount-thor`, copied into this repo when the docs are refreshed.
 - Compute API: `api-reference/customer-compute-crds.v1.openapi.json`, copied
   from the generated monorepo artifact when the docs are refreshed, then
   publication-filtered to the customer workflow resources documented in MDX.

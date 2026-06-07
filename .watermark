@@ -13,23 +13,24 @@ source_repo: Mount-Thor/mount-thor
 source_repo_url: https://github.com/Mount-Thor/mount-thor
 
 upstream_commit:
-  sha: 7c98e387c5c5fa0b3a0077d74dc3aeb946d368f2
-  short: 7c98e387
-  message: "redesign customer admin api surface (#3760)"
-  committed_at: "2026-05-25T08:38:09Z"
+  sha: 471ec7fde6fe917302613cfd3a8b53d346f83bf0
+  short: 471ec7fde
+  message: "Canonicalize bare-metal machine API terminology"
+  committed_at: "2026-06-07T10:23:45-07:00"
 
 # Source files this docs revision derives content from. Bump the watermark
 # (and re-derive the affected MDX) when any of these change materially.
 derived_from:
   - governance/docs/developers/README.md
   - governance/docs/api-surface-registry-and-openapi-publication-spec.md
+  - dist/api-specs/customer-api/v1/openapi.json
   - governance/generated/customer-compute-crds.v1.openapi.json
 
 # Runtime and checked-in API reference sources. Mintlify re-fetches the admin
 # source on every build; compute OpenAPI is copied into this repository when
 # docs are refreshed from the monorepo.
 runtime_spec_sources:
-  admin_api: https://api.mountthor.com/openapi.json
+  admin_api: api-reference/customer-api.v1.openapi.json
   compute_api: api-reference/customer-compute-crds.v1.openapi.json
 
 # The mount-thor commit that introduced this docs site as a published

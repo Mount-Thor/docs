@@ -33,12 +33,10 @@ truth for, `Mount-Thor/mount-thor`. The canonical specs live in:
   `compute/` are derived from the customer-facing sections of this file.
 - `governance/docs/api-surface-registry-and-openapi-publication-spec.md` —
   the customer API contract.
-- `https://api.mountthor.com/openapi.json` — the actual published OpenAPI
-  document, generated from typed `utoipa` annotations in admin-api.
-- `api-reference/mount-thor-local.openapi.json` — checked-in combined OpenAPI
+- `api-reference/customer-api.v1.openapi.json` — checked-in combined OpenAPI
   artifact used by Mintlify for the generated API Reference. Refresh it from
-  the live admin OpenAPI plus the checked-in compute OpenAPI when API surfaces
-  change.
+  the generated monorepo admin OpenAPI plus the checked-in compute OpenAPI
+  when API surfaces change.
 
 Edits here that imply behavior change must be traceable to a change in the
 monorepo first (or land alongside one). Don't promise a customer-facing
@@ -82,8 +80,8 @@ Customer-facing MDX must present one supported path:
 
 Do not mention legacy aliases, target/current route distinctions,
 implementation migrations, internal route names, `[live]`, or `[todo]` in
-customer-facing MDX. Route and field claims must match the live admin OpenAPI
-document and the checked-in compute OpenAPI document.
+customer-facing MDX. Route and field claims must match the checked-in customer
+API OpenAPI document and the checked-in compute OpenAPI document.
 
 Before publishing a README-derived docs refresh, compare the customer-facing
 sections in `governance/docs/developers/README.md` against the Mintlify
