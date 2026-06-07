@@ -86,15 +86,23 @@ it:
 
 ```bash
 curl -fsSL https://get.mountthor.com/install.sh | sh
-mthr --version
+mthr version
+```
+
+`mthr` is also available via Homebrew:
+
+```bash
+brew install Mount-Thor/mountthor/mthr
 ```
 
 ## Authenticate
 
+### Browser Login (SSO)
+
 Log in through your browser with SSO:
 
 ```bash
-mthr login --customer <CUSTOMER>
+mthr login
 ```
 
 This opens your identity provider in a browser window. After you authenticate,
@@ -106,11 +114,160 @@ Check your identity:
 mthr whoami
 ```
 
-## Get Kubeconfig
+### API Key
 
-Mount Thor exposes compute through the Kubernetes API. The `mthr kubeconfig`
-command writes a kubeconfig that lets both `mthr` and `kubectl` talk to your
-Mount Thor control plane.
+For scripts, CI pipelines, and automation, set your API key as an environment
+variable:
+
+```bash
+export MOUNTTHOR_API_KEY="mthr_live_..."
+```
+
+When `MOUNTTHOR_API_KEY` is set, `mthr` uses it directly — no browser login
+needed.
+
+## Provision a Bare-Metal Mac
+
+Allocate a dedicated physical Mac with a single command. Mount Thor provisions
+the hardware, installs the image, and prepares it for access.
+
+Check available hardware classes and images:
+
+```bash
+mthr fleet images
+```
+
+Allocate a machine interactively:
+
+```bash
+mthr bm allocate
+```
+
+The CLI prompts for a machine name and hardware class. You can also specify
+these directly:
+
+```bash
+mthr bm allocate <NAME> --class <CLASS> --image <IMAGE>
+```
+
+This creates a `BareMetalMachine` resource in your Mount Thor control plane.
+Check status:
+
+```bash
+mthr bm ls
+```
+
+When the machine shows `Ready`, SSH in:
+
+```bash
+mthr bm ssh <NAME>
+```
+
+The CLI automatically waits for the machine to be ready (up to 30 seconds by
+default) and brokers a short-lived SSH grant — no separate access setup
+needed.
+
+When you're done, release the machine:
+
+```bash
+mthr bm free <NAME>
+```
+
+Mount Thor revokes access, wipes the host, and returns it to the pool. For the
+full bare-metal lifecycle, see [Bare Metal](/compute/bare-metal).
+
+## Create a Virtual Machine
+
+For faster create/delete cycles, create a virtual machine. Mount Thor places
+the VM on eligible capacity, prepares the image, boots macOS, and publishes
+your requested ports.
+
+Create a VM interactively:
+
+```bash
+mthr vm create
+```
+
+The CLI prompts for a name, image, CPU, memory, and disk size. You can also
+specify these directly:
+
+```bash
+mthr vm create <NAME> --image <IMAGE> --cpu 4 --memory 8 --disk 100 \
+  --port ssh=tcp:22
+```
+
+Check status:
+
+```bash
+mthr vm ls
+```
+
+When the VM shows `Running`, SSH in:
+
+```bash
+mthr vm ssh <NAME>
+```
+
+Open a tunnel to an application port:
+
+```bash
+mthr vm tunnel <NAME> --port-name app --local-port 8443
+```
+
+Delete the VM when you're done:
+
+```bash
+mthr vm delete <NAME>
+```
+
+See [Virtual Machines](/compute/virtual-machines) for the full VM lifecycle,
+desktop access, port publishing, and bootstrap data.
+
+## Explore the CLI
+
+Beyond provisioning machines, `mthr` provides commands for managing your fleet,
+access, and account:
+
+| Command | Description |
+|---|---|
+| `mthr fleet summary` | View reserved and spot capacity usage |
+| `mthr fleet images` | List available images |
+| `mthr bm ls` / `mthr vm ls` | List bare-metal machines / VMs |
+| `mthr bm get` / `mthr vm get` | Inspect a specific machine or VM |
+| `mthr keys ls` | List API keys |
+| `mthr keys create` | Create a new API key |
+| `mthr billing usage` | View current billing usage |
+| `mthr principal list` | List OIDC principals |
+| `mthr doctor auth` | Diagnose authentication and connectivity |
+| `mthr logout` | Clear stored credentials |
+| `mthr update` | Update the CLI to the latest version |
+
+Run `mthr help` or `mthr <command> --help` for full usage details.
+
+## Programmatic Access
+
+For CI/CD pipelines and automation, set `MOUNTTHOR_API_KEY` as described in
+[Authenticate](#api-key). When a pipeline needs to act as a specific identity
+rather than the key holder, use principal-based login:
+
+```bash
+mthr login --principal <PRINCIPAL_ID>
+```
+
+See [API Keys](/api-reference/api-keys/list-keys) for key management and
+[Principals](/api-reference/principals/list-principals) for setting up
+principal-based access.
+
+## Advanced: Direct Kubernetes Access
+
+Every `mthr` command maps to a Kubernetes Custom Resource under the
+`compute.mountthor.com/v1alpha1` API group. You can also manage resources
+directly with `kubectl`.
+
+### Get Kubeconfig
+
+The `mthr kubeconfig` command writes a kubeconfig that lets `kubectl` talk to
+your Mount Thor control plane:
 
 ```bash
 mthr kubeconfig
@@ -125,80 +282,7 @@ Set the namespace for your tenant:
 export MOUNTTHOR_NAMESPACE="tenant-example"
 ```
 
-## Provision a Bare-Metal Mac
-
-Allocate a dedicated physical Mac with a single command. Mount Thor provisions
-the hardware, installs the image, and prepares it for access.
-
-Check available hardware classes and images:
-
-```bash
-mthr fleet images
-```
-
-Allocate a machine:
-
-```bash
-mthr bm allocate build-1 --class m4-24g --image xcode-16
-```
-
-This creates a `BareMetalMachine` resource in your Mount Thor control plane.
-Wait for it to become ready, then SSH in:
-
-```bash
-mthr bm ssh build-1
-```
-
-The CLI automatically waits for the machine to be ready (up to 30 seconds by
-default) and brokers a short-lived SSH grant — no separate access session
-needed.
-
-When you're done, release the machine:
-
-```bash
-mthr bm free build-1
-```
-
-Mount Thor revokes access, wipes the host, and returns it to the pool. For the
-full bare-metal lifecycle, see [Bare Metal](/compute/bare-metal).
-
-## Create a Virtual Machine
-
-For faster create/delete cycles, create a virtual machine. Mount Thor places
-the VM on eligible capacity, prepares the image, boots macOS, and publishes
-your requested ports.
-
-```bash
-mthr vm create dev --image macos-15-dev-base --cpu 4 --memory 8 --disk 100 \
-  --port ssh=tcp:22
-```
-
-Wait for the VM to start, then SSH in:
-
-```bash
-mthr vm ssh dev
-```
-
-Open a tunnel to an application port:
-
-```bash
-mthr vm tunnel dev --port-name app --local-port 8443
-```
-
-Delete the VM when you're done:
-
-```bash
-mthr vm delete dev
-```
-
-See [Virtual Machines](/compute/virtual-machines) for the full VM lifecycle,
-desktop access, port publishing, and bootstrap data.
-
-## Advanced: Direct Kubernetes Access
-
-Every `mthr` command maps to a Kubernetes Custom Resource under the
-`compute.mountthor.com/v1alpha1` API group. You can also manage resources
-directly with `kubectl` using the kubeconfig from `mthr kubeconfig`.
+### Manage Resources with kubectl
 
 List your bare-metal machines:
 
@@ -219,87 +303,5 @@ kubectl get images
 ```
 
 See the [Bare Metal](/compute/bare-metal) and
-[Virtual Machines](/compute/virtual-machines) guides for full CRD examples.
-
-## Programmatic Access
-
-For CI/CD and automation, use API keys with session tokens instead of
-browser-based SSO.
-
-Generate a session token:
-
-```bash
-export MT_API_KEY="mthr_live_01JZ8M7EXAMPLE"
-
-curl -X POST https://api.mountthor.com/v1/admin/sessions \
-  -H "Authorization: Bearer $MT_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{ "session_ttl_seconds": 900 }'
-```
-
-Session tokens expire automatically (5–60 minutes, default 15 minutes). When a
-token expires, generate a new one from your API key.
-
-For headless CLI authentication (CI pipelines, automation), use principal-based
-login:
-
-```bash
-mthr login --principal <PRINCIPAL_ID>
-```
-
-<Accordion title="Automate session token rotation">
-
-Set `MT_API_KEY` from your secret manager:
-
-```bash
-export MT_API_KEY="mthr_live_01JZ8M7EXAMPLE"
-```
-
-Create the helper script:
-
-```bash
-cat > mt-refresh-session.sh <<'EOF'
-#!/usr/bin/env bash
-set -euo pipefail
-
-: "${MT_API_KEY:?Set MT_API_KEY from your secret manager before running this script.}"
-
-command -v jq >/dev/null || { echo "jq is required." >&2; exit 1; }
-command -v kubectl >/dev/null || { echo "kubectl is required." >&2; exit 1; }
-
-ttl_seconds="${MT_SESSION_TTL_SECONDS:-900}"
-kubectl_user="${MT_KUBECTL_USER:-mount-thor-session}"
-KCFG="${KCFG:-${HOME}/.kube/mount-thor}"
-mkdir -p "$(dirname "$KCFG")"
-
-response="$(
-  curl -fsS -X POST https://api.mountthor.com/v1/admin/sessions \
-    -H "Authorization: Bearer ${MT_API_KEY}" \
-    -H "Content-Type: application/json" \
-    -d "{\"session_ttl_seconds\": ${ttl_seconds}}"
-)"
-
-session_token="$(printf '%s' "$response" | jq -r '.session_token')"
-expires_at="$(printf '%s' "$response" | jq -r '.expires_at')"
-
-if [[ -z "$session_token" || "$session_token" == "null" ]]; then
-  echo "Mount Thor did not return a session token." >&2
-  exit 1
-fi
-
-kubectl --kubeconfig "$KCFG" config set-credentials "$kubectl_user" \
-  --token="$session_token" >/dev/null
-
-printf 'export MT_SESSION_TOKEN=%q\n' "$session_token"
-printf 'Session token expires at %s\n' "$expires_at" >&2
-EOF
-```
-
-Make it executable and run it:
-
-```bash
-chmod +x mt-refresh-session.sh
-source <(./mt-refresh-session.sh)
-```
-
-</Accordion>
+[Virtual Machines](/compute/virtual-machines) guides for full CRD examples and
+Kubernetes resource references.
