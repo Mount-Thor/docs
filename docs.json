@@ -59,10 +59,11 @@
             },
             "pages": [
               {
-                "group": "Account",
+                "group": "Accounts",
                 "pages": [
                   "GET /v1/admin/account",
-                  "PATCH /v1/admin/account"
+                  "PATCH /v1/admin/account",
+                  "POST /v1/admin/registrations"
                 ]
               },
               {
@@ -82,7 +83,7 @@
                 ]
               },
               {
-                "group": "Access Grants",
+                "group": "Access",
                 "pages": [
                   "POST /v1/admin/access/grants/ssh",
                   "POST /v1/admin/access/grants/tunnel",
@@ -112,7 +113,7 @@
                 "group": "Compute",
                 "pages": [
                   {
-                    "group": "BareMetalMachine",
+                    "group": "Bare Metal Machines",
                     "pages": [
                       "GET /v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/baremetalmachines",
                       "POST /v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/baremetalmachines",
@@ -121,7 +122,7 @@
                     ]
                   },
                   {
-                    "group": "VirtualMachine",
+                    "group": "Virtual Machines",
                     "pages": [
                       "GET /v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/virtualmachines",
                       "POST /v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/virtualmachines",
@@ -130,21 +131,21 @@
                     ]
                   },
                   {
-                    "group": "Image",
+                    "group": "Images",
                     "pages": [
                       "GET /v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/images",
                       "GET /v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/images/{name}"
                     ]
                   },
                   {
-                    "group": "MachineClass",
+                    "group": "Machine Classes",
                     "pages": [
                       "GET /v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/machineclasses",
                       "GET /v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/machineclasses/{name}"
                     ]
                   },
                   {
-                    "group": "FleetPolicy",
+                    "group": "Fleet Policies",
                     "pages": [
                       "GET /v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/fleetpolicies",
                       "GET /v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/fleetpolicies/{name}"
@@ -176,12 +177,6 @@
                   "GET /v1/admin/registries/{id}",
                   "PATCH /v1/admin/registries/{id}",
                   "DELETE /v1/admin/registries/{id}"
-                ]
-              },
-              {
-                "group": "Registration",
-                "pages": [
-                  "POST /v1/admin/registrations"
                 ]
               }
             ]

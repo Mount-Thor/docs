@@ -2,7 +2,7 @@
   "components": {
     "schemas": {
       "AccessGrantConnectionInfo": {
-        "description": "SSH/tunnel connection information returned in a grant response.",
+        "description": "SSH/tunnel/desktop connection information returned in a grant response.",
         "properties": {
           "host": {
             "description": "Access proxy hostname.",
@@ -17,7 +17,7 @@
             "type": "integer"
           },
           "type": {
-            "description": "Connection type: `ssh` or `tunnel`.",
+            "description": "Connection type: `ssh`, `tunnel`, or `desktop`.",
             "example": "ssh",
             "type": "string"
           }
@@ -70,7 +70,7 @@
         "type": "object"
       },
       "AccessGrantResponse": {
-        "description": "Response body for SSH and tunnel grant creation.",
+        "description": "Response body for SSH, tunnel, and desktop grant creation.",
         "properties": {
           "audit_correlation_id": {
             "description": "Correlation ID for audit trail linkage.",
@@ -199,7 +199,7 @@
                 "description": "Browser desktop access contract per ADR 0014. Ships the credential-side fields only in this PR; access-broker / launcher / expiration fields land with their reconciler in a later phase under provider-neutral names.",
                 "properties": {
                   "credentialSecretRef": {
-                    "description": "Reference to the Opaque Secret in the same namespace that the host-side bridge reads for the per-lease desktop password.",
+                    "description": "Reference to the Opaque Secret in the same namespace that the host-side bridge reads for the per-machine desktop access password.",
                     "properties": {
                       "name": {
                         "type": "string"
@@ -265,8 +265,8 @@
             "type": "string"
           },
           "resource_kind": {
-            "description": "`lease` or `vm`.",
-            "example": "lease",
+            "description": "Resource billing kind. Current contract values include `bare_metal` for bare-metal machine usage and `vm` for virtual machine usage.",
+            "example": "bare_metal",
             "type": "string"
           },
           "tenant_id": {
@@ -275,7 +275,7 @@
             "type": "string"
           },
           "tenant_slug": {
-            "description": "Human-readable tenant slug.",
+            "description": "Human-readable tenant identifier.",
             "example": "acme-prod",
             "type": "string"
           },
@@ -439,7 +439,7 @@
             "type": "string"
           },
           "role_slug": {
-            "description": "Optional WorkOS role slug to pre-bind on acceptance. Must match\na role configured on the WorkOS workspace (e.g.\n`mountthor-cluster-admin`, `mountthor-cluster-readonly`). When\nomitted, WorkOS leaves the invitee without a Mount Thor role\nand the customer admin assigns one later from the WorkOS\ndashboard.",
+            "description": "Optional WorkOS role identifier to pre-bind on acceptance. Must match\na role configured on the WorkOS workspace (e.g.\n`mountthor-cluster-admin`, `mountthor-cluster-readonly`). When\nomitted, WorkOS leaves the invitee without a Mount Thor role\nand the customer admin assigns one later from the WorkOS\ndashboard.",
             "example": "mountthor-cluster-readonly",
             "type": [
               "string",
@@ -495,13 +495,58 @@
         ],
         "type": "object"
       },
+      "CreateDesktopGrantRequest": {
+        "additionalProperties": false,
+        "description": "Request body for `POST /v1/admin/access/grants/desktop`.",
+        "properties": {
+          "idempotency_key": {
+            "description": "Client-supplied idempotency key.",
+            "example": "550e8400-e29b-41d4-a716-446655440000",
+            "type": "string"
+          },
+          "local_port": {
+            "description": "Preferred local port for the customer-side VNC listener.",
+            "example": 5900,
+            "format": "int32",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "port_name": {
+            "description": "Canonical desktop port name. Must be `screen`.",
+            "example": "screen",
+            "type": "string"
+          },
+          "resource": {
+            "$ref": "#/components/schemas/AccessGrantResourceRef",
+            "description": "Target VM to access."
+          },
+          "ttl_seconds": {
+            "description": "Requested grant TTL in seconds. Omitted uses the service default.",
+            "example": 7200,
+            "format": "int64",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "idempotency_key",
+          "resource",
+          "port_name"
+        ],
+        "type": "object"
+      },
       "CreateLeaseRequest": {
         "additionalProperties": false,
-        "description": "Body for `POST /v1/admin/leases`.",
+        "description": "Request body for creating a bare-metal machine through the admin API.",
         "properties": {
           "idempotency_key": {
             "description": "Caller-supplied idempotency key. Scoped per-customer: two\nportal submissions with the same key from the same customer\nreturn the same `operation_id` (and do not double-enqueue);\ntwo customers may collide without interference.",
-            "example": "portal-create-lease-2026-06-05T19:00:00Z-abc123",
+            "example": "portal-create-machine-2026-06-05T19:00:00Z-abc123",
             "type": "string"
           },
           "image": {
@@ -510,12 +555,12 @@
             "type": "string"
           },
           "machine_class": {
-            "description": "Entitled machine class slug (e.g. `m1.metal`). Validated\nagainst the customer's `machine-class` entitlement at apply\ntime in admin-worker (PR-B2); this route only enforces\nnon-empty.",
+            "description": "Entitled machine class identifier (e.g. `m1.metal`). Validated\nagainst the customer's `machine-class` entitlement at apply\ntime in admin-worker (PR-B2); this route only enforces\nnon-empty.",
             "example": "m1.metal",
             "type": "string"
           },
           "name": {
-            "description": "Human-readable lease name. Becomes the BareMetalMachine CRD\n`metadata.name` in the customer's namespace. Must be a valid\nRFC 1123 label (handled by admin-worker at apply time; this\nroute enforces non-empty + length cap so a malformed name\nfails fast at enqueue rather than after one worker poll).",
+            "description": "Human-readable machine name. Becomes the BareMetalMachine CRD\n`metadata.name` in the customer namespace. Must be a valid\nRFC 1123 label (handled by admin-worker at apply time; this\nroute enforces non-empty + length cap so a malformed name\nfails fast at enqueue rather than after one worker poll).",
             "example": "alice-builder",
             "type": "string"
           },
@@ -536,7 +581,7 @@
         "type": "object"
       },
       "CreateLeaseResponse": {
-        "description": "Response for `POST /v1/admin/leases`.",
+        "description": "Response returned after a bare-metal machine create request is accepted.",
         "properties": {
           "newly_enqueued": {
             "description": "`true` when this call newly inserted the queue row; `false`\nwhen an existing row was returned via idempotency_key match.\nLets the portal distinguish a fresh submit from a retry-of-\nretry without inspecting timestamps.",
@@ -568,7 +613,7 @@
             "type": "string"
           },
           "customer_slug": {
-            "description": "Customer slug recorded with the registration. Format: kebab-case.\n\nOptional under umbrella #4362 PR 3 consumer-shape flow: when\nomitted the CLI lands on WorkOS's hosted AuthKit UI without an\n`organization_id` pre-bound. The admin-api resolves the Mount\nThor customer post-callback from the WorkOS user's resolved\n`organization_id`. Requires `MOUNTTHOR_AUTHKIT_ENABLED`. When\nprovided, the legacy per-customer SSO path runs unchanged.",
+            "description": "Customer identifier recorded with the registration. Format: kebab-case.\n\nOptional under umbrella #4362 PR 3 consumer-shape flow: when\nomitted the CLI lands on WorkOS's hosted AuthKit UI without an\n`organization_id` pre-bound. The admin-api resolves the Mount\nThor customer post-callback from the WorkOS user's resolved\n`organization_id`. Requires `MOUNTTHOR_AUTHKIT_ENABLED`. When\nprovided, the legacy per-customer SSO path runs unchanged.",
             "example": "acme",
             "type": [
               "string",
@@ -585,7 +630,7 @@
             "type": "string"
           },
           "tenant_slug": {
-            "description": "Optional tenant slug to scope the eventual session to a specific\ntenant. When omitted the human session is account-scoped.\n\nOnly valid alongside `customer_slug` — the no-slug consumer flow\ncannot pre-bind a tenant because the customer is unresolved\nuntil callback. The resolved session in the consumer flow is\nalways account-scoped.",
+            "description": "Optional tenant identifier to scope the eventual session to a specific\ntenant. When omitted the human session is account-scoped.\n\nOnly valid when a customer identifier is provided — the consumer flow without a pre-bound customer\ncannot pre-bind a tenant because the customer is unresolved\nuntil callback. The resolved session in the consumer flow is\nalways account-scoped.",
             "example": "acme-prod",
             "type": [
               "string",
@@ -732,7 +777,7 @@
             "type": "string"
           },
           "feature_flags": {
-            "description": "Slugs of feature flags currently enabled for this customer's\nWorkOS organization. Resolved by admin-api at request time\nagainst WorkOS's `/organizations/{orgId}/feature-flags` endpoint\nwith a TTL cache. Empty when the WorkOS organization id cannot\nbe resolved (e.g. before customer onboarding completes) or when\nthe WorkOS lookup transiently fails (callers see a stable\n\"no flags\" rather than an outage-driven 500). The portal hands\nthis list to OpenFeature's `StaticListProvider`. #5230.",
+            "description": "Feature-flag identifiers currently enabled for this customer's\nWorkOS organization. Resolved by admin-api at request time\nagainst WorkOS's `/organizations/{orgId}/feature-flags` endpoint\nwith a TTL cache. Empty when the WorkOS organization id cannot\nbe resolved (e.g. before customer onboarding completes) or when\nthe WorkOS lookup transiently fails (callers see a stable\n\"no flags\" rather than an outage-driven 500). The portal hands\nthis list to OpenFeature's `StaticListProvider`. #5230.",
             "items": {
               "type": "string"
             },
@@ -1038,7 +1083,7 @@
             "type": "string"
           },
           "line_items": {
-            "description": "Itemized line items, ordered by (tenant_slug, resource_kind,\nresource_class, usage_model) for stable client rendering.",
+            "description": "Itemized line items, ordered by tenant identifier, resource kind, resource class, and usage model for stable client rendering.",
             "items": {
               "$ref": "#/components/schemas/BillingCostLineItem"
             },
@@ -1049,7 +1094,7 @@
             "description": "Window covered by the response."
           },
           "price_book_slug": {
-            "description": "The customer's active price book slug at the time of the\ncomputation (e.g. `alpha-2026`). Surfaced so the response is\nself-explanatory when amounts are 0.",
+            "description": "The customer's active price book identifier at the time of the\ncomputation (e.g. `alpha-2026`). Surfaced so the response is\nself-explanatory when amounts are 0.",
             "example": "alpha-2026",
             "type": "string"
           },
@@ -1118,7 +1163,7 @@
         "type": "object"
       },
       "CustomerBillingPriceCatalogResponse": {
-        "description": "Customer-facing price-book catalog response. Surfaces the catalog\nindependently of any usage rollup so creation flows (Create Lease,\nCreate VM) can render \"this class costs $X/second\" before the\ncustomer commits to running anything.",
+        "description": "Customer-facing price-book catalog response. Surfaces the catalog\nindependently of any usage rollup so creation flows (Create Bare Metal Machine,\nCreate VM) can render \"this class costs $X/second\" before the\ncustomer commits to running anything.",
         "properties": {
           "currency": {
             "description": "ISO 4217 currency code; today always `USD` per umbrella\nscoping decision.",
@@ -1137,7 +1182,7 @@
             "type": "array"
           },
           "price_book_slug": {
-            "description": "Active price book slug (e.g. `alpha-2026`). Surfaced so the\nresponse is self-explanatory when prices are 0.",
+            "description": "Active price book identifier (e.g. `alpha-2026`). Surfaced so the\nresponse is self-explanatory when prices are 0.",
             "example": "alpha-2026",
             "type": "string"
           }
@@ -1161,7 +1206,7 @@
             "type": "array"
           },
           "by_tenant": {
-            "description": "Per-tenant rollup ordered by `tenant_slug` for stable client display.\nTenants with no usage in the window are included with empty\n`by_class` and zero totals so client UIs do not need to special-case\nthe missing-tenant rendering.",
+            "description": "Per-tenant rollup ordered by tenant identifier for stable client display.\nTenants with no usage in the window are included with empty\n`by_class` and zero totals so client UIs do not need to special-case\nthe missing-tenant rendering.",
             "items": {
               "$ref": "#/components/schemas/TenantUsageBreakdown"
             },
@@ -1225,7 +1270,7 @@
             "type": "string"
           },
           "leases": {
-            "description": "Bare-metal leases currently visible in the tenant namespace.",
+            "description": "Bare-metal machines currently visible in the tenant namespace.",
             "items": {
               "$ref": "#/components/schemas/FleetLeaseSummary"
             },
@@ -1481,7 +1526,7 @@
             "description": "Activated account metadata."
           },
           "account_setup_url": {
-            "description": "Optional WorkOS AuthKit \"complete your account setup\" URL — the\nsame `accept_invitation_url` WorkOS emails the customer admin\nfrom its own infrastructure as part of `send_authkit_invitation`.\nSurfacing it inline lets `mountthor setup` deep-link the customer\nadmin straight to AuthKit's hosted UI to set a password / sign\nin via social / magic-link without having to context-switch to\nthe WorkOS-sent email. The email path remains the authoritative\nrecovery if the CLI tab is closed before setup completes;\nreturning this URL does not change WorkOS's email delivery.\n\n`None` when AuthKit is disabled in this deployment, the WorkOS\nsecret could not be loaded, or the invitation send 4xx'd (in\nwhich case the operator-side `mtops customer authkit-invitation-\nreissue` recovery path remains available).",
+            "description": "Optional WorkOS AuthKit \"complete your account setup\" URL — the\nsame `accept_invitation_url` WorkOS emails the customer admin\nfrom its own infrastructure as part of `send_authkit_invitation`.\nSurfacing it inline lets `mthr setup` deep-link the customer\nadmin straight to AuthKit's hosted UI to set a password / sign\nin via social / magic-link without having to context-switch to\nthe WorkOS-sent email. The email path remains the authoritative\nrecovery if the CLI tab is closed before setup completes;\nreturning this URL does not change WorkOS's email delivery.\n\n`None` when AuthKit is disabled in this deployment, the WorkOS\nsecret could not be loaded, or the invitation send 4xx'd (in\nwhich case the operator-side `mtops customer authkit-invitation-\nreissue` recovery path remains available).",
             "example": "https://example.authkit.app/sign-up?invite=01HF...",
             "type": [
               "string",
@@ -1714,7 +1759,7 @@
         "type": "object"
       },
       "FleetCapacityAllocation": {
-        "description": "Account capacity allocation for one lease class or resource shape.",
+        "description": "Account capacity allocation for one machine class or resource shape.",
         "properties": {
           "committed_quantity": {
             "description": "Reserved quantity available for the class. Null means no committed quantity.",
@@ -1725,7 +1770,7 @@
             ]
           },
           "max_active_machines": {
-            "description": "Maximum concurrently active bare-metal leases for this allocation.",
+            "description": "Maximum concurrently active bare-metal machines for this allocation.",
             "format": "int32",
             "type": [
               "integer",
@@ -1733,7 +1778,7 @@
             ]
           },
           "max_allocation_duration_seconds": {
-            "description": "Maximum lease duration in seconds for this allocation.",
+            "description": "Maximum allocation duration in seconds for this allocation.",
             "format": "int64",
             "type": [
               "integer",
@@ -1741,7 +1786,7 @@
             ]
           },
           "max_concurrent_access_grants": {
-            "description": "Maximum concurrently active access sessions for this allocation.",
+            "description": "Maximum concurrently active access grants for this allocation.",
             "format": "int32",
             "type": [
               "integer",
@@ -1788,7 +1833,7 @@
         "description": "Account capacity listing response.",
         "properties": {
           "capacity_allocations": {
-            "description": "Capacity allocations that govern lease and access-session limits.",
+            "description": "Capacity allocations that govern machine and access-grant limits.",
             "items": {
               "$ref": "#/components/schemas/FleetCapacityAllocation"
             },
@@ -1811,7 +1856,7 @@
         "type": "object"
       },
       "FleetLeaseSummary": {
-        "description": "Summary of a bare-metal lease in the account fleet.",
+        "description": "Summary of a bare-metal machine in the account fleet.",
         "properties": {
           "created_at": {
             "description": "Kubernetes creation timestamp.",
@@ -2333,8 +2378,9 @@
             "type": "string"
           },
           "resource_kind": {
-            "description": "`lease` or `vm`.",
-            "type": "string"
+            "description": "Resource billing kind. Current contract values include `bare_metal` for bare-metal machine usage and `vm` for virtual machine usage.",
+            "type": "string",
+            "example": "bare_metal"
           },
           "tenant_id": {
             "description": "Tenant the line attributes usage to.",
@@ -2395,7 +2441,7 @@
             "type": "string"
           },
           "invoice_number": {
-            "description": "Human-readable invoice number\n(`INV-{customer_slug}-{YYYY}-{MM}-{NNNN}`).",
+            "description": "Human-readable invoice number in the customer-period sequence format..",
             "example": "INV-acme-2026-05-0001",
             "type": "string"
           },
@@ -2501,7 +2547,7 @@
         "type": "object"
       },
       "LeaseAvailabilityResponse": {
-        "description": "Binary collapse of the per-class reserved-available count.\n\n`available` ⇔ at least one host is `reserved_unbound` for the\ncaller's tenant + this class right now (summed across sites).\n`unavailable` ⇔ no reserved capacity is currently available for\nthis class; the lease will queue and admin-worker will surface a\n`CommittedCapacityUnavailable` failure on the activity feed if the\nqueue can't drain.",
+        "description": "Binary collapse of the per-class reserved-available count.\n\n`available` ⇔ at least one host is `reserved_unbound` for the\ncaller's tenant + this class right now (summed across sites).\n`unavailable` ⇔ no reserved capacity is currently available for\nthis class; the machine request will queue and admin-worker will surface a\n`CommittedCapacityUnavailable` failure on the activity feed if the\nqueue cannot drain.",
         "properties": {
           "as_of": {
             "description": "Wall-clock timestamp when the signal was computed. Combined\nwith `ttl_seconds` so clients can avoid re-firing the request\nduring the cache window.",
@@ -2834,8 +2880,8 @@
             "type": "string"
           },
           "resource_kind": {
-            "description": "`lease` or `vm`.",
-            "example": "lease",
+            "description": "Resource billing kind. Current contract values include `bare_metal` for bare-metal machine usage and `vm` for virtual machine usage.",
+            "example": "bare_metal",
             "type": "string"
           },
           "unit_price_cents": {
@@ -3649,7 +3695,7 @@
             "type": "string"
           },
           "tenant_slug": {
-            "description": "Human-readable tenant slug (e.g. `acme-prod`).",
+            "description": "Human-readable tenant identifier (e.g. `acme-prod`).",
             "example": "acme-prod",
             "type": "string"
           }
@@ -4576,6 +4622,74 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/v1/admin/access/grants/desktop": {
+      "post": {
+        "operationId": "create_desktop_grant",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDesktopGrantRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessGrantResponse"
+                }
+              }
+            },
+            "description": "Desktop grant created or existing active grant returned"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Resource not found"
+          },
+          "409": {
+            "description": "Resource not ready or grant revoked"
+          },
+          "429": {
+            "description": "Too many active grants"
+          },
+          "500": {
+            "description": "Broker unavailable"
+          }
+        },
+        "security": [
+          {
+            "api_key_bearer": [
+              "access:write"
+            ]
+          }
+        ],
+        "summary": "Create Desktop Access Grant",
+        "tags": [
+          "access"
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/access_grants.rs",
+        "x-mountthor-stability": "v1alpha1"
+      }
+    },
     "/v1/admin/access/grants/ssh": {
       "post": {
         "operationId": "create_ssh_grant",
@@ -4629,7 +4743,7 @@
             ]
           }
         ],
-        "summary": "Create an SSH access grant.",
+        "summary": "Create SSH Access Grant",
         "tags": [
           "access"
         ],
@@ -4697,7 +4811,7 @@
             ]
           }
         ],
-        "summary": "Create a tunnel access grant.",
+        "summary": "Create Tunnel Access Grant",
         "tags": [
           "access"
         ],
@@ -4758,7 +4872,7 @@
             ]
           }
         ],
-        "summary": "Revoke an access grant.",
+        "summary": "Revoke Access Grant",
         "tags": [
           "access"
         ],
@@ -4918,7 +5032,7 @@
             ]
           }
         ],
-        "summary": "Customer Costs",
+        "summary": "List Billing Costs",
         "tags": [
           "billing"
         ],
@@ -5083,7 +5197,7 @@
     },
     "/v1/admin/billing/price-catalog": {
       "get": {
-        "description": "Returns the active price book slug + every priced\n(resource_kind, resource_class, usage_model) triple, ordered by\nthat key for stable client rendering. Independent of usage —\nsurfaces what the customer *would* be billed if they ran a given\nclass, so the portal's Create Lease / Create VM flows can render a\nper-class price hint before submission.",
+        "description": "Returns the active price book identifier + every priced\n(resource_kind, resource_class, usage_model) triple, ordered by\nthat key for stable client rendering. Independent of usage —\nsurfaces what the customer *would* be billed if they ran a given\nclass, so the portal's Create Bare Metal Machine / Create VM flows can render a\nper-class price hint before submission.",
         "operationId": "get_customer_billing_price_catalog",
         "responses": {
           "200": {
@@ -5113,7 +5227,7 @@
             ]
           }
         ],
-        "summary": "Price Catalog",
+        "summary": "List Billing Prices",
         "tags": [
           "billing"
         ],
@@ -5171,7 +5285,7 @@
             ]
           }
         ],
-        "summary": "Customer Usage",
+        "summary": "List Billing Usage",
         "tags": [
           "billing"
         ],
@@ -5215,7 +5329,7 @@
             ]
           }
         ],
-        "summary": "List the customer users belonging to the calling customer.",
+        "summary": "List Customer Users",
         "tags": [
           "customer-users"
         ],
@@ -5277,7 +5391,7 @@
             ]
           }
         ],
-        "summary": "Invite a teammate to join the caller's Mount Thor customer via WorkOS\nAuthKit.",
+        "summary": "Invite Customer User",
         "tags": [
           "customer-users"
         ],
@@ -5294,7 +5408,7 @@
     },
     "/v1/admin/fleet": {
       "get": {
-        "description": "Returns a customer-safe snapshot of the tenant namespace across bare-metal\nleases and virtual machines. Internal provider references, host addresses,\nand implementation-only identifiers are stripped from this projection.",
+        "description": "Returns a customer-safe snapshot of the tenant namespace across bare-metal\nmachines and virtual machines. Internal provider references, host addresses,\nand implementation-only identifiers are stripped from this projection.",
         "operationId": "get_customer_fleet",
         "responses": {
           "200": {
@@ -5324,7 +5438,7 @@
             ]
           }
         ],
-        "summary": "List Fleet",
+        "summary": "List Fleet Resources",
         "tags": [
           "fleet"
         ],
@@ -5341,7 +5455,7 @@
     },
     "/v1/admin/fleet/capacity": {
       "get": {
-        "description": "Returns commercial and operational limits that apply to the tenant's fleet:\ncommitted quantities, whether on-demand use is allowed, lease caps, and\naccess-session caps.",
+        "description": "Returns commercial and operational limits that apply to the tenant's fleet:\ncommitted quantities, whether on-demand use is allowed, machine caps, and\naccess-grant caps.",
         "operationId": "get_customer_fleet_capacity",
         "responses": {
           "200": {
@@ -5368,7 +5482,7 @@
             ]
           }
         ],
-        "summary": "List Capacity",
+        "summary": "Get Fleet Capacity",
         "tags": [
           "fleet"
         ],
@@ -5412,7 +5526,7 @@
             ]
           }
         ],
-        "summary": "Fleet Summary",
+        "summary": "Get Fleet Overview",
         "tags": [
           "fleet"
         ],
@@ -5470,7 +5584,7 @@
             ]
           }
         ],
-        "summary": "List Usage",
+        "summary": "Get Fleet Usage",
         "tags": [
           "fleet"
         ],
@@ -5514,7 +5628,7 @@
             ]
           }
         ],
-        "summary": "Return the caller's customer's WorkOS identity setup state.",
+        "summary": "Get Identity Setup",
         "tags": [
           "identity"
         ],
@@ -5577,7 +5691,7 @@
             ]
           }
         ],
-        "summary": "Mint a fresh WorkOS Admin Portal link for the caller's customer.",
+        "summary": "Create Identity Setup Link",
         "tags": [
           "identity"
         ],
@@ -6114,7 +6228,7 @@
         "operationId": "get_lease_availability",
         "parameters": [
           {
-            "description": "Customer-entitled machine-class slug. 404 if the customer is not entitled.",
+            "description": "Customer-entitled machine-class identifier. 404 if the customer is not entitled.",
             "in": "query",
             "name": "machine_class",
             "required": true,
@@ -6141,7 +6255,7 @@
             "description": "API key is missing compute:read scope."
           },
           "404": {
-            "description": "Customer is not entitled to this class, or the lease-availability surface is disabled by feature flag."
+            "description": "Customer is not entitled to this class, or the machine-availability surface is disabled by feature flag."
           }
         },
         "security": [
@@ -6151,7 +6265,7 @@
             ]
           }
         ],
-        "summary": "Lease Availability",
+        "summary": "Get Machine Availability",
         "tags": [
           "fleet"
         ],
@@ -6217,7 +6331,7 @@
             ]
           }
         ],
-        "summary": "Enqueue a `lease-create` operation for the caller's customer.",
+        "summary": "Create Bare Metal Machine",
         "tags": [
           "leases"
         ],
@@ -6288,7 +6402,7 @@
             ]
           }
         ],
-        "summary": "List portal-initiated operations for the caller's customer.",
+        "summary": "List Operations",
         "tags": [
           "leases"
         ],
@@ -6779,7 +6893,7 @@
         "security": [
           {}
         ],
-        "summary": "Begin a `mountthor login` browser-SSO authorization.",
+        "summary": "Create Session Authorization",
         "tags": [
           "sessions"
         ],
@@ -6855,7 +6969,7 @@
     },
     "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/baremetalmachines": {
       "get": {
-        "description": "Lists bare-metal Mac leases in the tenant namespace, including lifecycle status and customer-visible allocation details.",
+        "description": "Lists bare-metal machines in the tenant namespace, including lifecycle status and customer-visible allocation details.",
         "operationId": "listBareMetalMachine",
         "parameters": [
           {
@@ -6914,7 +7028,7 @@
             ]
           }
         ],
-        "summary": "List BareMetalMachines",
+        "summary": "List Bare Metal Machines",
         "tags": [
           "compute"
         ],
@@ -6928,7 +7042,7 @@
         "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_baremetalmachines.yaml"
       },
       "post": {
-        "description": "Creates a bare-metal Mac lease request. The request selects a lease class, image channel, access policy, and optional placement preferences.",
+        "description": "Creates a bare-metal Mac machine request. The request selects a machine class, image channel, access policy, and optional placement preferences.",
         "operationId": "createBareMetalMachine",
         "parameters": [
           {
@@ -6993,7 +7107,7 @@
             ]
           }
         ],
-        "summary": "Create BareMetalMachine",
+        "summary": "Create Bare Metal Machine",
         "tags": [
           "compute"
         ],
@@ -7009,7 +7123,7 @@
     },
     "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/baremetalmachines/{name}": {
       "delete": {
-        "description": "Deletes one bare-metal Mac lease by name and starts the configured cleanup policy.",
+        "description": "Deletes one bare-metal machine by name and starts the configured cleanup policy.",
         "operationId": "deleteBareMetalMachine",
         "parameters": [
           {
@@ -7068,7 +7182,7 @@
             ]
           }
         ],
-        "summary": "Delete BareMetalMachine",
+        "summary": "Delete Bare Metal Machine",
         "tags": [
           "compute"
         ],
@@ -7082,7 +7196,7 @@
         "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_baremetalmachines.yaml"
       },
       "get": {
-        "description": "Returns one bare-metal Mac lease by name, including desired state and customer-visible status.",
+        "description": "Returns one bare-metal machine by name, including desired state and customer-visible status.",
         "operationId": "getBareMetalMachine",
         "parameters": [
           {
@@ -7141,7 +7255,7 @@
             ]
           }
         ],
-        "summary": "Get BareMetalMachine",
+        "summary": "Get Bare Metal Machine",
         "tags": [
           "compute"
         ],
@@ -7157,7 +7271,7 @@
     },
     "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/fleetpolicies": {
       "get": {
-        "description": "Lists FleetPolicys in the tenant namespace.",
+        "description": "Lists fleet policies in the tenant namespace.",
         "operationId": "listFleetPolicy",
         "parameters": [
           {
@@ -7216,7 +7330,7 @@
             ]
           }
         ],
-        "summary": "List FleetPolicys",
+        "summary": "List Fleet Policies",
         "tags": [
           "compute"
         ],
@@ -7232,7 +7346,7 @@
     },
     "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/fleetpolicies/{name}": {
       "get": {
-        "description": "Returns one FleetPolicy by name from the tenant namespace.",
+        "description": "Returns one fleet policy by name from the tenant namespace.",
         "operationId": "getFleetPolicy",
         "parameters": [
           {
@@ -7245,7 +7359,7 @@
             }
           },
           {
-            "description": "Kubernetes object name for the FleetPolicy.",
+            "description": "Kubernetes object name for the fleet policy.",
             "in": "path",
             "name": "name",
             "required": true,
@@ -7291,7 +7405,7 @@
             ]
           }
         ],
-        "summary": "Get FleetPolicy",
+        "summary": "Get Fleet Policy",
         "tags": [
           "compute"
         ],
@@ -7516,7 +7630,7 @@
             ]
           }
         ],
-        "summary": "List MachineClasses",
+        "summary": "List Machine Classes",
         "tags": [
           "compute"
         ],
@@ -7591,7 +7705,7 @@
             ]
           }
         ],
-        "summary": "Get MachineClass",
+        "summary": "Get Machine Class",
         "tags": [
           "compute"
         ],
@@ -7666,7 +7780,7 @@
             ]
           }
         ],
-        "summary": "List VirtualMachines",
+        "summary": "List Virtual Machines",
         "tags": [
           "compute"
         ],
@@ -7745,7 +7859,7 @@
             ]
           }
         ],
-        "summary": "Create VirtualMachine",
+        "summary": "Create Virtual Machine",
         "tags": [
           "compute"
         ],
@@ -7820,7 +7934,7 @@
             ]
           }
         ],
-        "summary": "Delete VirtualMachine",
+        "summary": "Delete Virtual Machine",
         "tags": [
           "compute"
         ],
@@ -7893,7 +8007,7 @@
             ]
           }
         ],
-        "summary": "Get VirtualMachine",
+        "summary": "Get Virtual Machine",
         "tags": [
           "compute"
         ],

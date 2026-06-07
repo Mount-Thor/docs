@@ -87,7 +87,7 @@
                 "description": "Browser desktop access contract per ADR 0014. Ships the credential-side fields only in this PR; access-broker / launcher / expiration fields land with their reconciler in a later phase under provider-neutral names.",
                 "properties": {
                   "credentialSecretRef": {
-                    "description": "Reference to the Opaque Secret in the same namespace that the host-side bridge reads for the per-lease desktop password.",
+                    "description": "Reference to the Opaque Secret in the same namespace that the host-side bridge reads for the per-machine desktop access password.",
                     "properties": {
                       "name": {
                         "type": "string"
@@ -719,7 +719,7 @@
   "paths": {
     "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/baremetalmachines": {
       "get": {
-        "description": "Lists bare-metal Mac leases in the tenant namespace, including lifecycle status and customer-visible allocation details.",
+        "description": "Lists bare-metal machines in the tenant namespace, including lifecycle status and customer-visible allocation details.",
         "operationId": "listBareMetalMachine",
         "parameters": [
           {
@@ -778,7 +778,7 @@
             ]
           }
         ],
-        "summary": "List BareMetalMachines",
+        "summary": "List Bare Metal Machines",
         "tags": [
           "compute"
         ],
@@ -792,7 +792,7 @@
         "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_baremetalmachines.yaml"
       },
       "post": {
-        "description": "Creates a bare-metal Mac lease request. The request selects a lease class, image channel, access policy, and optional placement preferences.",
+        "description": "Creates a bare-metal Mac machine request. The request selects a machine class, image channel, access policy, and optional placement preferences.",
         "operationId": "createBareMetalMachine",
         "parameters": [
           {
@@ -857,7 +857,7 @@
             ]
           }
         ],
-        "summary": "Create BareMetalMachine",
+        "summary": "Create Bare Metal Machine",
         "tags": [
           "compute"
         ],
@@ -873,7 +873,7 @@
     },
     "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/baremetalmachines/{name}": {
       "delete": {
-        "description": "Deletes one bare-metal Mac lease by name and starts the configured cleanup policy.",
+        "description": "Deletes one bare-metal machine by name and starts the configured cleanup policy.",
         "operationId": "deleteBareMetalMachine",
         "parameters": [
           {
@@ -932,7 +932,7 @@
             ]
           }
         ],
-        "summary": "Delete BareMetalMachine",
+        "summary": "Delete Bare Metal Machine",
         "tags": [
           "compute"
         ],
@@ -946,7 +946,7 @@
         "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_baremetalmachines.yaml"
       },
       "get": {
-        "description": "Returns one bare-metal Mac lease by name, including desired state and customer-visible status.",
+        "description": "Returns one bare-metal machine by name, including desired state and customer-visible status.",
         "operationId": "getBareMetalMachine",
         "parameters": [
           {
@@ -1005,7 +1005,7 @@
             ]
           }
         ],
-        "summary": "Get BareMetalMachine",
+        "summary": "Get Bare Metal Machine",
         "tags": [
           "compute"
         ],
@@ -1021,7 +1021,7 @@
     },
     "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/fleetpolicies": {
       "get": {
-        "description": "Lists FleetPolicys in the tenant namespace.",
+        "description": "Lists fleet policies in the tenant namespace.",
         "operationId": "listFleetPolicy",
         "parameters": [
           {
@@ -1080,7 +1080,7 @@
             ]
           }
         ],
-        "summary": "List FleetPolicys",
+        "summary": "List Fleet Policies",
         "tags": [
           "compute"
         ],
@@ -1096,7 +1096,7 @@
     },
     "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/fleetpolicies/{name}": {
       "get": {
-        "description": "Returns one FleetPolicy by name from the tenant namespace.",
+        "description": "Returns one fleet policy by name from the tenant namespace.",
         "operationId": "getFleetPolicy",
         "parameters": [
           {
@@ -1109,7 +1109,7 @@
             }
           },
           {
-            "description": "Kubernetes object name for the FleetPolicy.",
+            "description": "Kubernetes object name for the fleet policy.",
             "in": "path",
             "name": "name",
             "required": true,
@@ -1155,7 +1155,7 @@
             ]
           }
         ],
-        "summary": "Get FleetPolicy",
+        "summary": "Get Fleet Policy",
         "tags": [
           "compute"
         ],
@@ -1380,7 +1380,7 @@
             ]
           }
         ],
-        "summary": "List MachineClasses",
+        "summary": "List Machine Classes",
         "tags": [
           "compute"
         ],
@@ -1455,7 +1455,7 @@
             ]
           }
         ],
-        "summary": "Get MachineClass",
+        "summary": "Get Machine Class",
         "tags": [
           "compute"
         ],
@@ -1530,7 +1530,7 @@
             ]
           }
         ],
-        "summary": "List VirtualMachines",
+        "summary": "List Virtual Machines",
         "tags": [
           "compute"
         ],
@@ -1609,7 +1609,7 @@
             ]
           }
         ],
-        "summary": "Create VirtualMachine",
+        "summary": "Create Virtual Machine",
         "tags": [
           "compute"
         ],
@@ -1684,7 +1684,7 @@
             ]
           }
         ],
-        "summary": "Delete VirtualMachine",
+        "summary": "Delete Virtual Machine",
         "tags": [
           "compute"
         ],
@@ -1757,7 +1757,7 @@
             ]
           }
         ],
-        "summary": "Get VirtualMachine",
+        "summary": "Get Virtual Machine",
         "tags": [
           "compute"
         ],
