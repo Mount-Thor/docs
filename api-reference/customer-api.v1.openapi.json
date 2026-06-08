@@ -217,70 +217,6 @@
         ],
         "type": "object"
       },
-      "CreateBareMetalMachineRequest": {
-        "additionalProperties": false,
-        "description": "Request body for creating a bare-metal machine through the admin API.",
-        "properties": {
-          "idempotency_key": {
-            "description": "Caller-supplied idempotency key. Scoped per-customer: two\nportal submissions with the same key from the same customer\nreturn the same `operation_id` (and do not double-enqueue);\ntwo customers may collide without interference.",
-            "example": "portal-create-bare-metal-machine-2026-06-05T19:00:00Z-abc123",
-            "type": "string"
-          },
-          "image": {
-            "description": "Entitled image ref (e.g. `macos-14`). Same enforcement shape\nas `machine_class`.",
-            "example": "macos-14",
-            "type": "string"
-          },
-          "machine_class": {
-            "description": "Entitled machine class identifier (e.g. `m1.metal`). Validated\nagainst the customer's `machine-class` entitlement at apply time\nin admin-worker; this route only enforces non-empty.",
-            "example": "m1.metal",
-            "type": "string"
-          },
-          "name": {
-            "description": "Human-readable bare-metal machine name. Becomes the\nBareMetalMachine CRD `metadata.name` in the customer's\nnamespace. Must be a valid RFC 1123 label.",
-            "example": "alice-builder",
-            "type": "string"
-          },
-          "reason": {
-            "description": "Optional audit reason (8..=1000 chars when present). Surfaces\nin the activity feed's detail panel.",
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "name",
-          "machine_class",
-          "image",
-          "idempotency_key"
-        ],
-        "type": "object"
-      },
-      "CreateBareMetalMachineResponse": {
-        "description": "Response returned after a bare-metal machine create request is accepted.",
-        "properties": {
-          "newly_enqueued": {
-            "description": "`true` when this call newly inserted the queue row; `false`\nwhen an existing row was returned via idempotency_key match.\nLets the portal distinguish a fresh submit from a retry-of-\nretry without inspecting timestamps.",
-            "type": "boolean"
-          },
-          "operation_id": {
-            "description": "Server-generated operation id. The portal long-polls\n`GET /v1/admin/operations` to render lifecycle transitions\nfor this id.",
-            "format": "uuid",
-            "type": "string"
-          },
-          "status": {
-            "description": "Initial status, always `\"pending\"` for a fresh enqueue. For\nidempotent retries it's whatever the existing row's status\nis at lookup time.",
-            "type": "string"
-          }
-        },
-        "required": [
-          "operation_id",
-          "status",
-          "newly_enqueued"
-        ],
-        "type": "object"
-      },
       "CreateCustomerApiKeyResponse": {
         "description": "Response body for creating a customer API key.\n\nThe plaintext `api_key` is returned only once; the customer portal\nsurfaces it with a \"show once\" affordance and never re-fetches it.",
         "properties": {
@@ -2348,30 +2284,6 @@
         ],
         "type": "object"
       },
-      "ListOperationsResponse": {
-        "properties": {
-          "customer_id": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/OperationListEntry"
-            },
-            "type": "array"
-          },
-          "total_count": {
-            "format": "int64",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "customer_id",
-          "items",
-          "total_count"
-        ],
-        "type": "object"
-      },
       "MachineAvailabilityResponse": {
         "description": "Binary collapse of the per-class reserved-available count.\n\n`available` ⇔ at least one host is `reserved_unbound` for the\ncaller's tenant + this class right now (summed across sites).\n`unavailable` ⇔ no reserved capacity is currently available for\nthis class; the machine request will queue and admin-worker will surface a\n`CommittedCapacityUnavailable` failure on the activity feed if the\nqueue cannot drain.",
         "properties": {
@@ -2574,94 +2486,6 @@
           "customer_user_id",
           "namespace_name",
           "scopes"
-        ],
-        "type": "object"
-      },
-      "OperationListAudit": {
-        "properties": {
-          "actor_ref": {
-            "type": "string"
-          },
-          "event_type": {
-            "type": "string"
-          },
-          "reason": {
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "event_type",
-          "actor_ref"
-        ],
-        "type": "object"
-      },
-      "OperationListEntry": {
-        "description": "One row in the `GET /v1/admin/operations` response.",
-        "properties": {
-          "attempt_count": {
-            "format": "int32",
-            "type": "integer"
-          },
-          "audit": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/OperationListAudit",
-                "description": "Audit metadata joined from `customer_api_key_audit_events`\n— `customer_id`-scoped so an attacker-supplied audit_event_id\npointing at another customer's row cannot leak across.\n`None` when audit_event_id is NULL or the audit row has been\narchived (FK is `ON DELETE SET NULL`)."
-              }
-            ]
-          },
-          "completed_at": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "created_at": {
-            "description": "Customer-friendly ISO-8601 timestamps.",
-            "type": "string"
-          },
-          "last_error": {
-            "description": "Present on failed or dead rows. Surfaces in the activity-\nfeed failure card so the customer sees the worker's error\ntext directly.",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "operation_id": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "operation_type": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string"
-          },
-          "target_kind": {
-            "type": "string"
-          },
-          "target_name": {
-            "type": "string"
-          },
-          "updated_at": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "operation_id",
-          "operation_type",
-          "target_kind",
-          "target_name",
-          "status",
-          "attempt_count",
-          "created_at",
-          "updated_at"
         ],
         "type": "object"
       },
@@ -4497,72 +4321,6 @@
         "x-mountthor-stability": "v1alpha1"
       }
     },
-    "/v1/admin/bare-metal-machines": {
-      "post": {
-        "operationId": "create_customer_admin_bare_metal_machine",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateBareMetalMachineRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreateBareMetalMachineResponse"
-                }
-              }
-            },
-            "description": "Idempotent retry; existing operation returned"
-          },
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreateBareMetalMachineResponse"
-                }
-              }
-            },
-            "description": "Operation enqueued"
-          },
-          "400": {
-            "description": "Request validation failed"
-          },
-          "401": {
-            "description": "Missing or invalid customer credential"
-          },
-          "403": {
-            "description": "Credential is missing compute:write scope"
-          }
-        },
-        "security": [
-          {
-            "api_key_bearer": [
-              "compute:write"
-            ]
-          }
-        ],
-        "summary": "Create Bare Metal Machine",
-        "tags": [
-          "bare-metal"
-        ],
-        "x-mountthor-owner": "admin-api",
-        "x-mountthor-secret-handling": {
-          "acceptsSecret": false,
-          "redactedFields": [],
-          "returnsSecret": false,
-          "returnsSecretOnce": false
-        },
-        "x-mountthor-source-path": "control-plane/admin-api/src/routes/customer_admin_operations.rs",
-        "x-mountthor-stability": "v1alpha1"
-      }
-    },
     "/v1/admin/billing/costs": {
       "get": {
         "description": "Joins live usage against the customer's active price book and\nreturns itemized line items per (tenant, resource_kind,\nresource_class, usage_model). For `period=current` the math is\nrecomputed on every request; for past months the same live\nrecompute is used until phase 7's invoice read API lands and the\nroute can prefer a frozen invoice row.",
@@ -5854,77 +5612,6 @@
           "returnsSecretOnce": false
         },
         "x-mountthor-source-path": "control-plane/admin-api/src/routes/machine_availability.rs",
-        "x-mountthor-stability": "v1alpha1"
-      }
-    },
-    "/v1/admin/operations": {
-      "get": {
-        "operationId": "list_customer_admin_operations",
-        "parameters": [
-          {
-            "description": "Page size, clamped to [1, 200]. Default 50.",
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "format": "int64",
-              "type": [
-                "integer",
-                "null"
-              ]
-            }
-          },
-          {
-            "description": "Offset from the start. Default 0.",
-            "in": "query",
-            "name": "offset",
-            "required": false,
-            "schema": {
-              "format": "int64",
-              "type": [
-                "integer",
-                "null"
-              ]
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ListOperationsResponse"
-                }
-              }
-            },
-            "description": "Operation list"
-          },
-          "401": {
-            "description": "Missing or invalid customer credential"
-          },
-          "403": {
-            "description": "Credential is missing account:read scope"
-          }
-        },
-        "security": [
-          {
-            "api_key_bearer": [
-              "account:read"
-            ]
-          }
-        ],
-        "summary": "List Operations",
-        "tags": [
-          "bare-metal"
-        ],
-        "x-mountthor-owner": "admin-api",
-        "x-mountthor-secret-handling": {
-          "acceptsSecret": false,
-          "redactedFields": [],
-          "returnsSecret": false,
-          "returnsSecretOnce": false
-        },
-        "x-mountthor-source-path": "control-plane/admin-api/src/routes/customer_admin_operations.rs",
         "x-mountthor-stability": "v1alpha1"
       }
     },

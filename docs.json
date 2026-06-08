@@ -94,13 +94,6 @@
                 ]
               },
               {
-                "group": "Bare Metal",
-                "pages": [
-                  "POST /v1/admin/bare-metal-machines",
-                  "GET /v1/admin/operations"
-                ]
-              },
-              {
                 "group": "Customer Users",
                 "pages": [
                   "GET /v1/admin/customer-users",
