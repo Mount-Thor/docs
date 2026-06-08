@@ -10,8 +10,7 @@ macOS guests, or a fresh environment for each run.
 You manage VMs through the `mthr` CLI or by creating `VirtualMachine` resources
 in your Mount Thor Kubernetes control plane.
 
-During alpha, create VMs from Mount Thor-provided images. Customer-owned VM
-images are coming soon.
+During alpha, create VMs from Mount Thor-provided images.
 
 ## Lifecycle
 
@@ -37,7 +36,7 @@ What to know:
 - Mount Thor places the VM on eligible capacity, prepares the image, boots
   macOS, and publishes your requested ports.
 - Cold starts can take several minutes while the image is prepared on the host.
-  Warm starts are faster when the image is already cached.
+  Subsequent starts are faster when the image is already cached.
 - Connect with SSH, desktop access, or application port tunnels through the
   `mthr` CLI. Mount Thor does not expose guest IPs directly.
 
@@ -96,7 +95,7 @@ mthr vm tunnel {VM_NAME} --port-name app --local-port 8443
 `--port-name` selects one of the ports from `--port name=proto:guestPort` at
 creation. `--local-port` is the port on your workstation.
 
-## Inspect Status
+## List and Inspect
 
 ```bash
 mthr vm ls
@@ -113,7 +112,8 @@ mthr vm delete {VM_NAME}
 
 ### Create a VM with kubectl
 
-Save the following to a file called `vm.yaml`:
+Save the following to a file called `vm.yaml`. Replace `{VM_NAME}` with the
+name you want for your VM:
 
 ```yaml
 apiVersion: compute.mountthor.com/v1alpha1

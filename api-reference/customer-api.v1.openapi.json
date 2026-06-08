@@ -37,9 +37,6 @@
           "status": {
             "description": "Observed Mount Thor status for the BareMetalMachine. Customers read status; create and update requests should not set it.",
             "properties": {
-              "allocationDecisionID": {
-                "type": "string"
-              },
               "capacitySource": {
                 "type": "string"
               },
@@ -498,7 +495,7 @@
             "type": "array"
           },
           "last_sign_in_at": {
-            "description": "RFC 3339 timestamp of the most recent completed sign-in for the\nprincipal customer admin. Updated to NOW() at every AuthKit\ncallback (see service/sessions.rs:resolve_or_provision_authkit_customer_user).\nNull when the user has never completed an AuthKit sign-in\n(api-key-only callers, or rows that pre-date the column).",
+            "description": "RFC 3339 timestamp of the most recent completed sign-in. Null when the user has never signed in interactively.",
             "example": "2026-06-05T17:33:40Z",
             "type": [
               "string",
@@ -603,7 +600,7 @@
       "CustomerAdminIdentityResponse": {
         "properties": {
           "allowed_email_domains": {
-            "description": "Email domains the customer's approval package allowed at signup.\nUseful context for the portal when explaining who can join via\nAuthKit's organization-policy auto-routing.",
+            "description": "Email domains allowed for this customer at signup.",
             "items": {
               "type": "string"
             },
@@ -1239,7 +1236,7 @@
           },
           "account_setup_url": {
             "description": "Account setup URL for the newly registered admin. The same link is also emailed. Null when account setup is not applicable.",
-            "example": "https://example.authkit.app/sign-up?invite=01HF...",
+            "example": "https://auth.mountthor.com/sign-up?invite=01HF...",
             "type": [
               "string",
               "null"
@@ -2385,7 +2382,7 @@
             "type": "string"
           },
           "refresh_token": {
-            "description": "Optional refresh token (`mt_refresh_*`). Returned only by grants\nthat issue one (the SPA authkit-authorization-code grant when\n`request_refresh_token=true`, and the refresh-token grant on\nrotation). Trade for a fresh session via the refresh-token grant\nbefore the session expires. Stored once; cannot be re-displayed.",
+            "description": "Optional refresh token. Returned only by grants that issue one. Trade for a fresh session via the refresh-token grant before the session expires. Shown once; cannot be re-displayed.",
             "type": [
               "string",
               "null"
@@ -3722,9 +3719,6 @@
           "status": {
             "description": "VirtualMachineStatus defines the observed state of a VirtualMachine.",
             "properties": {
-              "allocationDecisionID": {
-                "type": "string"
-              },
               "capacitySource": {
                 "type": "string"
               },
