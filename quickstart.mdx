@@ -36,34 +36,6 @@ comes from `invites@fleet.mountthor.com` and includes your registration code
 and a setup link. If you do not see it, check spam or quarantine for that
 sender.
 
-<Accordion title="View signup email example">
-
-```text
-From: invites@fleet.mountthor.com
-Subject: Mount Thor signup invite for <Company>
-
-You're invited to finish setting up <Company> on Mount Thor.
-
-Open this link to activate your account:
-https://api.mountthor.com/v1/admin/registrations
-
-On the activation page, enter:
-- Registration code: <registration-code>
-- Your name: your full name.
-- Work email: the email address that received this invite, unless your Mount Thor
-  contact told you to use another approved work email.
-
-This code expires in 24 hours. It can be redeemed once by an allowed email
-address for this customer.
-
-For next steps, visit:
-https://docs.mountthor.com
-
-If you did not request access to Mount Thor, please disregard this email.
-```
-
-</Accordion>
-
 After you submit the registration form, Mount Thor activates your account and
 displays your first API key.
 
@@ -72,9 +44,7 @@ displays your first API key.
   shown only once.
 </Warning>
 
-You can manage API keys in [List Keys](/api-reference/api-keys/list-keys):
-list existing keys, create new keys for rotation, and revoke keys that are no
-longer needed.
+See [API Keys](/platform/api-keys) for managing keys after initial setup.
 
 When compute access is ready, Mount Thor will send a confirmation email to your
 account contact.
@@ -97,64 +67,34 @@ brew install Mount-Thor/mountthor/mthr
 
 ## Authenticate
 
-### Browser Login (SSO)
+You need **one** of the following to use the CLI:
 
-Log in through your browser with SSO:
+### Option A: Browser Login (SSO)
 
-```bash
-mthr login --customer <CUSTOMER_IDENTIFIER>
-```
-
-Use the Mount Thor customer identifier from your onboarding or account record.
-This is not your username or tenant namespace.
-
-This opens your identity provider in a browser window. After you authenticate,
-the CLI stores a session locally.
-
-Check your identity:
+For interactive use, log in through your identity provider:
 
 ```bash
+mthr login
 mthr whoami
 ```
 
-### API Key
+### Option B: API Key
 
-For scripts, CI pipelines, and automation, set your API key as an environment
-variable:
+For scripts, CI pipelines, and automation, set your API key:
 
 ```bash
 export MOUNTTHOR_API_KEY="mthr_live_..."
 ```
 
-When `MOUNTTHOR_API_KEY` is set, `mthr` uses it directly — no browser login
-needed.
-
 ## Provision a Bare-Metal Mac
 
-Allocate a dedicated physical Mac with a single command. Mount Thor provisions
-the hardware, installs the image, and prepares it for access.
-
-Check your fleet capacity summary and available images:
-
-```bash
-mthr fleet summary
-mthr fleet images
-```
-
-Allocate a machine interactively:
+Allocate a dedicated physical Mac interactively. The CLI prompts for a machine
+name and hardware class:
 
 ```bash
 mthr bm allocate
 ```
 
-The CLI prompts for a machine name and hardware class. You can also specify
-these directly:
-
-```bash
-mthr bm allocate <NAME> --class <CLASS> --image <IMAGE>
-```
-
-This creates a `BareMetalMachine` resource in your Mount Thor control plane.
 Check status:
 
 ```bash
@@ -164,40 +104,25 @@ mthr bm ls
 When the machine shows `Ready`, SSH in:
 
 ```bash
-mthr bm ssh <NAME>
+mthr bm ssh {BM_NAME}
 ```
 
-The CLI automatically waits for the machine to be ready (up to 30 seconds by
-default) and brokers a short-lived SSH grant — no separate access setup
-needed.
-
-When you're done, release the machine:
+When you are done, release the machine:
 
 ```bash
-mthr bm free <NAME>
+mthr bm free {BM_NAME}
 ```
 
-Mount Thor revokes access, wipes the host, and returns it to the pool. For the
-full bare-metal lifecycle, see [Bare Metal](/compute/bare-metal).
+See [Bare Metal](/compute/bare-metal) for the full lifecycle, hardware classes,
+and direct CLI flags.
 
 ## Create a Virtual Machine
 
-For faster create/delete cycles, create a virtual machine. Mount Thor places
-the VM on eligible capacity, prepares the image, boots macOS, and publishes
-your requested ports.
-
-Create a VM interactively:
+Create a VM interactively. The CLI prompts for a name, image, CPU, memory, and
+disk size:
 
 ```bash
 mthr vm create
-```
-
-The CLI prompts for a name, image, CPU, memory, and disk size. You can also
-specify these directly:
-
-```bash
-mthr vm create <NAME> --image <IMAGE> --cpu 4 --memory 8 --disk 100 \
-  --port ssh=tcp:22
 ```
 
 Check status:
@@ -209,102 +134,40 @@ mthr vm ls
 When the VM shows `Running`, SSH in:
 
 ```bash
-mthr vm ssh <NAME>
+mthr vm ssh {VM_NAME}
 ```
 
-Open a tunnel to an application port:
+Delete the VM when you are done:
 
 ```bash
-mthr vm tunnel <NAME> --port-name app --local-port 8443
+mthr vm delete {VM_NAME}
 ```
 
-Delete the VM when you're done:
+See [Virtual Machines](/compute/virtual-machines) for the full lifecycle,
+desktop access, port tunnels, and bootstrap data.
 
-```bash
-mthr vm delete <NAME>
-```
+## Next Steps
 
-See [Virtual Machines](/compute/virtual-machines) for the full VM lifecycle,
-desktop access, port publishing, and bootstrap data.
+Explore the platform by area:
+[Bare Metal](/compute/bare-metal) and
+[Virtual Machines](/compute/virtual-machines) for compute,
+[Fleet & Capacity](/platform/fleet-capacity) for images and spot policy,
+[API Keys](/platform/api-keys),
+[Identity & Principals](/platform/identity-principals),
+[Image Registries](/platform/image-registries),
+[Team Management](/platform/team-management), and
+[Billing](/platform/billing).
 
-## Explore the CLI
+Run `mthr help` for a full command list.
 
-Beyond provisioning machines, `mthr` provides commands for managing your fleet,
-access, and account:
+## Direct Kubernetes Access
 
-| Command | Description |
-|---|---|
-| `mthr fleet summary` | View reserved and spot capacity usage |
-| `mthr fleet images` | List available images |
-| `mthr bm ls` / `mthr vm ls` | List bare-metal machines / VMs |
-| `mthr bm get` / `mthr vm get` | Inspect a specific machine or VM |
-| `mthr keys ls` | List API keys |
-| `mthr keys create` | Create a new API key |
-| `mthr billing usage` | View current billing usage |
-| `mthr principal list` | List OIDC principals |
-| `mthr doctor auth` | Diagnose authentication and connectivity |
-| `mthr logout` | Clear stored credentials |
-| `mthr update` | Update the CLI to the latest version |
-
-Run `mthr help` or `mthr <command> --help` for full usage details.
-
-## Programmatic Access
-
-For CI/CD pipelines and automation, set `MOUNTTHOR_API_KEY` as described in
-[Authenticate](#api-key). When a pipeline needs to act as a specific identity
-rather than the key holder, use principal-based login:
-
-```bash
-mthr login --principal <PRINCIPAL_ID>
-```
-
-See [API Keys](/api-reference/api-keys/list-keys) for key management.
-Create principals with `mthr principal create` for identity-scoped automation.
-
-## Advanced: Direct Kubernetes Access
-
-Every `mthr` command maps to a Kubernetes Custom Resource under the
-`compute.mountthor.com/v1alpha1` API group. You can also manage resources
-directly with `kubectl`.
-
-### Get Kubeconfig
-
-The `mthr kubeconfig` command writes a kubeconfig that lets `kubectl` talk to
-your Mount Thor control plane:
+Compute resources (bare metal and VMs) map to Kubernetes Custom Resources. To
+manage them directly with `kubectl`:
 
 ```bash
 mthr kubeconfig
-```
-
-By default, the command prompts for a save path (default `~/.kube/mount-thor`).
-Use `--out <PATH>` to skip the prompt.
-
-Set the namespace for your tenant:
-
-```bash
 export MOUNTTHOR_NAMESPACE="tenant-example"
 ```
 
-### Manage Resources with kubectl
-
-List your bare-metal machines:
-
-```bash
-kubectl get baremetalmachines
-```
-
-List your VMs:
-
-```bash
-kubectl get virtualmachines
-```
-
-Browse the image catalog:
-
-```bash
-kubectl get images
-```
-
-See the [Bare Metal](/compute/bare-metal) and
-[Virtual Machines](/compute/virtual-machines) guides for full CRD examples and
-Kubernetes resource references.
+Each guide page includes `kubectl` equivalents for its resource type.

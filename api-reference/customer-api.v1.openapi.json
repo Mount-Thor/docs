@@ -84,17 +84,8 @@
                 "type": "array"
               },
               "desktopSession": {
-                "description": "Browser desktop access contract per ADR 0014. Ships the credential-side fields only in this PR; access-broker / launcher / expiration fields land with their reconciler in a later phase under provider-neutral names.",
+                "description": "Desktop access session state.",
                 "properties": {
-                  "credentialSecretRef": {
-                    "description": "Reference to the Opaque Secret in the same namespace that the host-side bridge reads for the desktop credential.",
-                    "properties": {
-                      "name": {
-                        "type": "string"
-                      }
-                    },
-                    "type": "object"
-                  },
                   "phase": {
                     "description": "Pending | Active | Expired | Revoked | Failed.",
                     "type": "string"
@@ -168,7 +159,7 @@
             "type": "string"
           },
           "unit_price_cents": {
-            "description": "Per-second unit price from the customer's active price book.\n0 for the alpha SKU (`alpha-2026`).",
+            "description": "Per-second unit price in cents from the customer's active price book.",
             "format": "int64",
             "type": "integer"
           },
@@ -314,7 +305,7 @@
         "additionalProperties": false,
         "properties": {
           "display_name": {
-            "description": "Optional pre-filled display name written to the pending\n`customer_users` row. The WorkOS user object's first/last name\noverrides this on first login.",
+            "description": "Optional pre-filled display name. Overridden by the user's identity provider profile on first login.",
             "example": "Alice Example",
             "type": [
               "string",
@@ -322,12 +313,12 @@
             ]
           },
           "email": {
-            "description": "Invitee email. Validated to RFC 5321 shape + 254-byte cap before\nreaching the WorkOS-side validator. Lowercased before insert so\n`(customer_id, email)` is a stable idempotency key.",
+            "description": "Invitee email address. Lowercased for deduplication.",
             "example": "alice@acmecorp.com",
             "type": "string"
           },
           "role_slug": {
-            "description": "Optional WorkOS role identifier to pre-bind on acceptance. Must match\na role configured on the WorkOS workspace (e.g.\n`mountthor-cluster-admin`, `mountthor-cluster-readonly`). When\nomitted, WorkOS leaves the invitee without a Mount Thor role\nand the customer admin assigns one later from the WorkOS\ndashboard.",
+            "description": "Optional role identifier to assign on acceptance. When omitted, the admin assigns a role later.",
             "example": "mountthor-cluster-readonly",
             "type": [
               "string",
@@ -343,7 +334,7 @@
       "CreateCustomerUserInviteResponse": {
         "properties": {
           "accept_invitation_url": {
-            "description": "WorkOS-issued accept-invitation URL. Operators can hand this to\nthe invitee out-of-band if the WorkOS email never arrives.",
+            "description": "Accept-invitation URL. Can be shared with the invitee if the email does not arrive.",
             "type": [
               "string",
               "null"
@@ -364,11 +355,11 @@
             "type": "string"
           },
           "status": {
-            "description": "`customer_users.status` after the call. Always `\"invited\"` for\na new row; an existing pending row returns the same.",
+            "description": "User status after the call. Always `\"invited\"` for a new invitation; returns the existing status for an already-invited user.",
             "type": "string"
           },
-          "workos_invitation_id": {
-            "description": "WorkOS-side invitation id (for operator lookup in the WorkOS\ndashboard). Present unless the lookup hit an existing pending\nrow and we chose not to re-issue (idempotent return).",
+          "invitation_id": {
+            "description": "Invitation identifier. Present unless the user was already invited and no new invitation was issued.",
             "type": [
               "string",
               "null"
@@ -392,7 +383,7 @@
             "type": "string"
           },
           "customer_slug": {
-            "description": "Customer identifier recorded with the registration. Format: lowercase hyphenated text.\n\nOptional under umbrella #4362 PR 3 consumer-shape flow: when\nomitted the CLI lands on WorkOS's hosted AuthKit UI without an\n`organization_id` pre-bound. The admin-api resolves the Mount\nThor customer post-callback from the WorkOS user's resolved\n`organization_id`. Requires `MOUNTTHOR_AUTHKIT_ENABLED`. When\nprovided, the legacy per-customer SSO path runs unchanged.",
+            "description": "Customer identifier. Format: lowercase hyphenated text. When omitted, the identity provider resolves the customer after authentication.",
             "example": "acme",
             "type": [
               "string",
@@ -409,7 +400,7 @@
             "type": "string"
           },
           "tenant_slug": {
-            "description": "Optional tenant identifier to scope the eventual session to a specific\ntenant. When omitted the human session is account-scoped.\n\nOnly valid when a customer identifier is supplied. The consumer flow without\na preselected customer cannot pre-bind a tenant because the customer is unresolved\nuntil callback. The resolved session in the consumer flow is\nalways account-scoped.",
+            "description": "Optional tenant identifier to scope the session. When omitted, the session is account-scoped. Only valid when a customer identifier is supplied.",
             "example": "acme-prod",
             "type": [
               "string",
@@ -428,8 +419,8 @@
         "description": "Response body for `POST /v1/admin/sessions/authorize`.",
         "properties": {
           "authorization_url": {
-            "description": "WorkOS authorization URL the CLI opens in the customer's browser.",
-            "example": "https://api.workos.com/sso/authorize?...",
+            "description": "Authorization URL the CLI opens in the browser.",
+            "example": "https://auth.mountthor.com/authorize?...",
             "type": "string"
           },
           "login_request_id": {
@@ -438,7 +429,7 @@
             "type": "string"
           },
           "state_expires_in_seconds": {
-            "description": "Seconds until the WorkOS state token and matching login request expire.",
+            "description": "Seconds until the authorization link and matching login request expire.",
             "example": 600,
             "format": "int64",
             "type": "integer"
@@ -500,7 +491,7 @@
             "type": "string"
           },
           "feature_flags": {
-            "description": "Slugs of feature flags currently enabled for this customer's\nWorkOS organization. Resolved by admin-api at request time\nagainst WorkOS's `/organizations/{orgId}/feature-flags` endpoint\nwith a TTL cache. Empty when the WorkOS organization id cannot\nbe resolved (e.g. before customer onboarding completes) or when\nthe WorkOS lookup transiently fails (callers see a stable\n\"no flags\" rather than an outage-driven 500). The portal hands\nthis list to OpenFeature's `StaticListProvider`. #5230.",
+            "description": "Feature flags currently enabled for this customer. Empty before onboarding completes.",
             "items": {
               "type": "string"
             },
@@ -515,7 +506,7 @@
             ]
           },
           "locale": {
-            "description": "BCP47 locale tag from WorkOS, if supplied. Stored for future\nper-customer i18n routing; the portal does not branch on it\ntoday.",
+            "description": "BCP47 locale tag, if available.",
             "example": "en-US",
             "type": [
               "string",
@@ -533,8 +524,8 @@
             "type": "string"
           },
           "profile_picture_url": {
-            "description": "WorkOS-hosted https avatar URL for the principal customer\nadmin, if WorkOS supplied one (#4952 Tier-1). Null when the\nuser has not configured an avatar or the row pre-dates the\nAuthKit codepath. Portal renders in the AppShell user-menu.",
-            "example": "https://workoscdn.com/images/v1/user_01ABC",
+            "description": "Avatar URL for the customer admin, if available.",
+            "example": "https://cdn.mountthor.com/avatars/user_01ABC",
             "type": [
               "string",
               "null"
@@ -631,8 +622,8 @@
             ]
           },
           "provider": {
-            "description": "Identity provider. Always `workos` today.",
-            "example": "workos",
+            "description": "Identity provider identifier.",
+            "example": "sso",
             "type": "string"
           }
         },
@@ -817,8 +808,7 @@
             "description": "Window covered by the response."
           },
           "price_book_slug": {
-            "description": "The customer's active price book identifier at the time of the\ncomputation (e.g. `alpha-2026`). Surfaced so the response is\nself-explanatory when amounts are 0.",
-            "example": "alpha-2026",
+            "description": "The customer's active price book identifier at the time of the computation.",
             "type": "string"
           },
           "total_cents": {
@@ -905,8 +895,7 @@
             "type": "array"
           },
           "price_book_slug": {
-            "description": "Active price book identifier (e.g. `alpha-2026`). Surfaced so the\nresponse is self-explanatory when prices are 0.",
-            "example": "alpha-2026",
+            "description": "Active price book identifier.",
             "type": "string"
           }
         },
@@ -1153,7 +1142,7 @@
           },
           "provider": {
             "description": "Identity setup provider.",
-            "example": "workos",
+            "example": "sso",
             "type": "string"
           },
           "url": {
@@ -1249,7 +1238,7 @@
             "description": "Activated account metadata."
           },
           "account_setup_url": {
-            "description": "Optional WorkOS AuthKit \"complete your account setup\" URL — the\nsame `accept_invitation_url` WorkOS emails the customer admin\nfrom its own infrastructure as part of `send_authkit_invitation`.\nSurfacing it inline lets `mountthor setup` deep-link the customer\nadmin straight to AuthKit's hosted UI to set a password / sign\nin via social / magic-link without having to context-switch to\nthe WorkOS-sent email. The email path remains the authoritative\nrecovery if the CLI tab is closed before setup completes;\nreturning this URL does not change WorkOS's email delivery.\n\n`None` when AuthKit is disabled in this deployment, the WorkOS\nsecret could not be loaded, or the invitation send 4xx'd (in\nwhich case the operator-side `mtops customer authkit-invitation-\nreissue` recovery path remains available).",
+            "description": "Account setup URL for the newly registered admin. The same link is also emailed. Null when account setup is not applicable.",
             "example": "https://example.authkit.app/sign-up?invite=01HF...",
             "type": [
               "string",
@@ -1443,7 +1432,7 @@
             "type": "string"
           },
           "display_name": {
-            "description": "Display name, when known. WorkOS first/last takes precedence on\nhuman users after their first login; for `invited` rows the\ninvite-time hint shows here.",
+            "description": "Display name, when known. Updated from the identity provider profile on first login.",
             "example": "Alice Example",
             "type": [
               "string",
@@ -1884,9 +1873,6 @@
           "spec": {
             "description": "Desired customer-owned state for the Image.",
             "properties": {
-              "approvedForDemo": {
-                "type": "boolean"
-              },
               "architecture": {
                 "type": "string"
               },
@@ -1914,14 +1900,6 @@
               "displayName": {
                 "type": "string"
               },
-              "guestBootstrap": {
-                "properties": {
-                  "transport": {
-                    "type": "string"
-                  }
-                },
-                "type": "object"
-              },
               "guestOs": {
                 "type": "string"
               },
@@ -1936,14 +1914,6 @@
               },
               "source": {
                 "properties": {
-                  "pullSecretRef": {
-                    "properties": {
-                      "name": {
-                        "type": "string"
-                      }
-                    },
-                    "type": "object"
-                  },
                   "ref": {
                     "type": "string"
                   },
@@ -2222,7 +2192,7 @@
         "additionalProperties": false,
         "properties": {
           "intent": {
-            "description": "WorkOS Admin Portal intent. One of `sso`, `dsync`, or\n`domain_verification`. Defaults to `sso` when omitted; the\n\"Setup SSO Logins\" CTA in the portal is the primary caller.",
+            "description": "Admin portal intent. One of `sso`, `dsync`, or `domain_verification`. Defaults to `sso`.",
             "example": "sso",
             "type": [
               "string",
@@ -2239,7 +2209,7 @@
           },
           "return_url": {
             "deprecated": true,
-            "description": "Deprecated and ignored. Accepting this field is preserved for\nAPI-compatibility with the route as originally shipped in\n#4567; the customer-admin self-serve surface always uses the\n`MOUNTTHOR_SIGNUP_INVITE_PUBLIC_BASE_URL`-derived default to\neliminate an open-redirect angle (a compromised customer-admin\ncredential could otherwise point WorkOS's post-flow redirect at\nan attacker-controlled origin, and an admin completing the\nWorkOS flow would land there with a fresh session cookie). The\noperator-only path keeps the field honored because operators\nare higher-trust and have legitimate incident-handoff reasons\nto direct a customer to a specific landing.",
+            "description": "Deprecated and ignored.",
             "example": "https://api.mountthor.com/identity/setup-completed",
             "type": [
               "string",
@@ -2252,7 +2222,7 @@
       "IssueCustomerAdminIdentitySetupLinkResponse": {
         "properties": {
           "expires_at": {
-            "description": "RFC 3339 timestamp at which WorkOS will reject the link.",
+            "description": "RFC 3339 timestamp at which the link expires.",
             "type": "string"
           },
           "identity_integration_id": {
@@ -2266,12 +2236,12 @@
             "type": "string"
           },
           "provider": {
-            "description": "Identity provider. Always `workos` today.",
-            "example": "workos",
+            "description": "Identity provider identifier.",
+            "example": "sso",
             "type": "string"
           },
           "url": {
-            "description": "WorkOS Admin Portal URL. One-time use; the portal should redirect\nthe customer admin's browser to it immediately and not log it.",
+            "description": "Admin portal URL. One-time use; redirect the browser immediately.",
             "type": "string"
           }
         },
@@ -2511,7 +2481,7 @@
             "type": "string"
           },
           "unit_price_cents": {
-            "description": "Per-second price in cents. 0 for the alpha SKU\n(`alpha-2026`).",
+            "description": "Per-second price in cents.",
             "format": "int64",
             "type": "integer"
           },
@@ -4637,7 +4607,7 @@
     },
     "/v1/admin/customer-users": {
       "get": {
-        "description": "Returns local `customer_users` metadata only (email, display name,\nstatus, user_type, timestamps). Role assignment lives in the WorkOS\nworkspace and is not on this response — see the portal Members page\ncopy.",
+        "description": "List customer users with metadata (email, display name, status, user type, timestamps).",
         "operationId": "list_customer_users",
         "responses": {
           "200": {
@@ -4716,7 +4686,7 @@
             "description": "An active customer user already exists with this email, or the customer's identity integration is not yet configured"
           },
           "503": {
-            "description": "WorkOS AuthKit unavailable or rejected the invitation"
+            "description": "Identity provider unavailable or rejected the invitation"
           }
         },
         "security": [
@@ -4936,7 +4906,7 @@
     },
     "/v1/admin/identity": {
       "get": {
-        "description": "This is the read side of the portal Identity page. v1 returns only\nlocal state (integration status + allowed domains); a follow-up will\nenrich it with WorkOS list calls (connections, domains, AuthKit\nusers) once the basic Setup-SSO flow ships.",
+        "description": "Returns identity configuration for the customer, including integration status and allowed domains.",
         "operationId": "get_customer_admin_identity",
         "responses": {
           "200": {
@@ -4980,7 +4950,7 @@
     },
     "/v1/admin/identity-setup-link": {
       "post": {
-        "description": "The customer admin uses this to configure their org's SSO connection,\nadd a domain, or set up Directory Sync — same WorkOS Admin Portal the\noperator-driven `mtops customer identity-setup-link` flow opens, just\nwithout the operator middleman. The returned URL is one-time use and\nexpires within ~minutes per WorkOS's contract.",
+        "description": "Generate an admin portal link for the customer to configure SSO, domain verification, or directory sync. The returned URL is one-time use and expires shortly after creation.",
         "operationId": "issue_customer_admin_identity_setup_link",
         "requestBody": {
           "content": {
@@ -5016,7 +4986,7 @@
             "description": "No eligible identity integration for this customer"
           },
           "503": {
-            "description": "WorkOS Admin Portal unavailable"
+            "description": "Admin portal unavailable"
           }
         },
         "security": [
@@ -6058,7 +6028,7 @@
     },
     "/v1/admin/sessions/authorize": {
       "post": {
-        "description": "Returns the WorkOS authorization URL the CLI opens in the browser. The flow\ncompletes at `POST /v1/admin/sessions` with `grant_type=login-handoff`, which\nmints the `mt_session_*` token. The long-lived API-key grant on that same\nendpoint is unaffected.",
+        "description": "Returns the authorization URL for browser-based SSO login. The flow completes at `POST /v1/admin/sessions` with `grant_type=login-handoff`.",
         "operationId": "create_login_request",
         "requestBody": {
           "content": {

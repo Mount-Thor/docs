@@ -1,0 +1,88 @@
+---
+title: "API Keys"
+description: "Create, list, and revoke API keys for scripts, CI pipelines, and automation."
+---
+
+API keys authenticate `mthr` and direct API calls without a browser login. Use
+them in CI pipelines, automation scripts, and any non-interactive context.
+
+When `MOUNTTHOR_API_KEY` is set, `mthr` uses it directly — no browser login
+needed:
+
+```bash
+export MOUNTTHOR_API_KEY="mthr_live_..."
+```
+
+## List Keys
+
+List all API keys on your account:
+
+```bash
+mthr keys ls
+```
+
+The output shows each key's ID, display name, status, last four characters,
+and scopes.
+
+## Create a Key
+
+Create a new API key:
+
+```bash
+mthr keys create
+```
+
+In an interactive terminal the CLI prompts for a display name and scopes. You
+can also specify them directly:
+
+```bash
+mthr keys create --display-name "ci-pipeline" \
+  --scopes "sessions:write,compute:read,compute:write"
+```
+
+Available scopes:
+
+| Scope | Description |
+|---|---|
+| `sessions:write` | Create login sessions |
+| `compute:read` | List and inspect machines, VMs, images |
+| `compute:write` | Create and delete machines and VMs |
+| `account:read` | Read account details |
+| `account:write` | Update account settings |
+| `keys:read` | List API keys |
+| `keys:write` | Create and delete API keys |
+| `registries:read` | List image registries |
+| `registries:write` | Manage image registries |
+| `billing:read` | View usage, costs, and invoices |
+| `principals:read` | List OIDC principals |
+| `principals:write` | Create and manage principals |
+| `users:read` | List team members |
+| `users:write` | Invite and manage team members |
+| `access:write` | Create SSH, desktop, and tunnel grants |
+
+Set an expiration for the key:
+
+```bash
+mthr keys create --display-name "temp" --expires-at "2026-12-31T00:00:00Z"
+```
+
+<Warning>
+  The full key is shown only once at creation. Store it in your secret manager
+  before closing the terminal.
+</Warning>
+
+## Delete a Key
+
+Delete a key by ID:
+
+```bash
+mthr keys delete {ID}
+```
+
+If you omit the ID in an interactive terminal, the CLI shows a picker of
+existing keys. The CLI asks for confirmation before deleting.
+
+<Note>
+  For scripting and automation, see the
+  [API Keys API reference](/api-reference/api-keys/get-v1adminkeys).
+</Note>

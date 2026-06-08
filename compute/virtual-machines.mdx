@@ -26,6 +26,7 @@ flowchart TD
   Running --> Deleting
   Pending --> Failed
   Creating --> Failed
+  Running --> Failed
   Starting --> Failed
   Deleting --> End(( ))
   Failed --> End
@@ -39,8 +40,6 @@ What to know:
   Warm starts are faster when the image is already cached.
 - Connect with SSH, desktop access, or application port tunnels through the
   `mthr` CLI. Mount Thor does not expose guest IPs directly.
-- Deleting a VM removes the instance and its access tunnels. The image stays
-  in the catalog.
 
 ## Create a VM
 
@@ -50,106 +49,79 @@ Check available images:
 mthr fleet images
 ```
 
-Create a VM with resource requests and ports:
+Create interactively — the CLI prompts for a name, image, CPU, memory, and
+disk size:
 
 ```bash
-mthr vm create dev --image macos-15-dev-base \
+mthr vm create
+```
+
+Or specify everything on the command line:
+
+```bash
+mthr vm create {VM_NAME} --image macos-15-dev-base \
   --cpu 4 --memory 8 --disk 100 \
   --port ssh=tcp:22 --port app=tcp:8443
 ```
 
-This creates a `VirtualMachine` resource. Mount Thor places the VM, prepares
-the image, boots macOS, and publishes the requested ports.
+Each `--port` flag defines a named port as `name=protocol:guestPort`. Use these
+names with `mthr vm tunnel` to open local tunnels later.
 
 ## Connect
 
 ### SSH
 
-SSH into a running VM:
-
 ```bash
-mthr vm ssh dev
+mthr vm ssh {VM_NAME}
 ```
-
-The CLI waits for the VM to be ready (up to 30 seconds by default), brokers
-a short-lived SSH grant, and launches `ssh`.
 
 ### Desktop Access
 
-Open desktop access from your workstation:
-
 ```bash
-mthr vm desktop --name dev --local-port 15900 --ttl 5m
+mthr vm desktop {VM_NAME}
 ```
 
-The command opens a private tunnel to the VM screen port and automatically
-launches Apple Screen Sharing. Keep the CLI running while your desktop client
-is connected.
+This opens a private tunnel and launches Apple Screen Sharing. Keep the CLI
+running while connected. Use `--print` to print the VNC URL instead of opening
+it automatically.
 
-Use `--print` to print the VNC URL instead of opening it automatically:
-
-```bash
-mthr vm desktop --name dev --local-port 15900 --print
-```
 ### Application Port Tunnels
 
-Open a tunnel to a published application port:
+Open a local tunnel to a named port you defined at creation time:
 
 ```bash
-mthr vm tunnel dev --port-name app --local-port 8443
+mthr vm tunnel {VM_NAME} --port-name app --local-port 8443
 ```
+
+`--port-name` selects one of the ports from `--port name=proto:guestPort` at
+creation. `--local-port` is the port on your workstation.
 
 ## Inspect Status
 
-List VMs:
-
 ```bash
 mthr vm ls
-```
-
-Get details for a specific VM:
-
-```bash
-mthr vm get dev
-```
-
-Or with kubectl:
-
-```bash
-kubectl get virtualmachines
-kubectl get virtualmachine dev -o yaml
+mthr vm get {VM_NAME}
 ```
 
 ## Delete a VM
 
-Delete a VM when you are done:
-
 ```bash
-mthr vm delete dev
+mthr vm delete {VM_NAME}
 ```
-
-Or with kubectl:
-
-```bash
-kubectl delete virtualmachine dev
-```
-
-Deleting a VM removes the instance, its published ports, and any active access
-grants. The image stays in the catalog for future use.
 
 ## Kubernetes Resource Reference
 
-### VirtualMachine
+### Create a VM with kubectl
 
-Create a VM directly with kubectl:
+Save the following to a file called `vm.yaml`:
 
 ```yaml
 apiVersion: compute.mountthor.com/v1alpha1
 kind: VirtualMachine
 metadata:
-  name: dev
+  name: {VM_NAME}
 spec:
-  image: macos-15-dev-base
+  imageRef: macos-15-dev-base
   resources:
     cpu: 4
     memoryGiB: 8
@@ -158,21 +130,25 @@ spec:
     - name: ssh
       guestPort: 22
       protocol: tcp
-      exposure: private
+      exposure: private-tunnel
     - name: app
       guestPort: 8443
       protocol: tcp
-      exposure: private
+      exposure: private-tunnel
 ```
 
+Then apply it and watch for the VM to start running:
+
 ```bash
-kubectl apply -f dev.yaml
-kubectl get virtualmachine dev --watch
+kubectl apply -f vm.yaml
+kubectl get virtualmachine {VM_NAME} --watch
 ```
+
+### VirtualMachine Fields
 
 | Field | Required | Description |
 |---|---|---|
-| `spec.image` | yes | Image name. Immutable. |
+| `spec.imageRef` | yes | Image name. Immutable. |
 | `spec.resources.cpu` | yes | vCPU count. |
 | `spec.resources.memoryGiB` | yes | Memory in GiB. |
 | `spec.resources.diskGiB` | yes | Boot disk in GiB. |
@@ -183,9 +159,22 @@ Port fields:
 | Field | Required | Description |
 |---|---|---|
 | `name` | yes | Unique port name within the VM. |
-| `guestPort` | yes | Port inside the guest (1–65535). |
+| `guestPort` | yes | Port inside the guest (1-65535). |
 | `protocol` | no | `tcp` (default). |
-| `exposure` | no | `private` for tunnel-based access. |
+| `exposure` | no | `private-tunnel` for tunnel-based access. |
+
+### Inspect with kubectl
+
+```bash
+kubectl get virtualmachines
+kubectl get virtualmachine {VM_NAME} -o yaml
+```
+
+### Delete with kubectl
+
+```bash
+kubectl delete virtualmachine {VM_NAME}
+```
 
 ### Status Contract
 
@@ -195,7 +184,6 @@ status:
   phase: Running
   capacitySource: reserved
   readyForAccess: true
-  failureCode: null
   access:
     ssh: true
     desktop: true
@@ -210,12 +198,16 @@ status:
 Lifecycle phases: `Pending`, `Creating`, `Starting`, `Running`, `Stopping`,
 `Deleting`, `Failed`.
 
+The `capacitySource` field shows whether the VM is using `reserved` or `spot`
+capacity.
+
 ### Bootstrap Data
 
 Use bootstrap data when the guest needs non-secret startup instructions such
 as creating files or starting services.
 
-Bootstrap data is stored in a tenant-scoped `ConfigMap`:
+Create a `ConfigMap` in your tenant namespace with the
+`compute.mountthor.com/customer-bootstrap` label:
 
 ```yaml
 apiVersion: v1
@@ -235,15 +227,7 @@ data:
 kubectl apply -f dev-bootstrap.yaml
 ```
 
-Reference the ConfigMap from the VM spec:
-
-```yaml
-spec:
-  image: macos-15-dev-base
-  bootstrap:
-    metadataService: {}
-    userDataConfigMapRef: dev-bootstrap
-```
+VMs in the same namespace automatically pick up labeled bootstrap ConfigMaps.
 
 <Warning>
   Bootstrap ConfigMaps are non-secret user data. Do not put API keys, session

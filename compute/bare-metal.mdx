@@ -22,6 +22,7 @@ flowchart TD
   Reclaiming --> End(( ))
   Pending --> Failed
   Allocating --> Failed
+  Ready --> Failed
   Preparing --> Failed
   Failed --> End
 ```
@@ -47,150 +48,102 @@ mthr fleet summary
 mthr fleet images
 ```
 
-Allocate a bare-metal Mac:
+Allocate interactively — the CLI prompts for a machine name, hardware class,
+and image:
 
 ```bash
-mthr bm allocate build-1 --class m4-24g --image xcode-16
+mthr bm allocate
 ```
 
-This creates a `BareMetalMachine` resource. Mount Thor selects a host from your
-reserved (or spot) capacity, installs the image, and prepares the machine for
-access.
+Or specify everything on the command line:
 
-Wait for the machine to reach the `Ready` state, then connect.
+```bash
+mthr bm allocate {BM_NAME} --class m4-24g --image xcode-16
+```
+
+Mount Thor selects a host from your reserved (or spot) capacity, installs the
+image, and prepares the machine for access. Wait for `Ready`, then connect.
+
+## Connect
+
+### SSH
+
+```bash
+mthr bm ssh {BM_NAME}
+```
+
+### Desktop Access
+
+```bash
+mthr bm desktop {BM_NAME}
+```
+
+This opens a private tunnel and launches Apple Screen Sharing. Keep the CLI
+running while connected. Use `--print` to print the VNC URL instead of opening
+it automatically.
+
+### Tunnel
+
+```bash
+mthr bm tunnel {BM_NAME} --port-name {PORT_NAME} --local-port {LOCAL_PORT}
+```
+
+## List and Inspect
+
+```bash
+mthr bm ls
+mthr bm get {BM_NAME}
+```
+
+## Free a Machine
+
+```bash
+mthr bm free {BM_NAME}
+```
+
+Mount Thor revokes access, securely wipes the host, and returns it to the
+pool. You cannot reconnect to a machine once you have freed it.
+
+For fleet-wide capacity monitoring, spot policy, and the image catalog, see
+[Fleet & Capacity](/platform/fleet-capacity).
+
+## Kubernetes Resource Reference
 
 ### Allocate with kubectl
 
-You can also create the underlying Kubernetes resource directly:
+Save the following to a file called `machine.yaml`:
 
 ```yaml
 apiVersion: compute.mountthor.com/v1alpha1
 kind: BareMetalMachine
 metadata:
-  name: build-1
+  name: {BM_NAME}
 spec:
   class: m4-24g
   image: xcode-16
 ```
 
+Then apply it and wait for the machine to become ready:
+
 ```bash
-kubectl apply -f build-1.yaml
-kubectl wait baremetalmachine build-1 \
+kubectl apply -f machine.yaml
+kubectl wait baremetalmachine {BM_NAME} \
   --for=jsonpath='{.status.readyForAccess}'=true \
   --timeout=30m
 ```
 
-Check machine status:
-
-```bash
-kubectl get baremetalmachine build-1 \
-  -o jsonpath='{.status.phase}{" readyForAccess="}{.status.readyForAccess}{" failure="}{.status.failureCode}{"\n"}'
-```
-
-When the output shows `Ready readyForAccess=true`, the machine is ready to
-connect. If `failureCode` is populated, use that value when contacting Mount
-Thor support.
-
-## Connect with SSH
-
-SSH into a ready machine:
-
-```bash
-mthr bm ssh build-1
-```
-
-The CLI checks that the machine is ready for access (waiting up to 30 seconds
-by default), requests a short-lived SSH grant from the Mount Thor access
-broker, and launches `ssh`. No separate access resource is needed — the CLI
-handles the entire flow.
-
-Grants expire after 4 hours by default. When a grant expires, run
-`mthr bm ssh` again to get a new one. The machine stays allocated.
-
-## List and Inspect
-
-List all bare-metal machines:
-
-```bash
-mthr bm ls
-```
-
-Get details for a specific machine:
-
-```bash
-mthr bm get build-1
-```
-
-Or with kubectl:
+### List and Inspect with kubectl
 
 ```bash
 kubectl get baremetalmachines
-kubectl get baremetalmachine build-1 -o yaml
+kubectl get baremetalmachine {BM_NAME} -o yaml
 ```
 
-## Free a Machine
-
-Release a machine when you are done:
+### Free with kubectl
 
 ```bash
-mthr bm free build-1
+kubectl delete baremetalmachine {BM_NAME}
 ```
-
-Or with kubectl:
-
-```bash
-kubectl delete baremetalmachine build-1
-```
-
-Mount Thor immediately revokes any active access grants, then runs its full
-reclaim pipeline: wipe, MDM erase, re-enroll, sanitization verification, and
-return to pool. The machine enters the `Reclaiming` phase during cleanup. You
-cannot reconnect to a machine once you've freed it.
-
-## Fleet and Capacity
-
-View your fleet summary, including reserved and spot capacity:
-
-```bash
-mthr fleet summary
-```
-
-Example output:
-
-```text
-Reserved
-  Bare metal: 3 / 4 in use, 1 available
-  VM CPU:     48 / 80 vCPU in use
-  VM memory:  96 / 160 GiB in use
-  VM disk:    800 / 2000 GiB in use
-
-Spot
-  Enabled: yes
-  This month: $82 / $500
-  Status: ok
-
-Machines
-  bm build-1     ready      reserved
-  bm build-2     ready      reserved
-  vm dev         running    reserved
-  vm ci-1        running    spot
-```
-
-### Spot Capacity
-
-If your account has spot capacity enabled, Mount Thor allocates spot machines
-when reserved capacity is exhausted. Manage spot policy with:
-
-```bash
-mthr fleet spot enable --monthly-spend-limit 500
-mthr fleet spot set-limit 1000
-mthr fleet spot disable
-```
-
-Spot spend limits are in dollars. Mount Thor warns at 80% and 90% of the
-monthly cap and stops admitting new spot allocations at 100%.
-
-## Kubernetes Resource Reference
 
 ### BareMetalMachine
 
@@ -200,49 +153,8 @@ monthly cap and stops admitting new spot allocations at 100%.
 | `spec.image` | no | Image name (e.g. `xcode-16`). Defaults applied by the platform. |
 | `spec.region` | no | Target region when multiple regions are available. Immutable. |
 
-### MachineClass
-
-Read-only catalog of available hardware classes:
-
-```bash
-kubectl get machineclasses
-```
-
-```yaml
-apiVersion: compute.mountthor.com/v1alpha1
-kind: MachineClass
-metadata:
-  name: m4-24g
-spec:
-  cpuFamily: apple-m4
-  memoryGiB: 24
-  regions:
-    - us-west
-```
-
-### Image
-
-Unified image catalog for both bare metal and VMs:
-
-```bash
-mthr fleet images
-kubectl get images
-```
-
-```yaml
-apiVersion: compute.mountthor.com/v1alpha1
-kind: Image
-metadata:
-  name: xcode-16
-spec:
-  source: mount-thor
-  displayName: Xcode 16
-  targets:
-    - bareMetal
-    - vm
-status:
-  ready: true
-```
+For hardware classes and images, see the
+[Fleet & Capacity](/platform/fleet-capacity) Kubernetes Resource Reference.
 
 ### Status Contract
 
@@ -254,16 +166,15 @@ status:
   phase: Ready
   capacitySource: reserved
   readyForAccess: true
-  failureCode: null
   access:
     ssh: true
     desktop: true
     tunnels: true
   conditions:
-    - type: ReadyForAccess
+    - type: Ready
       status: "True"
-      reason: HostPrepared
-      message: "Machine is ready for access."
+      reason: MachineReady
+      message: "machine is ready for access"
 ```
 
 Lifecycle phases: `Pending`, `Allocating`, `Preparing`, `Ready`, `Reclaiming`,
