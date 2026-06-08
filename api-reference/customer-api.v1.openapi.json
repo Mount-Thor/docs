@@ -37,6 +37,9 @@
           "status": {
             "description": "Observed Mount Thor status for the BareMetalMachine. Customers read status; create and update requests should not set it.",
             "properties": {
+              "allocationDecisionID": {
+                "type": "string"
+              },
               "capacitySource": {
                 "type": "string"
               },
@@ -81,7 +84,7 @@
                 "type": "array"
               },
               "desktopSession": {
-                "description": "Desktop access session information.",
+                "description": "Desktop access session state.",
                 "properties": {
                   "phase": {
                     "description": "Pending | Active | Expired | Revoked | Failed.",
@@ -91,11 +94,11 @@
                 "type": "object"
               },
               "failureCode": {
-                "description": "Customer-visible failure code when provisioning fails.",
+                "description": "Customer-visible failure code when reconciliation fails.",
                 "type": "string"
               },
               "failureMessage": {
-                "description": "Customer-visible failure message when provisioning fails.",
+                "description": "Customer-visible failure message when reconciliation fails.",
                 "type": "string"
               },
               "observedGeneration": {
@@ -119,7 +122,7 @@
         "type": "object"
       },
       "BillingCostLineItem": {
-        "description": "A single itemized cost line. Quantity is in seconds; unit_price_cents is per-second from the active price book. amount_cents = quantity_seconds * unit_price_cents truncated to whole cents.",
+        "description": "A single itemized cost line. Quantity is in seconds (the umbrella\nunit for compute lifecycles); unit_price_cents is per-second from\nthe active price book item. amount_cents = quantity_seconds *\nunit_price_cents truncated to whole cents.",
         "properties": {
           "amount_cents": {
             "description": "Computed line amount = `quantity_seconds * unit_price_cents`.",
@@ -127,7 +130,7 @@
             "type": "integer"
           },
           "priced": {
-            "description": "Whether this line item has been priced.",
+            "description": "`true` when a matching `price_book_items` row was found for\nthis `(price_book_id, resource_kind, resource_class,\nusage_model)`. `false` indicates the line was emitted at\n$0 with an implicit fallback per umbrella decision 9 (advisory\nflag for missing price-book entries).",
             "type": "boolean"
           },
           "quantity_seconds": {
@@ -156,7 +159,7 @@
             "type": "string"
           },
           "unit_price_cents": {
-            "description": "Per-second unit price from the customer's active price book.",
+            "description": "Per-second unit price in cents from the customer's active price book.",
             "format": "int64",
             "type": "integer"
           },
@@ -206,7 +209,7 @@
         "type": "object"
       },
       "CreateCustomerApiKeyResponse": {
-        "description": "Response body for creating a customer API key.\n\nThe plaintext `api_key` is returned only once and cannot be re-fetched.",
+        "description": "Response body for creating a customer API key.\n\nThe plaintext `api_key` is returned only once; the customer portal\nsurfaces it with a \"show once\" affordance and never re-fetches it.",
         "properties": {
           "api_key": {
             "description": "Plaintext API key. Format: `mthr_live_*`. Returned exactly once.",
@@ -302,7 +305,7 @@
         "additionalProperties": false,
         "properties": {
           "display_name": {
-            "description": "Optional pre-filled display name for the new user.",
+            "description": "Optional pre-filled display name. Overridden by the user's identity provider profile on first login.",
             "example": "Alice Example",
             "type": [
               "string",
@@ -310,12 +313,12 @@
             ]
           },
           "email": {
-            "description": "Email address of the invitee.",
+            "description": "Invitee email address. Lowercased for deduplication.",
             "example": "alice@acmecorp.com",
             "type": "string"
           },
           "role_slug": {
-            "description": "Optional role to assign on acceptance (e.g. `mountthor-cluster-admin`, `mountthor-cluster-readonly`). When omitted, the invitee receives no role until an admin assigns one.",
+            "description": "Optional role identifier to assign on acceptance. When omitted, the admin assigns a role later.",
             "example": "mountthor-cluster-readonly",
             "type": [
               "string",
@@ -331,7 +334,7 @@
       "CreateCustomerUserInviteResponse": {
         "properties": {
           "accept_invitation_url": {
-            "description": "URL for the invitee to accept the invitation.",
+            "description": "Accept-invitation URL. Can be shared with the invitee if the email does not arrive.",
             "type": [
               "string",
               "null"
@@ -343,7 +346,7 @@
             "type": "string"
           },
           "customer_user_id": {
-            "description": "UUID of the pending user record.",
+            "description": "UUID of the pending `customer_users` row.",
             "format": "uuid",
             "type": "string"
           },
@@ -352,11 +355,11 @@
             "type": "string"
           },
           "status": {
-            "description": "User status after the call. Always `\"invited\"` for\na new invitation; an existing pending invitation returns the same.",
+            "description": "User status after the call. Always `\"invited\"` for a new invitation; returns the existing status for an already-invited user.",
             "type": "string"
           },
           "invitation_id": {
-            "description": "Invitation identifier.",
+            "description": "Invitation identifier. Present unless the user was already invited and no new invitation was issued.",
             "type": [
               "string",
               "null"
@@ -371,61 +374,16 @@
         ],
         "type": "object"
       },
-      "CreateDesktopGrantRequest": {
-        "additionalProperties": false,
-        "description": "Request body for `POST /v1/admin/access/grants/desktop`.",
-        "properties": {
-          "idempotency_key": {
-            "description": "Client-supplied idempotency key.",
-            "example": "550e8400-e29b-41d4-a716-446655440000",
-            "type": "string"
-          },
-          "local_port": {
-            "description": "Preferred local port for the customer-side VNC listener.",
-            "example": 5900,
-            "format": "int32",
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "port_name": {
-            "description": "Canonical desktop port name. Must be `screen`.",
-            "example": "screen",
-            "type": "string"
-          },
-          "resource": {
-            "$ref": "#/components/schemas/AccessGrantResourceRef",
-            "description": "Target VM to access."
-          },
-          "ttl_seconds": {
-            "description": "Requested grant TTL in seconds. Omitted uses the service default.",
-            "example": 7200,
-            "format": "int64",
-            "type": [
-              "integer",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "idempotency_key",
-          "resource",
-          "port_name"
-        ],
-        "type": "object"
-      },
       "CreateLoginRequestRequest": {
         "additionalProperties": false,
-        "description": "Request body for initiating a browser-based login flow.",
+        "description": "Request body for `POST /v1/admin/sessions/authorize`.\n\n`localhost_state_sha256` and `cli_verifier_sha256` are SHA-256 digests of\nrandom values held by the CLI; the plaintext never crosses the wire on this\nroute. The eventual session-mint route (`POST /v1/admin/sessions` with\n`grant_type=login-handoff`) re-presents the plaintext, and admin-api\nre-hashes and matches.",
         "properties": {
           "cli_verifier_sha256": {
             "description": "SHA-256 hex digest of the CLI's verifier random value.",
             "type": "string"
           },
           "customer_slug": {
-            "description": "Customer identifier recorded with the registration. Format: kebab-case. When omitted, the customer is resolved after authentication completes.",
+            "description": "Customer identifier. Format: lowercase hyphenated text. When omitted, the identity provider resolves the customer after authentication.",
             "example": "acme",
             "type": [
               "string",
@@ -442,7 +400,7 @@
             "type": "string"
           },
           "tenant_slug": {
-            "description": "Optional tenant identifier to scope the eventual session to a specific tenant. When omitted the session is account-scoped.",
+            "description": "Optional tenant identifier to scope the session. When omitted, the session is account-scoped. Only valid when a customer identifier is supplied.",
             "example": "acme-prod",
             "type": [
               "string",
@@ -458,11 +416,11 @@
         "type": "object"
       },
       "CreateLoginRequestResponse": {
-        "description": "Response body for initiating a browser-based login flow.",
+        "description": "Response body for `POST /v1/admin/sessions/authorize`.",
         "properties": {
           "authorization_url": {
-            "description": "Authorization URL the CLI opens in the customer's browser.",
-            "example": "https://auth.mountthor.com/authorize?client_id=...",
+            "description": "Authorization URL the CLI opens in the browser.",
+            "example": "https://auth.mountthor.com/authorize?...",
             "type": "string"
           },
           "login_request_id": {
@@ -471,7 +429,7 @@
             "type": "string"
           },
           "state_expires_in_seconds": {
-            "description": "Seconds until the login request expires.",
+            "description": "Seconds until the authorization link and matching login request expire.",
             "example": 600,
             "format": "int64",
             "type": "integer"
@@ -533,14 +491,14 @@
             "type": "string"
           },
           "feature_flags": {
-            "description": "Feature flags enabled for this account.",
+            "description": "Feature flags currently enabled for this customer. Empty before onboarding completes.",
             "items": {
               "type": "string"
             },
             "type": "array"
           },
           "last_sign_in_at": {
-            "description": "RFC 3339 timestamp of the most recent completed sign-in for the principal customer admin. Null when the user has never completed a sign-in.",
+            "description": "RFC 3339 timestamp of the most recent completed sign-in for the\nprincipal customer admin. Updated to NOW() at every AuthKit\ncallback (see service/sessions.rs:resolve_or_provision_authkit_customer_user).\nNull when the user has never completed an AuthKit sign-in\n(api-key-only callers, or rows that pre-date the column).",
             "example": "2026-06-05T17:33:40Z",
             "type": [
               "string",
@@ -566,7 +524,7 @@
             "type": "string"
           },
           "profile_picture_url": {
-            "description": "URL of the user's profile picture, if available.",
+            "description": "Avatar URL for the customer admin, if available.",
             "example": "https://cdn.mountthor.com/avatars/user_01ABC",
             "type": [
               "string",
@@ -645,18 +603,18 @@
       "CustomerAdminIdentityResponse": {
         "properties": {
           "allowed_email_domains": {
-            "description": "Email domains allowed during account registration.",
+            "description": "Email domains the customer's approval package allowed at signup.\nUseful context for the portal when explaining who can join via\nAuthKit's organization-policy auto-routing.",
             "items": {
               "type": "string"
             },
             "type": "array"
           },
           "has_identity_integration": {
-            "description": "Whether the caller's customer has any usable identity integration.\nDerived from `integration_status`.",
+            "description": "Whether the caller's customer has any usable identity integration.\nDerived from `integration_status`. The portal uses this to decide\nwhether to render \"Setup SSO Logins\" vs \"Reconfigure SSO\" CTAs.",
             "type": "boolean"
           },
           "integration_status": {
-            "description": "Identity integration status for the caller's customer. One of `draft`, `customer-input-required`, `configured`, `testing`, `active`, `failed`, or `suspended`. `null` if no integration exists yet.",
+            "description": "`identity_integrations.status` for the caller's customer. One of\n`draft`, `customer-input-required`, `configured`, `testing`,\n`active`, `failed`, or `suspended` — the full set the\n`identity_integrations.status` CHECK constraint allows (see\n`control-plane/manager/db/migrations/0009_customer_onboarding_admin.sql`).\n`null` if no integration exists yet (registration not far enough\nalong).",
             "example": "configured",
             "type": [
               "string",
@@ -664,7 +622,7 @@
             ]
           },
           "provider": {
-            "description": "Identity provider.",
+            "description": "Identity provider identifier.",
             "example": "sso",
             "type": "string"
           }
@@ -830,7 +788,7 @@
         "description": "Customer-level itemized cost response.",
         "properties": {
           "currency": {
-            "description": "ISO 4217 currency code. Currently always `USD`.",
+            "description": "ISO 4217 currency code; today always `USD` per umbrella\nscoping decision.",
             "example": "USD",
             "type": "string"
           },
@@ -839,7 +797,7 @@
             "type": "string"
           },
           "line_items": {
-            "description": "Itemized line items, ordered by tenant identifier, resource kind, resource class, and usage model.",
+            "description": "Itemized line items, ordered by tenant, resource kind,\nresource class, and usage model for stable client rendering.",
             "items": {
               "$ref": "#/components/schemas/BillingCostLineItem"
             },
@@ -851,7 +809,6 @@
           },
           "price_book_slug": {
             "description": "The customer's active price book identifier at the time of the computation.",
-            "example": "default",
             "type": "string"
           },
           "total_cents": {
@@ -878,7 +835,7 @@
             "description": "Header metadata; same shape as the list-response entry."
           },
           "line_items": {
-            "description": "Line items ordered by (resource_kind, resource_class,\nusage_model).",
+            "description": "Line items ordered by (resource_kind, resource_class,\nusage_model) for stable client rendering.",
             "items": {
               "$ref": "#/components/schemas/InvoiceLineItemMetadata"
             },
@@ -922,7 +879,7 @@
         "description": "Customer-facing price-book catalog response. Surfaces the catalog\nindependently of any usage rollup so creation flows (Create Bare Metal\nMachine, Create VM) can render \"this class costs $X/second\" before the\ncustomer commits to running anything.",
         "properties": {
           "currency": {
-            "description": "ISO 4217 currency code. Currently always `USD`.",
+            "description": "ISO 4217 currency code; today always `USD` per umbrella\nscoping decision.",
             "example": "USD",
             "type": "string"
           },
@@ -931,7 +888,7 @@
             "type": "string"
           },
           "items": {
-            "description": "Items ordered by (resource_kind, resource_class, usage_model).",
+            "description": "Items ordered by (resource_kind, resource_class, usage_model)\nfor stable client rendering.",
             "items": {
               "$ref": "#/components/schemas/PriceCatalogItem"
             },
@@ -939,7 +896,6 @@
           },
           "price_book_slug": {
             "description": "Active price book identifier.",
-            "example": "default",
             "type": "string"
           }
         },
@@ -1004,7 +960,7 @@
             "type": "string"
           },
           "source_ref": {
-            "description": "Reference identifier for the entitlement grant.",
+            "description": "Optional internal contract or approval reference that granted the entitlement.",
             "example": "contract-line:mac-mini-m4",
             "type": [
               "string",
@@ -1031,13 +987,6 @@
           "customer_id": {
             "description": "Stable UUID for the customer account.",
             "type": "string"
-          },
-          "bare_metal_machines": {
-            "description": "Bare-metal machines currently visible in the tenant namespace.",
-            "items": {
-              "$ref": "#/components/schemas/FleetBareMetalMachineSummary"
-            },
-            "type": "array"
           },
           "namespace": {
             "description": "Kubernetes namespace used for the tenant's compute resources.",
@@ -1289,8 +1238,8 @@
             "description": "Activated account metadata."
           },
           "account_setup_url": {
-            "description": "Optional account setup URL. The customer admin can visit this URL to complete account setup (set a password, sign in via social login, or use a magic link). Null when identity setup is not available for this registration.",
-            "example": "https://auth.mountthor.com/sign-up?invite=01HF...",
+            "description": "Account setup URL for the newly registered admin. The same link is also emailed. Null when account setup is not applicable.",
+            "example": "https://example.authkit.app/sign-up?invite=01HF...",
             "type": [
               "string",
               "null"
@@ -1483,7 +1432,7 @@
             "type": "string"
           },
           "display_name": {
-            "description": "Display name, when known.",
+            "description": "Display name, when known. Updated from the identity provider profile on first login.",
             "example": "Alice Example",
             "type": [
               "string",
@@ -1496,7 +1445,7 @@
             "type": "string"
           },
           "status": {
-            "description": "User status. Common values: `invited`, `active`,\n`suspended`, `revoked`.",
+            "description": "`customer_users.status`. Common values: `invited`, `active`,\n`suspended`, `revoked`. The wire shape stays open so a future\nstatus doesn't require a portal update.",
             "example": "active",
             "type": "string"
           },
@@ -1506,7 +1455,7 @@
             "type": "string"
           },
           "user_type": {
-            "description": "User type. `human` for interactive users,\n`api-key` for automation bindings.",
+            "description": "`customer_users.user_type`. `human` for portal teammates,\n`api-key` for automation bindings. Portal filters to human only\non the Members page.",
             "example": "human",
             "type": "string"
           }
@@ -1679,59 +1628,6 @@
         ],
         "type": "object"
       },
-      "FleetBareMetalMachineSummary": {
-        "description": "Summary of a bare-metal machine in the account fleet.",
-        "properties": {
-          "created_at": {
-            "description": "Kubernetes creation timestamp.",
-            "example": "2026-05-25T17:30:00Z",
-            "type": "string"
-          },
-          "failure_code": {
-            "description": "Customer-visible failure code when provisioning fails.",
-            "example": "ReservedCapacityUnavailable",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "image": {
-            "description": "macOS image requested by the machine.",
-            "example": "xcode-16-stable",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "machine_class": {
-            "description": "Hardware class for the machine.",
-            "example": "m4-24g",
-            "type": "string"
-          },
-          "name": {
-            "description": "Kubernetes object name for the bare-metal machine.",
-            "example": "bm-01",
-            "type": "string"
-          },
-          "phase": {
-            "description": "Current machine phase, such as `Pending`, `Ready`, `Failed`, or `Reclaiming`.",
-            "example": "Ready",
-            "type": "string"
-          },
-          "ready_for_access": {
-            "description": "Whether an access session can be opened for the machine.",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "name",
-          "machine_class",
-          "phase",
-          "ready_for_access",
-          "created_at"
-        ],
-        "type": "object"
-      },
       "FleetPolicyV1ALPHA1": {
         "description": "Customer-visible FleetPolicy resource in the Mount Thor Compute API.",
         "properties": {
@@ -1809,7 +1705,7 @@
                 "type": "array"
               },
               "failureCode": {
-                "description": "Customer-visible failure code when provisioning fails.",
+                "description": "Customer-visible failure code when reconciliation fails.",
                 "type": "string"
               },
               "observedGeneration": {
@@ -2086,7 +1982,7 @@
                 "type": "string"
               },
               "failureCode": {
-                "description": "Customer-visible failure code when provisioning fails.",
+                "description": "Customer-visible failure code when reconciliation fails.",
                 "type": "string"
               },
               "ready": {
@@ -2106,7 +2002,7 @@
       },
       "InlineTrustedIssuer": {
         "additionalProperties": false,
-        "description": "Inline trusted-issuer material accepted on workload-principal create so a caller can register an issuer and bind a principal in one call. The issuer is de-duplicated by canonical URL: if an active issuer already exists for the URL it is reused; otherwise it is created from this material.",
+        "description": "Inline trusted-issuer material accepted on workload-principal create so a\ncaller can register an issuer and bind a principal in one call. The issuer\nis de-duplicated into `customer_trusted_issuers` by canonical URL: if an\nactive issuer already exists for the URL it is reused (its existing config\nwins); otherwise it is created from this material.",
         "properties": {
           "allowed_clock_skew_seconds": {
             "description": "Clock skew allowed when validating token time claims.",
@@ -2171,7 +2067,7 @@
             "type": "integer"
           },
           "line_description": {
-            "description": "Optional human-readable description for the line item.",
+            "description": "Optional human-readable description (operator-issued\nadjustments and supplemental lines will populate this when\nRing C ships).",
             "type": [
               "string",
               "null"
@@ -2296,7 +2192,7 @@
         "additionalProperties": false,
         "properties": {
           "intent": {
-            "description": "Identity setup intent. One of `sso`, `dsync`, or `domain_verification`. Defaults to `sso`.",
+            "description": "Admin portal intent. One of `sso`, `dsync`, or `domain_verification`. Defaults to `sso`.",
             "example": "sso",
             "type": [
               "string",
@@ -2304,7 +2200,7 @@
             ]
           },
           "reason": {
-            "description": "Optional audit reason (8..=1000 chars when present).\nWhen omitted, a default reason is recorded.",
+            "description": "Optional audit reason (8..=1000 chars when present). The portal\ncan send a short context string like \"customer admin clicked\nSetup SSO Logins\". When omitted, the audit row records a\nstock reason naming the actor type.",
             "example": "customer admin clicked Setup SSO Logins",
             "type": [
               "string",
@@ -2313,7 +2209,7 @@
           },
           "return_url": {
             "deprecated": true,
-            "description": "URL to redirect the user to after completing identity setup.",
+            "description": "Deprecated and ignored.",
             "example": "https://api.mountthor.com/identity/setup-completed",
             "type": [
               "string",
@@ -2340,12 +2236,12 @@
             "type": "string"
           },
           "provider": {
-            "description": "Identity provider.",
+            "description": "Identity provider identifier.",
             "example": "sso",
             "type": "string"
           },
           "url": {
-            "description": "Identity setup URL. One-time use; redirect the admin's browser to it immediately.",
+            "description": "Admin portal URL. One-time use; redirect the browser immediately.",
             "type": "string"
           }
         },
@@ -2358,27 +2254,30 @@
         ],
         "type": "object"
       },
-      "ListOperationsResponse": {
+      "MachineAvailabilityResponse": {
+        "description": "Binary collapse of the per-class reserved-available count.\n\n`available` ⇔ at least one host is `reserved_unbound` for the\ncaller's tenant + this class right now (summed across sites).\n`unavailable` ⇔ no reserved capacity is currently available for\nthis class; the machine request will queue and admin-worker will surface a\n`CommittedCapacityUnavailable` failure on the activity feed if the\nqueue cannot drain.",
         "properties": {
-          "customer_id": {
-            "format": "uuid",
+          "as_of": {
+            "description": "Wall-clock timestamp when the signal was computed. Combined\nwith `ttl_seconds` so clients can avoid re-firing the request\nduring the cache window.",
+            "format": "date-time",
             "type": "string"
           },
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/OperationListEntry"
-            },
-            "type": "array"
+          "availability": {
+            "description": "`\"available\"` or `\"unavailable\"`.",
+            "example": "available",
+            "type": "string"
           },
-          "total_count": {
-            "format": "int64",
+          "ttl_seconds": {
+            "description": "Server-side cache lifetime in seconds. Stable today (30s) but\nsurfaced so the portal doesn't bake the constant in.",
+            "format": "int32",
+            "minimum": 0,
             "type": "integer"
           }
         },
         "required": [
-          "customer_id",
-          "items",
-          "total_count"
+          "availability",
+          "as_of",
+          "ttl_seconds"
         ],
         "type": "object"
       },
@@ -2486,7 +2385,7 @@
             "type": "string"
           },
           "refresh_token": {
-            "description": "Optional refresh token (`mt_refresh_*`). Returned by certain grant types when refresh tokens are requested. Trade for a fresh session via the refresh-token grant\nbefore the session expires. Stored once; cannot be re-displayed.",
+            "description": "Optional refresh token (`mt_refresh_*`). Returned only by grants\nthat issue one (the SPA authkit-authorization-code grant when\n`request_refresh_token=true`, and the refresh-token grant on\nrotation). Trade for a fresh session via the refresh-token grant\nbefore the session expires. Stored once; cannot be re-displayed.",
             "type": [
               "string",
               "null"
@@ -2560,99 +2459,11 @@
         ],
         "type": "object"
       },
-      "OperationListAudit": {
-        "properties": {
-          "actor_ref": {
-            "type": "string"
-          },
-          "event_type": {
-            "type": "string"
-          },
-          "reason": {
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "event_type",
-          "actor_ref"
-        ],
-        "type": "object"
-      },
-      "OperationListEntry": {
-        "description": "One row in the `GET /v1/admin/operations` response.",
-        "properties": {
-          "attempt_count": {
-            "format": "int32",
-            "type": "integer"
-          },
-          "audit": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/OperationListAudit",
-                "description": "Audit metadata for this operation, if available."
-              }
-            ]
-          },
-          "completed_at": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "created_at": {
-            "description": "Customer-friendly ISO-8601 timestamps.",
-            "type": "string"
-          },
-          "last_error": {
-            "description": "Present when the operation has failed. Contains the error message describing what went wrong.",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "operation_id": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "operation_type": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string"
-          },
-          "target_kind": {
-            "type": "string"
-          },
-          "target_name": {
-            "type": "string"
-          },
-          "updated_at": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "operation_id",
-          "operation_type",
-          "target_kind",
-          "target_name",
-          "status",
-          "attempt_count",
-          "created_at",
-          "updated_at"
-        ],
-        "type": "object"
-      },
       "PriceCatalogItem": {
-        "description": "An entry in the price catalog.",
+        "description": "One row in the customer's price-book catalog. Mirrors the\n`price_book_items` schema (migration 0115) projected onto the wire.",
         "properties": {
           "minimum_unit_price_cents": {
-            "description": "Optional minimum unit price in cents. When present, represents the floor price for this resource class and usage model.",
+            "description": "Optional minimum unit price in cents — the floor the umbrella\npricing engine will not undercut once Ring B/C drawdown math\nships. Present today only when the operator pinned one in\n`price_book_items.minimum_unit_price_cents`.",
             "format": "int64",
             "type": [
               "integer",
@@ -2675,7 +2486,7 @@
             "type": "integer"
           },
           "usage_model": {
-            "description": "`reserved` or `on-demand` (`hybrid` capacity is priced at the reserved rate; the catalog only emits the priced\ndimensions a customer can be billed against).",
+            "description": "`reserved` or `on-demand` (`hybrid` is priced as reserved per\nthe alpha SKU; the catalog surface only emits the priced\ndimensions a customer can be billed against).",
             "example": "reserved",
             "type": "string"
           }
@@ -3092,6 +2903,18 @@
             "example": "aws-ecr",
             "type": "string"
           },
+          "pull_secret_ref": {
+            "description": "Opaque pull reference used by Mount Thor runtime components.",
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RegistryPullReference",
+                "description": "Opaque pull reference used by Mount Thor runtime components."
+              }
+            ]
+          },
           "registry_host": {
             "description": "Registry host without scheme.",
             "example": "123456789012.dkr.ecr.us-east-2.amazonaws.com",
@@ -3106,6 +2929,14 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "runtime_access_mode": {
+            "description": "Runtime integration mode for the grant.",
+            "example": "mount-thor-managed",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "status": {
             "description": "Grant lifecycle state.",
@@ -3810,11 +3641,11 @@
         "description": "Customer-visible VirtualMachine resource in the Mount Thor Compute API.",
         "properties": {
           "apiVersion": {
-            "description": "API version for this resource. Use `compute.mountthor.com/v1alpha1`.",
+            "description": "APIVersion defines the versioned schema of this representation of an object.\nServers should convert recognized schemas to the latest internal value, and\nmay reject unrecognized values.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
             "type": "string"
           },
           "kind": {
-            "description": "Resource kind. Must be `VirtualMachine`.",
+            "description": "Kind is a string value representing the REST resource this object represents.\nServers may infer this from the endpoint the client submits requests to.\nCannot be updated.\nIn CamelCase.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
             "type": "string"
           },
           "metadata": {
@@ -3891,7 +3722,13 @@
           "status": {
             "description": "VirtualMachineStatus defines the observed state of a VirtualMachine.",
             "properties": {
+              "allocationDecisionID": {
+                "type": "string"
+              },
               "capacitySource": {
+                "type": "string"
+              },
+              "cleanupEvidenceRef": {
                 "type": "string"
               },
               "conditions": {
@@ -3950,11 +3787,11 @@
                 "type": "array"
               },
               "failureCode": {
-                "description": "Customer-visible failure code when provisioning fails.",
+                "description": "Customer-visible failure code when reconciliation fails.",
                 "type": "string"
               },
               "failureMessage": {
-                "description": "Customer-visible failure message when provisioning fails.",
+                "description": "Customer-visible failure message when reconciliation fails.",
                 "type": "string"
               },
               "imagePullProgress": {
@@ -3970,6 +3807,13 @@
                   "elapsedSeconds": {
                     "format": "int64",
                     "type": "integer"
+                  },
+                  "layerCount": {
+                    "format": "int32",
+                    "type": "integer"
+                  },
+                  "operationId": {
+                    "type": "string"
                   },
                   "rateBps": {
                     "format": "int64",
@@ -4025,6 +3869,44 @@
               },
               "resolvedImageRef": {
                 "type": "string"
+              },
+              "timings": {
+                "description": "VMTimingStatus records the native VM lifecycle milestones used for latency\nprofiling and readiness gating.",
+                "properties": {
+                  "customerReadyAt": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "guestReadyProbePassedAt": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "hostDurableAt": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "hostReservedAt": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "intentDurableAt": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "portsPublishedAt": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "prepareInstanceStartedAt": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "startSubmittedAt": {
+                    "format": "date-time",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
               }
             },
             "type": "object"
@@ -4282,249 +4164,34 @@
       }
     },
     "securitySchemes": {
-      "api_key_bearer": {
+      "MountThorApiKey": {
         "bearerFormat": "mthr_live",
         "scheme": "bearer",
         "type": "http"
+      },
+      "MountThorSession": {
+        "bearerFormat": "mt_session",
+        "scheme": "bearer",
+        "type": "http"
+      },
+      "RegistrationCode": {
+        "in": "header",
+        "name": "X-MountThor-Registration-Code",
+        "type": "apiKey"
       }
     }
   },
   "info": {
-    "description": "Mount Thor customer API.",
+    "description": "Generated from governance/api-surfaces/customer.v1.yaml and control-plane/admin-api typed route metadata. Do not edit by hand.",
     "title": "Mount Thor Customer API",
-    "version": "v1"
+    "version": "v1",
+    "x-mountthor-audience": "customer",
+    "x-mountthor-source": "customer-v1",
+    "x-mountthor-source-description": "Canonical customer-facing Mount Thor v1 API surface.",
+    "x-mountthor-stability": "alpha"
   },
   "openapi": "3.1.0",
   "paths": {
-    "/v1/admin/access/grants/desktop": {
-      "post": {
-        "operationId": "create_desktop_grant",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateDesktopGrantRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AccessGrantResponse"
-                }
-              }
-            },
-            "description": "Desktop grant created or existing active grant returned"
-          },
-          "400": {
-            "description": "Invalid request"
-          },
-          "401": {
-            "description": "Unauthenticated"
-          },
-          "403": {
-            "description": "Access denied"
-          },
-          "404": {
-            "description": "Resource not found"
-          },
-          "409": {
-            "description": "Resource not ready or grant revoked"
-          },
-          "429": {
-            "description": "Too many active grants"
-          },
-          "500": {
-            "description": "Internal server error."
-          }
-        },
-        "security": [
-          {
-            "api_key_bearer": [
-              "access:write"
-            ]
-          }
-        ],
-        "summary": "Create Desktop Access Grant",
-        "tags": [
-          "access"
-        ]
-      }
-    },
-    "/v1/admin/access/grants/ssh": {
-      "post": {
-        "operationId": "create_ssh_grant",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateSshGrantRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AccessGrantResponse"
-                }
-              }
-            },
-            "description": "SSH grant created or existing active grant returned"
-          },
-          "400": {
-            "description": "Invalid request"
-          },
-          "401": {
-            "description": "Unauthenticated"
-          },
-          "403": {
-            "description": "Access denied"
-          },
-          "404": {
-            "description": "Resource not found"
-          },
-          "409": {
-            "description": "Resource not ready or grant revoked"
-          },
-          "429": {
-            "description": "Too many active grants"
-          },
-          "500": {
-            "description": "Internal server error."
-          }
-        },
-        "security": [
-          {
-            "api_key_bearer": [
-              "access:write"
-            ]
-          }
-        ],
-        "summary": "Create SSH Access Grant",
-        "tags": [
-          "access"
-        ]
-      }
-    },
-    "/v1/admin/access/grants/tunnel": {
-      "post": {
-        "operationId": "create_tunnel_grant",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateTunnelGrantRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AccessGrantResponse"
-                }
-              }
-            },
-            "description": "Tunnel grant created or existing active grant returned"
-          },
-          "400": {
-            "description": "Invalid request"
-          },
-          "401": {
-            "description": "Unauthenticated"
-          },
-          "403": {
-            "description": "Access denied"
-          },
-          "404": {
-            "description": "Resource not found"
-          },
-          "409": {
-            "description": "Resource not ready or grant revoked"
-          },
-          "429": {
-            "description": "Too many active grants"
-          },
-          "500": {
-            "description": "Internal server error."
-          }
-        },
-        "security": [
-          {
-            "api_key_bearer": [
-              "access:write"
-            ]
-          }
-        ],
-        "summary": "Create Tunnel Access Grant",
-        "tags": [
-          "access"
-        ]
-      }
-    },
-    "/v1/admin/access/grants/{grant_id}": {
-      "delete": {
-        "operationId": "revoke_grant",
-        "parameters": [
-          {
-            "description": "Grant identifier to revoke",
-            "in": "path",
-            "name": "grant_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RevokeGrantResponse"
-                }
-              }
-            },
-            "description": "Grant revoked"
-          },
-          "401": {
-            "description": "Unauthenticated"
-          },
-          "403": {
-            "description": "Access denied"
-          },
-          "404": {
-            "description": "Grant not found"
-          },
-          "409": {
-            "description": "Grant already revoked or expired"
-          }
-        },
-        "security": [
-          {
-            "api_key_bearer": [
-              "access:write"
-            ]
-          }
-        ],
-        "summary": "Revoke Access Grant",
-        "tags": [
-          "access"
-        ]
-      }
-    },
     "/v1/admin/account": {
       "get": {
         "description": "Returns account identity, tenant namespace mapping, and customer-visible\nentitlements for the bearer API key. Use `tenants[].namespace_name` when\nconfiguring `kubectl` for the Compute API.",
@@ -4557,7 +4224,16 @@
         "summary": "Get Account",
         "tags": [
           "account"
-        ]
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/me.rs",
+        "x-mountthor-stability": "v1alpha1"
       },
       "patch": {
         "description": "This operation only updates customer-owned display metadata. It does not\nchange legal name, tenant bindings, namespaces, entitlements, routing, or\naccount status.",
@@ -4603,12 +4279,21 @@
         "summary": "Update Account",
         "tags": [
           "account"
-        ]
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/me.rs",
+        "x-mountthor-stability": "v1alpha1"
       }
     },
     "/v1/admin/billing/costs": {
       "get": {
-        "description": "Joins live usage against the customer's active price book and\nreturns itemized line items per (tenant, resource_kind,\nresource_class, usage_model). For `period=current` the math is\nrecomputed on every request; for past months the response\nreflects the frozen invoice when available.",
+        "description": "Joins live usage against the customer's active price book and\nreturns itemized line items per (tenant, resource_kind,\nresource_class, usage_model). For `period=current` the math is\nrecomputed on every request; for past months the same live\nrecompute is used until phase 7's invoice read API lands and the\nroute can prefer a frozen invoice row.",
         "operationId": "get_customer_billing_costs",
         "parameters": [
           {
@@ -4639,7 +4324,7 @@
             "description": "Missing or invalid bearer credential"
           },
           "403": {
-            "description": "Credential is missing billing:read scope, or your account does not have billing access."
+            "description": "Credential is missing billing:read scope, or the human session is not a billing-owner for this customer"
           },
           "409": {
             "description": "Customer has no active contract; cannot derive a price book"
@@ -4655,7 +4340,16 @@
         "summary": "List Billing Costs",
         "tags": [
           "billing"
-        ]
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/billing.rs",
+        "x-mountthor-stability": "v1alpha1"
       }
     },
     "/v1/admin/billing/invoices": {
@@ -4720,7 +4414,7 @@
             "description": "Missing or invalid bearer credential"
           },
           "403": {
-            "description": "Credential is missing billing:read scope, or your account does not have billing access."
+            "description": "Credential is missing billing:read scope, or the human session is not a billing-owner for this customer"
           }
         },
         "security": [
@@ -4733,7 +4427,16 @@
         "summary": "List Invoices",
         "tags": [
           "billing"
-        ]
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/billing.rs",
+        "x-mountthor-stability": "v1alpha1"
       }
     },
     "/v1/admin/billing/invoices/{invoice_id}": {
@@ -4769,7 +4472,7 @@
             "description": "Missing or invalid bearer credential"
           },
           "403": {
-            "description": "Credential is missing billing:read scope, or your account does not have billing access."
+            "description": "Credential is missing billing:read scope, or the human session is not a billing-owner for this customer"
           },
           "404": {
             "description": "Invoice not found, or does not belong to the authenticated customer"
@@ -4785,12 +4488,21 @@
         "summary": "Get Invoice",
         "tags": [
           "billing"
-        ]
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/billing.rs",
+        "x-mountthor-stability": "v1alpha1"
       }
     },
     "/v1/admin/billing/price-catalog": {
       "get": {
-        "description": "Returns the active price book identifier + every priced\n(resource_kind, resource_class, usage_model) triple, ordered by\nthat key. Independent of usage —\nsurfaces what the customer *would* be billed if they ran a given\nclass, so machine or VM creation flows can display a\nper-class price hint before submission.",
+        "description": "Returns the active price book identifier and every priced\n(resource_kind, resource_class, usage_model) triple, ordered by\nthat key for stable client rendering. Independent of usage —\nsurfaces what the customer *would* be billed if they ran a given\nclass, so the portal's Create Bare Metal Machine / Create VM flows can\nrender a per-class price hint before submission.",
         "operationId": "get_customer_billing_price_catalog",
         "responses": {
           "200": {
@@ -4807,7 +4519,7 @@
             "description": "Missing or invalid bearer credential"
           },
           "403": {
-            "description": "Credential is missing billing:read scope, or your account does not have billing access."
+            "description": "Credential is missing billing:read scope, or the human session is not a billing-owner for this customer"
           },
           "409": {
             "description": "Customer has no active contract or the active contract has no price book assigned"
@@ -4823,7 +4535,16 @@
         "summary": "List Billing Prices",
         "tags": [
           "billing"
-        ]
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/billing.rs",
+        "x-mountthor-stability": "v1alpha1"
       }
     },
     "/v1/admin/billing/usage": {
@@ -4859,7 +4580,7 @@
             "description": "Missing or invalid bearer credential"
           },
           "403": {
-            "description": "Credential is missing billing:read scope, or your account does not have billing access."
+            "description": "Credential is missing billing:read scope, or the human session is not a billing-owner for this customer"
           }
         },
         "security": [
@@ -4872,12 +4593,21 @@
         "summary": "List Billing Usage",
         "tags": [
           "billing"
-        ]
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/billing.rs",
+        "x-mountthor-stability": "v1alpha1"
       }
     },
     "/v1/admin/customer-users": {
       "get": {
-        "description": "List customer users. Returns user metadata including email, display name, status, and timestamps.",
+        "description": "List customer users with metadata (email, display name, status, user type, timestamps).",
         "operationId": "list_customer_users",
         "responses": {
           "200": {
@@ -4907,7 +4637,16 @@
         "summary": "List Customer Users",
         "tags": [
           "customer-users"
-        ]
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/customer_users.rs",
+        "x-mountthor-stability": "v1alpha1"
       }
     },
     "/v1/admin/customer-users/invite": {
@@ -4947,7 +4686,7 @@
             "description": "An active customer user already exists with this email, or the customer's identity integration is not yet configured"
           },
           "503": {
-            "description": "Identity service unavailable or rejected the invitation."
+            "description": "Identity provider unavailable or rejected the invitation"
           }
         },
         "security": [
@@ -4960,12 +4699,21 @@
         "summary": "Invite Customer User",
         "tags": [
           "customer-users"
-        ]
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/customer_user_invites.rs",
+        "x-mountthor-stability": "v1alpha1"
       }
     },
     "/v1/admin/fleet": {
       "get": {
-        "description": "Returns a customer-safe snapshot of the tenant namespace across bare-metal\nmachines and virtual machines. Only customer-relevant fields are included\nin this projection.",
+        "description": "Returns a customer-safe snapshot of the tenant namespace across bare-metal\nmachines and virtual machines. Internal provider references, host addresses,\nand implementation-only identifiers are stripped from this projection.",
         "operationId": "get_customer_fleet",
         "responses": {
           "200": {
@@ -4985,7 +4733,7 @@
             "description": "API key is missing compute:read scope"
           },
           "502": {
-            "description": "Control plane is temporarily unreachable."
+            "description": "Customer control-plane EKS is unreachable"
           }
         },
         "security": [
@@ -4998,7 +4746,16 @@
         "summary": "List Fleet Resources",
         "tags": [
           "fleet"
-        ]
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/fleet.rs",
+        "x-mountthor-stability": "v1alpha1"
       }
     },
     "/v1/admin/fleet/capacity": {
@@ -5033,7 +4790,16 @@
         "summary": "List Fleet Capacity",
         "tags": [
           "fleet"
-        ]
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/fleet.rs",
+        "x-mountthor-stability": "v1alpha1"
       }
     },
     "/v1/admin/fleet/summary": {
@@ -5068,7 +4834,16 @@
         "summary": "Get Fleet Summary",
         "tags": [
           "fleet"
-        ]
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/fleet.rs",
+        "x-mountthor-stability": "v1alpha1"
       }
     },
     "/v1/admin/fleet/usage": {
@@ -5117,12 +4892,21 @@
         "summary": "List Usage",
         "tags": [
           "fleet"
-        ]
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/usage.rs",
+        "x-mountthor-stability": "v1alpha1"
       }
     },
     "/v1/admin/identity": {
       "get": {
-        "description": "Get identity configuration for this account, including integration status and allowed domains.",
+        "description": "Returns identity configuration for the customer, including integration status and allowed domains.",
         "operationId": "get_customer_admin_identity",
         "responses": {
           "200": {
@@ -5152,12 +4936,21 @@
         "summary": "Get Identity Setup",
         "tags": [
           "identity"
-        ]
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/customer_identity.rs",
+        "x-mountthor-stability": "v1alpha1"
       }
     },
     "/v1/admin/identity-setup-link": {
       "post": {
-        "description": "Generate a one-time link for the account admin to configure SSO, add a domain, or set up Directory Sync. The returned URL expires shortly after creation.",
+        "description": "Generate an admin portal link for the customer to configure SSO, domain verification, or directory sync. The returned URL is one-time use and expires shortly after creation.",
         "operationId": "issue_customer_admin_identity_setup_link",
         "requestBody": {
           "content": {
@@ -5193,7 +4986,7 @@
             "description": "No eligible identity integration for this customer"
           },
           "503": {
-            "description": "Identity service unavailable."
+            "description": "Admin portal unavailable"
           }
         },
         "security": [
@@ -5206,7 +4999,18 @@
         "summary": "Create Identity Setup Link",
         "tags": [
           "identity"
-        ]
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [
+            "url"
+          ],
+          "returnsSecret": true,
+          "returnsSecretOnce": true
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/customer_identity.rs",
+        "x-mountthor-stability": "v1alpha1"
       }
     },
     "/v1/admin/identity/principals": {
@@ -5241,7 +5045,16 @@
         "summary": "List Principals",
         "tags": [
           "identity-workload"
-        ]
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/identity_workload.rs",
+        "x-mountthor-stability": "v1alpha1"
       },
       "post": {
         "description": "Creates a binding from a verified external OIDC token to Mount Thor session\nscopes. The request must reference an existing IdP or provide inline IdP\nmaterial that Mount Thor can register or reuse.",
@@ -5293,7 +5106,16 @@
         "summary": "Create Principal",
         "tags": [
           "identity-workload"
-        ]
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/identity_workload.rs",
+        "x-mountthor-stability": "v1alpha1"
       }
     },
     "/v1/admin/identity/principals/{id}": {
@@ -5356,7 +5178,16 @@
         "summary": "Update Principal",
         "tags": [
           "identity-workload"
-        ]
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/identity_workload.rs",
+        "x-mountthor-stability": "v1alpha1"
       }
     },
     "/v1/admin/identity/providers": {
@@ -5391,7 +5222,16 @@
         "summary": "List IdPs",
         "tags": [
           "identity-workload"
-        ]
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/identity_workload.rs",
+        "x-mountthor-stability": "v1alpha1"
       },
       "post": {
         "description": "Adds an external OIDC issuer to the customer's trust boundary. The issuer URL\nis canonicalized on write, and active issuers must be unique per customer.",
@@ -5440,7 +5280,16 @@
         "summary": "Create IdP",
         "tags": [
           "identity-workload"
-        ]
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/identity_workload.rs",
+        "x-mountthor-stability": "v1alpha1"
       }
     },
     "/v1/admin/identity/providers/{id}": {
@@ -5506,12 +5355,21 @@
         "summary": "Update IdP",
         "tags": [
           "identity-workload"
-        ]
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/identity_workload.rs",
+        "x-mountthor-stability": "v1alpha1"
       }
     },
     "/v1/admin/keys": {
       "get": {
-        "description": "Plaintext API keys and verifier material are never returned.\nRevoked keys remain visible for a period after revocation.",
+        "description": "Plaintext API keys and verifier material are never returned.\nRevoked keys remain visible for audit until retention cleanup.",
         "operationId": "list_customer_api_keys",
         "responses": {
           "200": {
@@ -5541,7 +5399,16 @@
         "summary": "List Keys",
         "tags": [
           "api-keys"
-        ]
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/api_keys.rs",
+        "x-mountthor-stability": "v1alpha1"
       },
       "post": {
         "description": "The plaintext `api_key` is returned exactly once. The requested scopes must\nbe covered by the caller's own API-key scopes.\nStore the returned value in a secret manager before discarding the response.",
@@ -5587,7 +5454,18 @@
         "summary": "Create Key",
         "tags": [
           "api-keys"
-        ]
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [
+            "api_key"
+          ],
+          "returnsSecret": true,
+          "returnsSecretOnce": true
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/api_keys.rs",
+        "x-mountthor-stability": "v1alpha1"
       }
     },
     "/v1/admin/keys/{id}": {
@@ -5637,37 +5515,30 @@
         "summary": "Revoke Key",
         "tags": [
           "api-keys"
-        ]
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/api_keys.rs",
+        "x-mountthor-stability": "v1alpha1"
       }
     },
-    "/v1/admin/operations": {
+    "/v1/admin/machine-availability": {
       "get": {
-        "operationId": "list_customer_admin_operations",
+        "description": "Returns a binary capacity signal for the caller's tenant + the\nrequested machine class. Designed to be cheap to call (server-side\n30-second cache) and never to disclose numeric capacity counts.\n\nBehavior:\n- 200 with `{availability, as_of, ttl_seconds}` on success.\n- 404 when the customer is not entitled to the class (we do not\n  distinguish \"not entitled\" from \"no such class\" — entitlement\n  existence is itself sensitive).",
+        "operationId": "get_machine_availability",
         "parameters": [
           {
-            "description": "Page size, clamped to [1, 200]. Default 50.",
+            "description": "Customer-entitled machine-class identifier. 404 if the customer is not entitled.",
             "in": "query",
-            "name": "limit",
-            "required": false,
+            "name": "machine_class",
+            "required": true,
             "schema": {
-              "format": "int64",
-              "type": [
-                "integer",
-                "null"
-              ]
-            }
-          },
-          {
-            "description": "Offset from the start. Default 0.",
-            "in": "query",
-            "name": "offset",
-            "required": false,
-            "schema": {
-              "format": "int64",
-              "type": [
-                "integer",
-                "null"
-              ]
+              "type": "string"
             }
           }
         ],
@@ -5676,30 +5547,42 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ListOperationsResponse"
+                  "$ref": "#/components/schemas/MachineAvailabilityResponse"
                 }
               }
             },
-            "description": "Operation list"
+            "description": "Binary availability signal for this tenant + class."
           },
           "401": {
-            "description": "Missing or invalid customer credential"
+            "description": "Missing or invalid customer API key."
           },
           "403": {
-            "description": "Credential is missing account:read scope"
+            "description": "API key is missing compute:read scope."
+          },
+          "404": {
+            "description": "Customer is not entitled to this class."
           }
         },
         "security": [
           {
             "api_key_bearer": [
-              "account:read"
+              "compute:read"
             ]
           }
         ],
-        "summary": "List Operations",
+        "summary": "Get Machine Availability",
         "tags": [
-          "bare-metal"
-        ]
+          "fleet"
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/machine_availability.rs",
+        "x-mountthor-stability": "v1alpha1"
       }
     },
     "/v1/admin/registrations": {
@@ -5740,7 +5623,19 @@
         "summary": "Register Account",
         "tags": [
           "registration"
-        ]
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": true,
+          "redactedFields": [
+            "code",
+            "api_key"
+          ],
+          "returnsSecret": true,
+          "returnsSecretOnce": true
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/registration.rs",
+        "x-mountthor-stability": "v1alpha1"
       }
     },
     "/v1/admin/registries": {
@@ -5775,7 +5670,16 @@
         "summary": "List Registries",
         "tags": [
           "registries"
-        ]
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/registries.rs",
+        "x-mountthor-stability": "v1alpha1"
       },
       "post": {
         "description": "Creates the registry metadata and returns any provider-specific setup\nrequirements. Supply credentials later with `PATCH /v1/admin/registries/{id}`.",
@@ -5821,7 +5725,16 @@
         "summary": "Create Registry",
         "tags": [
           "registries"
-        ]
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/registries.rs",
+        "x-mountthor-stability": "v1alpha1"
       }
     },
     "/v1/admin/registries/{id}": {
@@ -5870,7 +5783,16 @@
         "summary": "Delete Registry",
         "tags": [
           "registries"
-        ]
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/registries.rs",
+        "x-mountthor-stability": "v1alpha1"
       },
       "get": {
         "description": "Returns metadata and credential fingerprints for one registry grant. Secret\nmaterial is never returned.",
@@ -5917,7 +5839,16 @@
         "summary": "Get Registry",
         "tags": [
           "registries"
-        ]
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/registries.rs",
+        "x-mountthor-stability": "v1alpha1"
       },
       "patch": {
         "description": "Accepts new credential material for a registry grant. The server validates\nshape, stores only protected credential material and fingerprints, and never\nreturns the submitted secret.",
@@ -5977,7 +5908,20 @@
         "summary": "Update Registry",
         "tags": [
           "registries"
-        ]
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": true,
+          "redactedFields": [
+            "token",
+            "password",
+            "credential"
+          ],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/registries.rs",
+        "x-mountthor-stability": "v1alpha1"
       }
     },
     "/v1/admin/sessions": {
@@ -6012,7 +5956,16 @@
         "summary": "List Sessions",
         "tags": [
           "sessions"
-        ]
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/sessions.rs",
+        "x-mountthor-stability": "v1alpha1"
       },
       "post": {
         "description": "The returned `session_token` is the bearer credential used for the Compute\nAPI. It is returned once, expires automatically, and cannot be renewed; mint\na replacement session when it expires.",
@@ -6058,12 +6011,24 @@
         "summary": "Create Session",
         "tags": [
           "sessions"
-        ]
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [
+            "api_key",
+            "session_token"
+          ],
+          "returnsSecret": true,
+          "returnsSecretOnce": true
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/sessions.rs",
+        "x-mountthor-stability": "v1alpha1"
       }
     },
     "/v1/admin/sessions/authorize": {
       "post": {
-        "description": "Create a login request. Returns the authorization URL the CLI opens in the browser. The flow completes at `POST /v1/admin/sessions` with `grant_type=login-handoff`.",
+        "description": "Returns the authorization URL for browser-based SSO login. The flow completes at `POST /v1/admin/sessions` with `grant_type=login-handoff`.",
         "operationId": "create_login_request",
         "requestBody": {
           "content": {
@@ -6099,7 +6064,16 @@
         "summary": "Create Login Authorization",
         "tags": [
           "sessions"
-        ]
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/login_requests.rs",
+        "x-mountthor-stability": "v1alpha1"
       }
     },
     "/v1/admin/sessions/{id}": {
@@ -6149,7 +6123,16 @@
         "summary": "Revoke Session",
         "tags": [
           "sessions"
-        ]
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/sessions.rs",
+        "x-mountthor-stability": "v1alpha1"
       }
     },
     "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/baremetalmachines": {
@@ -6187,6 +6170,9 @@
             },
             "description": "OK"
           },
+          "201": {
+            "description": "Created"
+          },
           "400": {
             "description": "Bad Request"
           },
@@ -6218,7 +6204,10 @@
           "group": "compute.mountthor.com",
           "kind": "BareMetalMachine",
           "version": "v1alpha1"
-        }
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_baremetalmachines.yaml"
       },
       "post": {
         "description": "Creates a bare-metal machine request. The request selects a machine class, image channel, access policy, and optional placement preferences.",
@@ -6294,7 +6283,10 @@
           "group": "compute.mountthor.com",
           "kind": "BareMetalMachine",
           "version": "v1alpha1"
-        }
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_baremetalmachines.yaml"
       }
     },
     "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/baremetalmachines/{name}": {
@@ -6366,7 +6358,10 @@
           "group": "compute.mountthor.com",
           "kind": "BareMetalMachine",
           "version": "v1alpha1"
-        }
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_baremetalmachines.yaml"
       },
       "get": {
         "description": "Returns one bare-metal machine by name, including desired state and customer-visible status.",
@@ -6402,6 +6397,9 @@
             },
             "description": "OK"
           },
+          "201": {
+            "description": "Created"
+          },
           "400": {
             "description": "Bad Request"
           },
@@ -6433,7 +6431,10 @@
           "group": "compute.mountthor.com",
           "kind": "BareMetalMachine",
           "version": "v1alpha1"
-        }
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_baremetalmachines.yaml"
       }
     },
     "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/fleetpolicies": {
@@ -6471,6 +6472,9 @@
             },
             "description": "OK"
           },
+          "201": {
+            "description": "Created"
+          },
           "400": {
             "description": "Bad Request"
           },
@@ -6502,7 +6506,10 @@
           "group": "compute.mountthor.com",
           "kind": "FleetPolicy",
           "version": "v1alpha1"
-        }
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_fleetpolicies.yaml"
       }
     },
     "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/fleetpolicies/{name}": {
@@ -6540,6 +6547,9 @@
             },
             "description": "OK"
           },
+          "201": {
+            "description": "Created"
+          },
           "400": {
             "description": "Bad Request"
           },
@@ -6571,7 +6581,10 @@
           "group": "compute.mountthor.com",
           "kind": "FleetPolicy",
           "version": "v1alpha1"
-        }
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_fleetpolicies.yaml"
       }
     },
     "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/images": {
@@ -6609,6 +6622,9 @@
             },
             "description": "OK"
           },
+          "201": {
+            "description": "Created"
+          },
           "400": {
             "description": "Bad Request"
           },
@@ -6640,7 +6656,10 @@
           "group": "compute.mountthor.com",
           "kind": "Image",
           "version": "v1alpha1"
-        }
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_images.yaml"
       }
     },
     "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/images/{name}": {
@@ -6678,6 +6697,9 @@
             },
             "description": "OK"
           },
+          "201": {
+            "description": "Created"
+          },
           "400": {
             "description": "Bad Request"
           },
@@ -6709,7 +6731,10 @@
           "group": "compute.mountthor.com",
           "kind": "Image",
           "version": "v1alpha1"
-        }
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_images.yaml"
       }
     },
     "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/machineclasses": {
@@ -6747,6 +6772,9 @@
             },
             "description": "OK"
           },
+          "201": {
+            "description": "Created"
+          },
           "400": {
             "description": "Bad Request"
           },
@@ -6778,7 +6806,10 @@
           "group": "compute.mountthor.com",
           "kind": "MachineClass",
           "version": "v1alpha1"
-        }
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_machineclasses.yaml"
       }
     },
     "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/machineclasses/{name}": {
@@ -6816,6 +6847,9 @@
             },
             "description": "OK"
           },
+          "201": {
+            "description": "Created"
+          },
           "400": {
             "description": "Bad Request"
           },
@@ -6847,7 +6881,10 @@
           "group": "compute.mountthor.com",
           "kind": "MachineClass",
           "version": "v1alpha1"
-        }
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_machineclasses.yaml"
       }
     },
     "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/virtualmachines": {
@@ -6885,6 +6922,9 @@
             },
             "description": "OK"
           },
+          "201": {
+            "description": "Created"
+          },
           "400": {
             "description": "Bad Request"
           },
@@ -6916,7 +6956,10 @@
           "group": "compute.mountthor.com",
           "kind": "VirtualMachine",
           "version": "v1alpha1"
-        }
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_virtualmachines.yaml"
       },
       "post": {
         "description": "Creates one Virtual Machine in the tenant namespace.",
@@ -6992,7 +7035,10 @@
           "group": "compute.mountthor.com",
           "kind": "VirtualMachine",
           "version": "v1alpha1"
-        }
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_virtualmachines.yaml"
       }
     },
     "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/virtualmachines/{name}": {
@@ -7064,7 +7110,10 @@
           "group": "compute.mountthor.com",
           "kind": "VirtualMachine",
           "version": "v1alpha1"
-        }
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_virtualmachines.yaml"
       },
       "get": {
         "description": "Returns one Virtual Machine by name from the tenant namespace.",
@@ -7100,6 +7149,9 @@
             },
             "description": "OK"
           },
+          "201": {
+            "description": "Created"
+          },
           "400": {
             "description": "Bad Request"
           },
@@ -7131,7 +7183,10 @@
           "group": "compute.mountthor.com",
           "kind": "VirtualMachine",
           "version": "v1alpha1"
-        }
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_virtualmachines.yaml"
       }
     }
   },
@@ -7140,5 +7195,22 @@
       "description": "Mount Thor customer API edge",
       "url": "https://api.mountthor.com"
     }
-  ]
+  ],
+  "x-mountthor-generated-from": {
+    "generatedDocs": [
+      "governance/docs/generated/customer-api-v1.md",
+      "governance/docs/generated/customer-compute-crds-v1.md"
+    ],
+    "openapiArtifacts": [
+      "governance/generated/customer-api.v1.openapi.json",
+      "governance/generated/customer-api.v1.openapi.yaml",
+      "governance/generated/customer-compute-crds.v1.openapi.json",
+      "governance/generated/customer-compute-crds.v1.openapi.yaml",
+      "dist/api-specs/customer-api/v1/openapi.json",
+      "dist/api-specs/customer-api/v1/openapi.yaml",
+      "dist/api-specs/customer-compute-crds/v1/openapi.json",
+      "dist/api-specs/customer-compute-crds/v1/openapi.yaml"
+    ],
+    "registry": "governance/api-surfaces/customer.v1.yaml"
+  }
 }
