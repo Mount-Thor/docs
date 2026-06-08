@@ -84,15 +84,6 @@
                 ]
               },
               {
-                "group": "Access",
-                "pages": [
-                  "POST /v1/admin/access/grants/desktop",
-                  "POST /v1/admin/access/grants/ssh",
-                  "POST /v1/admin/access/grants/tunnel",
-                  "DELETE /v1/admin/access/grants/{grant_id}"
-                ]
-              },
-              {
                 "group": "Fleet",
                 "pages": [
                   "GET /v1/admin/fleet",
