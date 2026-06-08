@@ -54,7 +54,7 @@ mthr registry list
 
 ## Inspect a Registry
 
-Show details for a specific registry:
+Show details for a specific registry (use `mthr registry list` to find the ID):
 
 ```bash
 mthr registry get {ID}
@@ -85,7 +85,8 @@ Optional flags for all types: `--expires-at` (RFC 3339 expiration),
 
 ## Unlink a Registry
 
-Remove a registry binding:
+Remove a registry binding. Replace `{NAME}` with the registry name you
+specified when linking (e.g. `my-registry`):
 
 ```bash
 mthr registry unlink {NAME}

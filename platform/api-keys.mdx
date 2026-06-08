@@ -1,6 +1,6 @@
 ---
 title: "API Keys"
-description: "Create, list, and revoke API keys for scripts, CI pipelines, and automation."
+description: "Create, list, and delete API keys for scripts, CI pipelines, and automation."
 ---
 
 API keys authenticate `mthr` and direct API calls without a browser login. Use
@@ -73,7 +73,7 @@ mthr keys create --display-name "temp" --expires-at "2026-12-31T00:00:00Z"
 
 ## Delete a Key
 
-Delete a key by ID:
+Delete a key by ID (use `mthr keys ls` to find the ID):
 
 ```bash
 mthr keys delete {ID}

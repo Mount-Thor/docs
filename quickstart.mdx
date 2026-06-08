@@ -17,17 +17,14 @@ authentication, and launching your first machine.
 
 ## Create Account
 
-Mount Thor works directly with alpha customers to set up accounts. We will need
-the following information:
+Mount Thor works directly with alpha customers to set up accounts. The
+following information is required:
 
 - Primary contact email
 - Preferred corporate display name
 - Corporate legal name
 - Email domain to allowlist, or an individual email if you are not using a
   corporate domain
-
-After we create your account, we will send a registration link to your primary
-contact email.
 
 ## Activate Account
 
@@ -44,10 +41,9 @@ displays your first API key.
   shown only once.
 </Warning>
 
-See [API Keys](/platform/api-keys) for managing keys after initial setup.
-
 When compute access is ready, Mount Thor will send a confirmation email to your
-account contact.
+account contact. See [API Keys](/platform/api-keys) for managing keys after
+initial setup.
 
 ## Install the CLI
 
@@ -101,7 +97,8 @@ Check status:
 mthr bm ls
 ```
 
-When the machine shows `Ready`, SSH in:
+When the machine shows `Ready`, SSH in (replace `{BM_NAME}` with the name you
+chose during allocation):
 
 ```bash
 mthr bm ssh {BM_NAME}
@@ -131,7 +128,8 @@ Check status:
 mthr vm ls
 ```
 
-When the VM shows `Running`, SSH in:
+When the VM shows `Running`, SSH in (replace `{VM_NAME}` with the name you
+chose during creation):
 
 ```bash
 mthr vm ssh {VM_NAME}
@@ -146,6 +144,18 @@ mthr vm delete {VM_NAME}
 See [Virtual Machines](/compute/virtual-machines) for the full lifecycle,
 desktop access, port tunnels, and bootstrap data.
 
+## Direct Kubernetes Access
+
+Compute resources (bare metal and VMs) map to Kubernetes Custom Resources. To
+manage them directly with `kubectl`:
+
+```bash
+mthr kubeconfig
+export MOUNTTHOR_NAMESPACE="tenant-example"
+```
+
+Each guide page includes `kubectl` equivalents for its resource type.
+
 ## Next Steps
 
 Explore the platform by area:
@@ -159,15 +169,3 @@ Explore the platform by area:
 [Billing](/platform/billing).
 
 Run `mthr help` for a full command list.
-
-## Direct Kubernetes Access
-
-Compute resources (bare metal and VMs) map to Kubernetes Custom Resources. To
-manage them directly with `kubectl`:
-
-```bash
-mthr kubeconfig
-export MOUNTTHOR_NAMESPACE="tenant-example"
-```
-
-Each guide page includes `kubectl` equivalents for its resource type.

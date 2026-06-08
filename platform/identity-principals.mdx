@@ -77,8 +77,9 @@ mthr principal list
 
 ### Disable a Principal
 
-Disable a principal by ID (the `delete` subcommand sets the principal's status
-to `disabled` rather than removing it):
+Disable a principal by ID — use `mthr principal list` to find the ID. The
+`delete` subcommand sets the principal's status to `disabled` rather than
+removing it:
 
 ```bash
 mthr principal delete {ID}
@@ -92,7 +93,7 @@ Once a principal is registered, pipelines authenticate by exchanging an OIDC
 token for a Mount Thor session:
 
 ```bash
-mthr login --principal {PRINCIPAL_ID}
+mthr login --principal {ID}
 ```
 
 ## Troubleshooting
