@@ -49,8 +49,24 @@
         "tab": "Documentation",
         "pages": [
           "quickstart",
-          "compute/bare-metal",
-          "compute/virtual-machines",
+          {
+            "group": "Compute",
+            "pages": [
+              "compute/bare-metal",
+              "compute/virtual-machines"
+            ]
+          },
+          {
+            "group": "Platform",
+            "pages": [
+              "platform/fleet-capacity",
+              "platform/api-keys",
+              "platform/identity-principals",
+              "platform/image-registries",
+              "platform/team-management",
+              "platform/billing"
+            ]
+          },
           {
             "group": "API Reference",
             "openapi": {
@@ -97,7 +113,6 @@
                 "pages": [
                   "GET /v1/admin/fleet",
                   "GET /v1/admin/fleet/capacity",
-                  "GET /v1/admin/lease-availability",
                   "GET /v1/admin/fleet/summary",
                   "GET /v1/admin/fleet/usage"
                 ]
@@ -105,7 +120,6 @@
               {
                 "group": "Bare Metal",
                 "pages": [
-                  "POST /v1/admin/leases",
                   "GET /v1/admin/operations"
                 ]
               },
@@ -205,3 +219,4 @@
     ]
   }
 }
+

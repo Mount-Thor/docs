@@ -1,0 +1,111 @@
+---
+title: "Identity & Principals"
+description: "Understand authentication methods and set up OIDC workload identity."
+---
+
+Mount Thor has three ways to authenticate. Choose the one that fits your
+use case:
+
+| Method | Who uses it | How it works |
+|---|---|---|
+| **Browser login (SSO)** | Humans at a terminal | `mthr login` opens your identity provider in a browser. |
+| **API keys** | Scripts and simple automation | Set `MOUNTTHOR_API_KEY` in your environment. See [API Keys](/platform/api-keys). |
+| **Principals** | CI/CD pipelines (GitHub Actions, GitLab, etc.) | OIDC token exchange — no stored secrets required. |
+
+## Browser Login (SSO)
+
+For day-to-day interactive use. Log in through your identity provider:
+
+```bash
+mthr login
+```
+
+This opens your identity provider in a browser. After you authenticate, the CLI
+stores a session locally. Check your identity:
+
+```bash
+mthr whoami
+```
+
+Log out and clear stored credentials:
+
+```bash
+mthr logout
+```
+
+Human accounts are created by inviting team members — see
+[Team Management](/platform/team-management).
+
+## Principals (Workload Identity)
+
+Principals let CI/CD pipelines authenticate with Mount Thor using OIDC
+federation. Unlike API keys, principals require no stored secrets — your CI
+system exchanges its own OIDC token for a short-lived Mount Thor session.
+
+Use principals when your CI provider issues OIDC tokens (GitHub Actions,
+GitLab CI, etc.) and you want to avoid managing long-lived credentials.
+
+### Create a Principal
+
+Register a new principal for a CI pipeline or workload:
+
+```bash
+mthr principal create \
+  --name "github-ci" \
+  --tenant {TENANT} \
+  --id-provider "https://token.actions.githubusercontent.com" \
+  --subject "repo:your-org/your-repo:ref:refs/heads/main" \
+  --scope "compute:read,compute:write"
+```
+
+| Flag | Required | Description |
+|---|---|---|
+| `--name` | yes | Human-friendly name for the principal. |
+| `--tenant` | yes | Tenant identifier (ID or namespace name). |
+| `--id-provider` | yes | OIDC issuer URL. Alias: `--issuer`. |
+| `--subject` | yes | Expected `sub` claim from the issuer (exact match). |
+| `--scope` | no | Comma-separated scopes. |
+| `--audience` | no | Accepted OIDC audience. Default: `api.mountthor.com`. |
+
+### List Principals
+
+List all principals on your tenant:
+
+```bash
+mthr principal list
+```
+
+### Disable a Principal
+
+Disable a principal by ID (the `delete` subcommand sets the principal's status
+to `disabled` rather than removing it):
+
+```bash
+mthr principal delete {ID}
+```
+
+Disabled principals can no longer authenticate.
+
+### Authenticate as a Principal
+
+Once a principal is registered, pipelines authenticate by exchanging an OIDC
+token for a Mount Thor session:
+
+```bash
+mthr login --principal {PRINCIPAL_ID}
+```
+
+## Troubleshooting
+
+Run the authentication diagnostic to check connectivity and credential
+status:
+
+```bash
+mthr doctor auth
+```
+
+<Note>
+  For scripting and automation, see the
+  [Identity API reference](/api-reference/identity/get-v1adminidentity) and
+  [Principals API reference](/api-reference/principals/get-v1adminidentityprincipals).
+</Note>
