@@ -1,0 +1,135 @@
+---
+title: "Fleet & Capacity"
+description: "Monitor your fleet, browse the image catalog, and manage spot capacity."
+---
+
+View your reserved and spot resources, browse available images and hardware
+classes, and control spot capacity policy.
+
+## Fleet Summary
+
+See how much capacity you are using across bare metal and VMs:
+
+```bash
+mthr fleet summary
+```
+
+Example output:
+
+```text
+Bare Metal (m4-24g)
+  capacity: 4 reserved, max 4 machines
+  in use: 3
+
+Virtual Machines (vm-standard)
+  capacity: 80 reserved, max 20 machines
+  in use: 48 cpu, 96 GiB memory, 800 GiB disk
+
+Spot: enabled ($500.00/mo limit, $82.00 used, 16%)
+```
+
+## Image Catalog
+
+List available images for bare-metal machines and VMs:
+
+```bash
+mthr fleet images
+```
+
+The output shows each image name, display name, OS, supported targets (bare
+metal, VM, or both), and readiness status.
+
+## Spot Capacity
+
+If your account has spot capacity enabled, Mount Thor allocates spot machines
+when reserved capacity is exhausted. Spot applies to both bare-metal machines
+and VMs.
+
+Enable spot capacity with a monthly spend limit:
+
+```bash
+mthr fleet spot enable --monthly-spend-limit 500
+```
+
+Update the spend limit:
+
+```bash
+mthr fleet spot set-limit 1000
+```
+
+Disable spot capacity:
+
+```bash
+mthr fleet spot disable
+```
+
+Spend limits are in dollars. Mount Thor warns at 80% and 90% of the monthly
+cap and stops admitting new spot allocations at 100%.
+
+## Kubernetes Resource Reference
+
+### Image
+
+Unified image catalog for both bare metal and VMs:
+
+```bash
+kubectl get images
+```
+
+```yaml
+apiVersion: compute.mountthor.com/v1alpha1
+kind: Image
+metadata:
+  name: xcode-16
+spec:
+  displayName: Xcode 16
+  targets:
+    - bareMetal
+    - vm
+status:
+  ready: true
+```
+
+### MachineClass
+
+Read-only catalog of available hardware classes:
+
+```bash
+kubectl get machineclasses
+```
+
+```yaml
+apiVersion: compute.mountthor.com/v1alpha1
+kind: MachineClass
+metadata:
+  name: m4-24g
+spec:
+  cpuFamily: apple-m4
+  memoryGiB: 24
+  regions:
+    - us-west
+```
+
+### FleetPolicy
+
+Spot capacity is managed through a `FleetPolicy` resource:
+
+```bash
+kubectl get fleetpolicies
+```
+
+```yaml
+apiVersion: compute.mountthor.com/v1alpha1
+kind: FleetPolicy
+metadata:
+  name: default
+spec:
+  spot:
+    enabled: true
+    monthlySpendLimitCents: 50000
+```
+
+<Note>
+  For scripting and automation, see the
+  [Fleet API reference](/api-reference/fleet/get-v1adminfleet).
+</Note>

@@ -1,0 +1,97 @@
+---
+title: "Image Registries"
+description: "Connect your OCI registries so Mount Thor can pull customer-owned images."
+---
+
+Link your own OCI-compatible image registries to Mount Thor so you can use
+customer-owned images for VMs. Mount Thor pulls images from your registry at
+provisioning time.
+
+<Warning>
+  Image registry support is untested. During alpha, use Mount Thor-provided
+  images. The commands below may change as this feature matures.
+</Warning>
+
+## Link a Registry
+
+Grant Mount Thor read-only access to a registry:
+
+```bash
+mthr registry link my-registry \
+  --provider oci \
+  --registry-host registry.example.com \
+  --repositories "images/macos-dev,images/macos-ci"
+```
+
+For AWS ECR registries, use the `aws-ecr` provider and supply your account
+details:
+
+```bash
+mthr registry link ecr-prod \
+  --provider aws-ecr \
+  --registry-host 123456789012.dkr.ecr.us-east-2.amazonaws.com \
+  --repositories "macos/dev" \
+  --aws-account-id 123456789012 \
+  --aws-region us-east-2
+```
+
+| Flag | Required | Description |
+|---|---|---|
+| `--provider` | yes | `oci` or `aws-ecr`. |
+| `--registry-host` | yes | Registry hostname. Alias: `--host`. |
+| `--repositories` | yes | Comma-separated repository names within the registry. |
+| `--image-format` | no | Image format. Default: `mtvmbundle-v1`. |
+| `--aws-account-id` | no | AWS account ID (aws-ecr only). |
+| `--aws-region` | no | AWS region (aws-ecr only). |
+
+## List Registries
+
+List all registry bindings:
+
+```bash
+mthr registry list
+```
+
+## Inspect a Registry
+
+Show details for a specific registry:
+
+```bash
+mthr registry get {ID}
+```
+
+The output includes provider, status, host, repositories, and credential
+status.
+
+## Rotate Credentials
+
+Update or rotate credentials on an existing registry binding:
+
+```bash
+mthr registry rotate {ID} --auth-type aws-iam-role \
+  --role-arn "arn:aws:iam::123456789012:role/mount-thor-pull"
+```
+
+Supported authentication types:
+
+| Auth Type | Flags |
+|---|---|
+| `aws-iam-role` | `--role-arn`, `--external-id` |
+| `registry-token` | `--username`, `--token-env` |
+| `username-password` | `--username`, `--password-env` |
+
+Optional flags for all types: `--expires-at` (RFC 3339 expiration),
+`--rotation-reason` (free-form audit note).
+
+## Unlink a Registry
+
+Remove a registry binding:
+
+```bash
+mthr registry unlink {NAME}
+```
+
+<Note>
+  For scripting and automation, see the
+  [Registries API reference](/api-reference/registries/get-v1adminregistries).
+</Note>

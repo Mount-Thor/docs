@@ -1,0 +1,77 @@
+---
+title: "Billing"
+description: "View usage, costs, and invoices for your Mount Thor account."
+---
+
+Track your compute usage, view itemized costs, and access invoices through the
+`mthr` CLI.
+
+## View Usage
+
+Show billing usage for the current period:
+
+```bash
+mthr billing usage
+```
+
+Filter by time window:
+
+```bash
+mthr billing usage --period 24h
+mthr billing usage --period 7d
+mthr billing usage --period month
+```
+
+The output shows lifecycle count, active seconds, and billable seconds. If your
+account has multiple tenants, a per-tenant breakdown is included.
+
+## View Costs
+
+Show itemized billing costs for the current month:
+
+```bash
+mthr billing costs
+```
+
+View costs for a specific closed month:
+
+```bash
+mthr billing costs --period 2026-05
+```
+
+The output includes the pricing plan, currency, total amount, and a
+per-resource breakdown by tenant, hardware class, resource kind, and billing
+model.
+
+## List Invoices
+
+List all invoices:
+
+```bash
+mthr billing invoices
+```
+
+Filter by status or date:
+
+```bash
+mthr billing invoices --status paid
+mthr billing invoices --after 2026-01-01
+mthr billing invoices --limit 10
+```
+
+## View Invoice Detail
+
+Inspect a specific invoice with line items:
+
+```bash
+mthr billing invoice {INVOICE_ID}
+```
+
+The output shows the invoice number, period, status, total, and a table of
+line items with hardware class, resource kind, billing model, seconds, and
+amount.
+
+<Note>
+  For scripting and automation, see the
+  [Billing API reference](/api-reference/billing/get-v1adminbillingusage).
+</Note>
