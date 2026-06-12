@@ -37,6 +37,9 @@
           "status": {
             "description": "Observed Mount Thor status for the BareMetalMachine. Customers read status; create and update requests should not set it.",
             "properties": {
+              "allocationDecisionID": {
+                "type": "string"
+              },
               "capacitySource": {
                 "type": "string"
               },
@@ -81,8 +84,17 @@
                 "type": "array"
               },
               "desktopSession": {
-                "description": "Desktop access session state.",
+                "description": "Browser desktop access contract per ADR 0014. Ships the credential-side fields only in this PR; access-broker / launcher / expiration fields land with their reconciler in a later phase under provider-neutral names.",
                 "properties": {
+                  "credentialSecretRef": {
+                    "description": "Reference to the Opaque Secret in the same namespace that the host-side bridge reads for the desktop credential.",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
                   "phase": {
                     "description": "Pending | Active | Expired | Revoked | Failed.",
                     "type": "string"
@@ -151,12 +163,12 @@
             "type": "string"
           },
           "tenant_slug": {
-            "description": "Human-readable tenant identifier.",
+            "description": "Human-readable tenant slug.",
             "example": "acme-prod",
             "type": "string"
           },
           "unit_price_cents": {
-            "description": "Per-second unit price in cents from the customer's active price book.",
+            "description": "Per-second unit price from the customer's active price book.\n0 for the alpha SKU (`alpha-2026`).",
             "format": "int64",
             "type": "integer"
           },
@@ -302,7 +314,7 @@
         "additionalProperties": false,
         "properties": {
           "display_name": {
-            "description": "Optional pre-filled display name. Overridden by the user's identity provider profile on first login.",
+            "description": "Optional pre-filled display name written to the pending\n`customer_users` row. The WorkOS user object's first/last name\noverrides this on first login.",
             "example": "Alice Example",
             "type": [
               "string",
@@ -310,12 +322,12 @@
             ]
           },
           "email": {
-            "description": "Invitee email address. Lowercased for deduplication.",
+            "description": "Invitee email. Validated to RFC 5321 shape + 254-byte cap before\nreaching the WorkOS-side validator. Lowercased before insert so\n`(customer_id, email)` is a stable idempotency key.",
             "example": "alice@acmecorp.com",
             "type": "string"
           },
           "role_slug": {
-            "description": "Optional role identifier to assign on acceptance. When omitted, the admin assigns a role later.",
+            "description": "Optional WorkOS role slug to pre-bind on acceptance. Must match\na role configured on the WorkOS workspace (e.g.\n`mountthor-cluster-admin`, `mountthor-cluster-readonly`). When\nomitted, WorkOS leaves the invitee without a Mount Thor role\nand the customer admin assigns one later from the WorkOS\ndashboard.",
             "example": "mountthor-cluster-readonly",
             "type": [
               "string",
@@ -331,7 +343,7 @@
       "CreateCustomerUserInviteResponse": {
         "properties": {
           "accept_invitation_url": {
-            "description": "Accept-invitation URL. Can be shared with the invitee if the email does not arrive.",
+            "description": "WorkOS-issued accept-invitation URL. Operators can hand this to\nthe invitee out-of-band if the WorkOS email never arrives.",
             "type": [
               "string",
               "null"
@@ -352,11 +364,11 @@
             "type": "string"
           },
           "status": {
-            "description": "User status after the call. Always `\"invited\"` for a new invitation; returns the existing status for an already-invited user.",
+            "description": "`customer_users.status` after the call. Always `\"invited\"` for\na new row; an existing pending row returns the same.",
             "type": "string"
           },
-          "invitation_id": {
-            "description": "Invitation identifier. Present unless the user was already invited and no new invitation was issued.",
+          "workos_invitation_id": {
+            "description": "WorkOS-side invitation id (for operator lookup in the WorkOS\ndashboard). Present unless the lookup hit an existing pending\nrow and we chose not to re-issue (idempotent return).",
             "type": [
               "string",
               "null"
@@ -373,14 +385,14 @@
       },
       "CreateLoginRequestRequest": {
         "additionalProperties": false,
-        "description": "Request body for `POST /v1/admin/sessions/authorize`.\n\n`localhost_state_sha256` and `cli_verifier_sha256` are SHA-256 digests of\nrandom values held by the CLI; the plaintext never crosses the wire on this\nroute. The eventual session-mint route (`POST /v1/admin/sessions` with\n`grant_type=login-handoff`) re-presents the plaintext, and admin-api\nre-hashes and matches.",
+        "description": "Request body for `POST /v1/admin/login-requests`.\n\n`localhost_state_sha256` and `cli_verifier_sha256` are SHA-256 digests of\nrandom values held by the CLI; the plaintext never crosses the wire on this\nroute. The eventual session-mint route (`POST /v1/admin/sessions` with\n`grant_type=login-handoff`) re-presents the plaintext, and admin-api\nre-hashes and matches.",
         "properties": {
           "cli_verifier_sha256": {
             "description": "SHA-256 hex digest of the CLI's verifier random value.",
             "type": "string"
           },
           "customer_slug": {
-            "description": "Customer identifier. Format: lowercase hyphenated text. When omitted, the identity provider resolves the customer after authentication.",
+            "description": "Customer slug recorded with the registration. Format: kebab-case.\n\nOptional under umbrella #4362 PR 3 consumer-shape flow: when\nomitted the CLI lands on WorkOS's hosted AuthKit UI without an\n`organization_id` pre-bound. The admin-api resolves the Mount\nThor customer post-callback from the WorkOS user's resolved\n`organization_id`. Requires `MOUNTTHOR_AUTHKIT_ENABLED`. When\nprovided, the legacy per-customer SSO path runs unchanged.",
             "example": "acme",
             "type": [
               "string",
@@ -397,7 +409,7 @@
             "type": "string"
           },
           "tenant_slug": {
-            "description": "Optional tenant identifier to scope the session. When omitted, the session is account-scoped. Only valid when a customer identifier is supplied.",
+            "description": "Optional tenant slug to scope the eventual session to a specific\ntenant. When omitted the human session is account-scoped.\n\nOnly valid alongside `customer_slug` — the no-slug consumer flow\ncannot pre-bind a tenant because the customer is unresolved\nuntil callback. The resolved session in the consumer flow is\nalways account-scoped.",
             "example": "acme-prod",
             "type": [
               "string",
@@ -413,11 +425,11 @@
         "type": "object"
       },
       "CreateLoginRequestResponse": {
-        "description": "Response body for `POST /v1/admin/sessions/authorize`.",
+        "description": "Response body for `POST /v1/admin/login-requests`.",
         "properties": {
           "authorization_url": {
-            "description": "Authorization URL the CLI opens in the browser.",
-            "example": "https://auth.mountthor.com/authorize?...",
+            "description": "WorkOS authorization URL the CLI opens in the customer's browser.",
+            "example": "https://api.workos.com/sso/authorize?...",
             "type": "string"
           },
           "login_request_id": {
@@ -426,7 +438,7 @@
             "type": "string"
           },
           "state_expires_in_seconds": {
-            "description": "Seconds until the authorization link and matching login request expire.",
+            "description": "Seconds until the WorkOS state token and matching login request expire.",
             "example": 600,
             "format": "int64",
             "type": "integer"
@@ -488,14 +500,14 @@
             "type": "string"
           },
           "feature_flags": {
-            "description": "Feature flags currently enabled for this customer. Empty before onboarding completes.",
+            "description": "Slugs of feature flags currently enabled for this customer's\nWorkOS organization. Resolved by admin-api at request time\nagainst WorkOS's `/organizations/{orgId}/feature-flags` endpoint\nwith a TTL cache. Empty when the WorkOS organization id cannot\nbe resolved (e.g. before customer onboarding completes) or when\nthe WorkOS lookup transiently fails (callers see a stable\n\"no flags\" rather than an outage-driven 500). The portal hands\nthis list to OpenFeature's `StaticListProvider`. #5230.",
             "items": {
               "type": "string"
             },
             "type": "array"
           },
           "last_sign_in_at": {
-            "description": "RFC 3339 timestamp of the most recent completed sign-in. Null when the user has never signed in interactively.",
+            "description": "RFC 3339 timestamp of the most recent completed sign-in for the\nprincipal customer admin. Updated to NOW() at every AuthKit\ncallback (see service/sessions.rs:resolve_or_provision_authkit_customer_user).\nNull when the user has never completed an AuthKit sign-in\n(api-key-only callers, or rows that pre-date the column).",
             "example": "2026-06-05T17:33:40Z",
             "type": [
               "string",
@@ -503,7 +515,7 @@
             ]
           },
           "locale": {
-            "description": "BCP47 locale tag, if available.",
+            "description": "BCP47 locale tag from WorkOS, if supplied. Stored for future\nper-customer i18n routing; the portal does not branch on it\ntoday.",
             "example": "en-US",
             "type": [
               "string",
@@ -521,8 +533,8 @@
             "type": "string"
           },
           "profile_picture_url": {
-            "description": "Avatar URL for the customer admin, if available.",
-            "example": "https://cdn.mountthor.com/avatars/user_01ABC",
+            "description": "WorkOS-hosted https avatar URL for the principal customer\nadmin, if WorkOS supplied one (#4952 Tier-1). Null when the\nuser has not configured an avatar or the row pre-dates the\nAuthKit codepath. Portal renders in the AppShell user-menu.",
+            "example": "https://workoscdn.com/images/v1/user_01ABC",
             "type": [
               "string",
               "null"
@@ -600,7 +612,7 @@
       "CustomerAdminIdentityResponse": {
         "properties": {
           "allowed_email_domains": {
-            "description": "Email domains allowed for this customer at signup.",
+            "description": "Email domains the customer's approval package allowed at signup.\nUseful context for the portal when explaining who can join via\nAuthKit's organization-policy auto-routing.",
             "items": {
               "type": "string"
             },
@@ -619,8 +631,8 @@
             ]
           },
           "provider": {
-            "description": "Identity provider identifier.",
-            "example": "sso",
+            "description": "Identity provider. Always `workos` today.",
+            "example": "workos",
             "type": "string"
           }
         },
@@ -781,6 +793,106 @@
         ],
         "type": "object"
       },
+      "CustomerApiKeyUpdateRequest": {
+        "additionalProperties": false,
+        "description": "Request body for customer self-service `PATCH /v1/admin/keys/{id}`.",
+        "properties": {
+          "scopes": {
+            "description": "New scopes for the key. Must be covered by the caller's own scopes.",
+            "example": [
+              "compute:read",
+              "compute:write"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "scopes"
+        ],
+        "type": "object"
+      },
+      "CustomerApiKeyUpdateResponse": {
+        "description": "Response body for customer self-service `PATCH /v1/admin/keys/{id}`.",
+        "properties": {
+          "api_key_id": {
+            "description": "Stable UUID for the API key.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "created_at": {
+            "description": "RFC 3339 creation timestamp.",
+            "example": "2026-05-25T17:30:00Z",
+            "type": "string"
+          },
+          "display_name": {
+            "description": "Human-readable label for the key.",
+            "example": "ci-prod",
+            "type": "string"
+          },
+          "expires_at": {
+            "description": "Optional RFC 3339 expiry timestamp.",
+            "example": "2027-01-01T00:00:00Z",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "key_last4": {
+            "description": "Last four display characters. Not sufficient to authenticate.",
+            "example": "MPLE",
+            "type": "string"
+          },
+          "key_prefix": {
+            "description": "Prefix stored for display and lookup. Not sufficient to authenticate.",
+            "type": "string"
+          },
+          "last_used_at": {
+            "description": "Last successful use timestamp, if the key has been used.",
+            "example": "2026-05-25T17:42:00Z",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "revoked_at": {
+            "description": "Revocation timestamp when the key is no longer usable.",
+            "example": "2026-05-25T18:00:00Z",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "scopes": {
+            "description": "Scopes granted to the key (after update).",
+            "example": [
+              "compute:read",
+              "compute:write"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "status": {
+            "description": "Key lifecycle state.",
+            "example": "active",
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_key_id",
+          "display_name",
+          "key_prefix",
+          "key_last4",
+          "scopes",
+          "status",
+          "created_at"
+        ],
+        "type": "object"
+      },
       "CustomerBillingCostsResponse": {
         "description": "Customer-level itemized cost response.",
         "properties": {
@@ -794,7 +906,7 @@
             "type": "string"
           },
           "line_items": {
-            "description": "Itemized line items, ordered by tenant, resource kind,\nresource class, and usage model for stable client rendering.",
+            "description": "Itemized line items, ordered by (tenant_slug, resource_kind,\nresource_class, usage_model) for stable client rendering.",
             "items": {
               "$ref": "#/components/schemas/BillingCostLineItem"
             },
@@ -805,7 +917,8 @@
             "description": "Window covered by the response."
           },
           "price_book_slug": {
-            "description": "The customer's active price book identifier at the time of the computation.",
+            "description": "The customer's active price book slug at the time of the\ncomputation (e.g. `alpha-2026`). Surfaced so the response is\nself-explanatory when amounts are 0.",
+            "example": "alpha-2026",
             "type": "string"
           },
           "total_cents": {
@@ -892,7 +1005,8 @@
             "type": "array"
           },
           "price_book_slug": {
-            "description": "Active price book identifier.",
+            "description": "Active price book slug (e.g. `alpha-2026`). Surfaced so the\nresponse is self-explanatory when prices are 0.",
+            "example": "alpha-2026",
             "type": "string"
           }
         },
@@ -915,7 +1029,7 @@
             "type": "array"
           },
           "by_tenant": {
-            "description": "Per-tenant rollup ordered by tenant identifier for stable client display.\nTenants with no usage in the window are included with empty\n`by_class` and zero totals so client UIs do not need to special-case\nthe missing-tenant rendering.",
+            "description": "Per-tenant rollup ordered by `tenant_slug` for stable client display.\nTenants with no usage in the window are included with empty\n`by_class` and zero totals so client UIs do not need to special-case\nthe missing-tenant rendering.",
             "items": {
               "$ref": "#/components/schemas/TenantUsageBreakdown"
             },
@@ -1047,6 +1161,53 @@
         ],
         "type": "object"
       },
+      "CustomerProduct": {
+        "description": "One product the customer has access to.",
+        "properties": {
+          "description": {
+            "description": "One-line description shown in the portal launch picker.",
+            "example": "Dedicated Mac hardware for unvirtualized workloads.",
+            "type": "string"
+          },
+          "display_name": {
+            "description": "Customer-visible name. Rendered as the Launch button label and\nthe per-machine detail panel's kicker.",
+            "example": "Bare metal",
+            "type": "string"
+          },
+          "launch_flow": {
+            "$ref": "#/components/schemas/ProductLaunchFlow",
+            "description": "Discriminator the portal uses to decide what UI to surface when\nthe customer clicks the launch affordance."
+          },
+          "slug": {
+            "description": "Stable identifier — matches `entitlements.entitlement_value` rows\nof `entitlement_type='product'`.",
+            "example": "bare-metal",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "display_name",
+          "description",
+          "launch_flow"
+        ],
+        "type": "object"
+      },
+      "CustomerProductsResponse": {
+        "description": "Per-customer product catalog response.",
+        "properties": {
+          "products": {
+            "description": "Products the authenticated customer is entitled to use, in\ncatalog declaration order (stable, designer-controlled —\nmatches the order of PRODUCT_CATALOG in\n`service/products.rs`). Products the customer is not entitled\nto are omitted (the portal's launch UI only renders\naffordances the customer can act on; future \"request access\"\nflows can grow a separate endpoint that lists all products).",
+            "items": {
+              "$ref": "#/components/schemas/CustomerProduct"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "products"
+        ],
+        "type": "object"
+      },
       "CustomerRegistrationAccount": {
         "description": "Account information created during registration.",
         "properties": {
@@ -1139,7 +1300,7 @@
           },
           "provider": {
             "description": "Identity setup provider.",
-            "example": "sso",
+            "example": "workos",
             "type": "string"
           },
           "url": {
@@ -1235,8 +1396,8 @@
             "description": "Activated account metadata."
           },
           "account_setup_url": {
-            "description": "Account setup URL for the newly registered admin. The same link is also emailed. Null when account setup is not applicable.",
-            "example": "https://auth.mountthor.com/sign-up?invite=01HF...",
+            "description": "Optional WorkOS AuthKit \"complete your account setup\" URL — the\nsame `accept_invitation_url` WorkOS emails the customer admin\nfrom its own infrastructure as part of `send_authkit_invitation`.\nSurfacing it inline lets `mountthor setup` deep-link the customer\nadmin straight to AuthKit's hosted UI to set a password / sign\nin via social / magic-link without having to context-switch to\nthe WorkOS-sent email. The email path remains the authoritative\nrecovery if the CLI tab is closed before setup completes;\nreturning this URL does not change WorkOS's email delivery.\n\n`None` when AuthKit is disabled in this deployment, the WorkOS\nsecret could not be loaded, or the invitation send 4xx'd (in\nwhich case the operator-side `mtops customer authkit-invitation-\nreissue` recovery path remains available).",
+            "example": "https://example.authkit.app/sign-up?invite=01HF...",
             "type": [
               "string",
               "null"
@@ -1418,6 +1579,19 @@
       },
       "CustomerUserMetadata": {
         "properties": {
+          "access_role": {
+            "description": "Cached portal access role — the WorkOS role slug for this user\n(`mountthor-cluster-admin` = Administrator,\n`mountthor-cluster-readonly` = Read-only). `null` when not yet\nknown locally (an invited user who has never logged in and\npredates the cache). WorkOS is the system of record; this column\nis reconciled at invite, login, and role change.",
+            "example": "mountthor-cluster-admin",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "billing_owner": {
+            "description": "Whether this user is a `billing-owner` for the customer — i.e. an\nactive `people` row with `role_type='billing-owner'` whose email\nmatches this user's (case-insensitive). Billing-owners can reach\nthe billing surface; this is independent of `access_role`.",
+            "example": "true",
+            "type": "boolean"
+          },
           "created_at": {
             "description": "RFC 3339 creation timestamp.",
             "example": "2026-05-25T17:30:00Z",
@@ -1429,7 +1603,7 @@
             "type": "string"
           },
           "display_name": {
-            "description": "Display name, when known. Updated from the identity provider profile on first login.",
+            "description": "Display name, when known. WorkOS first/last takes precedence on\nhuman users after their first login; for `invited` rows the\ninvite-time hint shows here.",
             "example": "Alice Example",
             "type": [
               "string",
@@ -1462,6 +1636,7 @@
           "email",
           "status",
           "user_type",
+          "billing_owner",
           "created_at",
           "updated_at"
         ],
@@ -1870,6 +2045,9 @@
           "spec": {
             "description": "Desired customer-owned state for the Image.",
             "properties": {
+              "approvedForDemo": {
+                "type": "boolean"
+              },
               "architecture": {
                 "type": "string"
               },
@@ -1897,6 +2075,14 @@
               "displayName": {
                 "type": "string"
               },
+              "guestBootstrap": {
+                "properties": {
+                  "transport": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
               "guestOs": {
                 "type": "string"
               },
@@ -1911,6 +2097,14 @@
               },
               "source": {
                 "properties": {
+                  "pullSecretRef": {
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
                   "ref": {
                     "type": "string"
                   },
@@ -2146,7 +2340,7 @@
             "type": "string"
           },
           "invoice_number": {
-            "description": "Human-readable invoice number\n(`INV-{customer}-{YYYY}-{MM}-{NNNN}`).",
+            "description": "Human-readable invoice number\n(`INV-{customer_slug}-{YYYY}-{MM}-{NNNN}`).",
             "example": "INV-acme-2026-05-0001",
             "type": "string"
           },
@@ -2189,7 +2383,7 @@
         "additionalProperties": false,
         "properties": {
           "intent": {
-            "description": "Admin portal intent. One of `sso`, `dsync`, or `domain_verification`. Defaults to `sso`.",
+            "description": "WorkOS Admin Portal intent. One of `sso`, `dsync`, or\n`domain_verification`. Defaults to `sso` when omitted; the\n\"Setup SSO Logins\" CTA in the portal is the primary caller.",
             "example": "sso",
             "type": [
               "string",
@@ -2206,7 +2400,7 @@
           },
           "return_url": {
             "deprecated": true,
-            "description": "Deprecated and ignored.",
+            "description": "Deprecated and ignored. Accepting this field is preserved for\nAPI-compatibility with the route as originally shipped in\n#4567; the customer-admin self-serve surface always uses the\n`MOUNTTHOR_SIGNUP_INVITE_PUBLIC_BASE_URL`-derived default to\neliminate an open-redirect angle (a compromised customer-admin\ncredential could otherwise point WorkOS's post-flow redirect at\nan attacker-controlled origin, and an admin completing the\nWorkOS flow would land there with a fresh session cookie). The\noperator-only path keeps the field honored because operators\nare higher-trust and have legitimate incident-handoff reasons\nto direct a customer to a specific landing.",
             "example": "https://api.mountthor.com/identity/setup-completed",
             "type": [
               "string",
@@ -2219,7 +2413,7 @@
       "IssueCustomerAdminIdentitySetupLinkResponse": {
         "properties": {
           "expires_at": {
-            "description": "RFC 3339 timestamp at which the link expires.",
+            "description": "RFC 3339 timestamp at which WorkOS will reject the link.",
             "type": "string"
           },
           "identity_integration_id": {
@@ -2233,12 +2427,12 @@
             "type": "string"
           },
           "provider": {
-            "description": "Identity provider identifier.",
-            "example": "sso",
+            "description": "Identity provider. Always `workos` today.",
+            "example": "workos",
             "type": "string"
           },
           "url": {
-            "description": "Admin portal URL. One-time use; redirect the browser immediately.",
+            "description": "WorkOS Admin Portal URL. One-time use; the portal should redirect\nthe customer admin's browser to it immediately and not log it.",
             "type": "string"
           }
         },
@@ -2382,7 +2576,7 @@
             "type": "string"
           },
           "refresh_token": {
-            "description": "Optional refresh token. Returned only by grants that issue one. Trade for a fresh session via the refresh-token grant before the session expires. Shown once; cannot be re-displayed.",
+            "description": "Optional refresh token (`mt_refresh_*`). Returned only by grants\nthat issue one (the SPA authkit-authorization-code grant when\n`request_refresh_token=true`, and the refresh-token grant on\nrotation). Trade for a fresh session via the refresh-token grant\nbefore the session expires. Stored once; cannot be re-displayed.",
             "type": [
               "string",
               "null"
@@ -2478,7 +2672,7 @@
             "type": "string"
           },
           "unit_price_cents": {
-            "description": "Per-second price in cents.",
+            "description": "Per-second price in cents. 0 for the alpha SKU\n(`alpha-2026`).",
             "format": "int64",
             "type": "integer"
           },
@@ -2495,6 +2689,47 @@
           "unit_price_cents"
         ],
         "type": "object"
+      },
+      "ProductLaunchFlow": {
+        "description": "How a customer launches an instance of this product from the portal.\nTagged enum so the portal can switch on `kind`.",
+        "oneOf": [
+          {
+            "description": "The portal owns a form that submits to a backend route (today:\n`POST /v1/admin/leases`). Click the launch button -> form modal.",
+            "properties": {
+              "kind": {
+                "enum": [
+                  "portal-form"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          {
+            "description": "No portal-side launch flow yet — the portal surfaces a \"use the\nCLI\" modal carrying `cli_command`. Tracked at issue #5503 for\nvirtual-machine specifically; future products may use the same\nmechanism until their portal flow ships.",
+            "properties": {
+              "cli_command": {
+                "description": "The shell command to display in the CLI-only modal.",
+                "example": "mountthor vm create",
+                "type": "string"
+              },
+              "kind": {
+                "enum": [
+                  "cli-only"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "cli_command",
+              "kind"
+            ],
+            "type": "object"
+          }
+        ]
       },
       "RegistryGrantAuthMetadata": {
         "description": "Non-secret registry credential metadata.",
@@ -3144,6 +3379,74 @@
         ],
         "type": "object"
       },
+      "SetAccessRoleRequest": {
+        "description": "Body for `PATCH /v1/admin/customer-users/{customer_user_id}/access-role`.",
+        "properties": {
+          "role_slug": {
+            "description": "The WorkOS role slug to assign: `mountthor-cluster-admin`\n(Administrator) or `mountthor-cluster-readonly` (Read-only). Any\nother slug is rejected.",
+            "example": "mountthor-cluster-readonly",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role_slug"
+        ],
+        "type": "object"
+      },
+      "SetAccessRoleResponse": {
+        "description": "Response for the access-role set endpoint.",
+        "properties": {
+          "access_role": {
+            "description": "The role slug after the call (equals the requested value on\nsuccess).",
+            "example": "mountthor-cluster-readonly",
+            "type": "string"
+          },
+          "customer_user_id": {
+            "description": "The member whose access role was set.",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_user_id",
+          "access_role"
+        ],
+        "type": "object"
+      },
+      "SetBillingOwnerRequest": {
+        "description": "Body for `PATCH /v1/admin/customer-users/{customer_user_id}/billing-owner`.",
+        "properties": {
+          "billing_owner": {
+            "description": "Desired billing-owner state for the target member. `true` grants\nthe `billing-owner` role (the member can reach the Billing page);\n`false` revokes it. Idempotent — setting the current state is a\nno-op.",
+            "example": "true",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "billing_owner"
+        ],
+        "type": "object"
+      },
+      "SetBillingOwnerResponse": {
+        "description": "Response for the billing-owner set endpoint.",
+        "properties": {
+          "billing_owner": {
+            "description": "The billing-owner state after the call (equals the requested\nvalue on success).",
+            "example": "true",
+            "type": "boolean"
+          },
+          "customer_user_id": {
+            "description": "The member whose billing-owner state was set.",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_user_id",
+          "billing_owner"
+        ],
+        "type": "object"
+      },
       "SpotBareMetalUsage": {
         "description": "Spot bare-metal usage summary.",
         "properties": {
@@ -3262,7 +3565,7 @@
             "type": "string"
           },
           "tenant_slug": {
-            "description": "Human-readable tenant identifier (e.g. `acme-prod`).",
+            "description": "Human-readable tenant slug (e.g. `acme-prod`).",
             "example": "acme-prod",
             "type": "string"
           }
@@ -3719,6 +4022,9 @@
           "status": {
             "description": "VirtualMachineStatus defines the observed state of a VirtualMachine.",
             "properties": {
+              "allocationDecisionID": {
+                "type": "string"
+              },
               "capacitySource": {
                 "type": "string"
               },
@@ -4496,7 +4802,7 @@
     },
     "/v1/admin/billing/price-catalog": {
       "get": {
-        "description": "Returns the active price book identifier and every priced\n(resource_kind, resource_class, usage_model) triple, ordered by\nthat key for stable client rendering. Independent of usage —\nsurfaces what the customer *would* be billed if they ran a given\nclass, so the portal's Create Bare Metal Machine / Create VM flows can\nrender a per-class price hint before submission.",
+        "description": "Returns the active price book slug + every priced\n(resource_kind, resource_class, usage_model) triple, ordered by\nthat key for stable client rendering. Independent of usage —\nsurfaces what the customer *would* be billed if they ran a given\nclass, so the portal's Create Bare Metal Machine / Create VM flows can\nrender a per-class price hint before submission.",
         "operationId": "get_customer_billing_price_catalog",
         "responses": {
           "200": {
@@ -4601,7 +4907,7 @@
     },
     "/v1/admin/customer-users": {
       "get": {
-        "description": "List customer users with metadata (email, display name, status, user type, timestamps).",
+        "description": "Returns local `customer_users` metadata only (email, display name,\nstatus, user_type, timestamps). Role assignment lives in the WorkOS\nworkspace and is not on this response — see the portal Members page\ncopy.",
         "operationId": "list_customer_users",
         "responses": {
           "200": {
@@ -4628,7 +4934,7 @@
             ]
           }
         ],
-        "summary": "List Customer Users",
+        "summary": "List the customer users belonging to the calling customer.",
         "tags": [
           "customer-users"
         ],
@@ -4680,7 +4986,7 @@
             "description": "An active customer user already exists with this email, or the customer's identity integration is not yet configured"
           },
           "503": {
-            "description": "Identity provider unavailable or rejected the invitation"
+            "description": "WorkOS AuthKit unavailable or rejected the invitation"
           }
         },
         "security": [
@@ -4690,7 +4996,7 @@
             ]
           }
         ],
-        "summary": "Invite Customer User",
+        "summary": "Invite a teammate to join the caller's Mount Thor customer via WorkOS\nAuthKit.",
         "tags": [
           "customer-users"
         ],
@@ -4702,6 +5008,153 @@
           "returnsSecretOnce": false
         },
         "x-mountthor-source-path": "control-plane/admin-api/src/routes/customer_user_invites.rs",
+        "x-mountthor-stability": "v1alpha1"
+      }
+    },
+    "/v1/admin/customer-users/{customer_user_id}/access-role": {
+      "patch": {
+        "description": "Administrator-only (`users:write`). Updates the role in the identity\nprovider (the system of record) and mirrors it onto the local cache.\nRefuses (403) when the caller targets their own row, and (409) when it\nwould demote the customer's last Administrator. Only an active member\nwho has signed in (has an identity-provider membership) can be changed.",
+        "operationId": "set_customer_user_access_role",
+        "parameters": [
+          {
+            "description": "Target member UUID",
+            "in": "path",
+            "name": "customer_user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAccessRoleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetAccessRoleResponse"
+                }
+              }
+            },
+            "description": "Access role set"
+          },
+          "400": {
+            "description": "Unknown role slug"
+          },
+          "401": {
+            "description": "Missing or invalid customer credential"
+          },
+          "403": {
+            "description": "Missing users:write scope, or targeting your own role"
+          },
+          "404": {
+            "description": "No such member for this customer"
+          },
+          "409": {
+            "description": "Last admin, or ineligible target"
+          }
+        },
+        "security": [
+          {
+            "api_key_bearer": [
+              "users:write"
+            ]
+          }
+        ],
+        "summary": "Change a teammate's portal access role (Administrator / Read-only).",
+        "tags": [
+          "customer-users"
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/customer_users.rs",
+        "x-mountthor-stability": "v1alpha1"
+      }
+    },
+    "/v1/admin/customer-users/{customer_user_id}/billing-owner": {
+      "patch": {
+        "description": "Administrator-only (`users:write`). Revoking the customer's last\nactive billing-owner is refused with 409 so the Billing surface is\nnever orphaned — grant a replacement first.",
+        "operationId": "set_customer_user_billing_owner",
+        "parameters": [
+          {
+            "description": "Target member UUID",
+            "in": "path",
+            "name": "customer_user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetBillingOwnerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetBillingOwnerResponse"
+                }
+              }
+            },
+            "description": "Billing-owner state set"
+          },
+          "401": {
+            "description": "Missing or invalid customer credential"
+          },
+          "403": {
+            "description": "Credential is missing users:write scope"
+          },
+          "404": {
+            "description": "No such member for this customer"
+          },
+          "409": {
+            "description": "Would orphan billing, or target not eligible"
+          }
+        },
+        "security": [
+          {
+            "api_key_bearer": [
+              "users:write"
+            ]
+          }
+        ],
+        "summary": "Grant or revoke the `billing-owner` role for a teammate.",
+        "tags": [
+          "customer-users"
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/customer_users.rs",
         "x-mountthor-stability": "v1alpha1"
       }
     },
@@ -4900,7 +5353,7 @@
     },
     "/v1/admin/identity": {
       "get": {
-        "description": "Returns identity configuration for the customer, including integration status and allowed domains.",
+        "description": "This is the read side of the portal Identity page. v1 returns only\nlocal state (integration status + allowed domains); a follow-up will\nenrich it with WorkOS list calls (connections, domains, AuthKit\nusers) once the basic Setup-SSO flow ships.",
         "operationId": "get_customer_admin_identity",
         "responses": {
           "200": {
@@ -4927,7 +5380,7 @@
             ]
           }
         ],
-        "summary": "Get Identity Setup",
+        "summary": "Return the caller's customer's WorkOS identity setup state.",
         "tags": [
           "identity"
         ],
@@ -4944,7 +5397,7 @@
     },
     "/v1/admin/identity-setup-link": {
       "post": {
-        "description": "Generate an admin portal link for the customer to configure SSO, domain verification, or directory sync. The returned URL is one-time use and expires shortly after creation.",
+        "description": "The customer admin uses this to configure their org's SSO connection,\nadd a domain, or set up Directory Sync — same WorkOS Admin Portal the\noperator-driven `mtops customer identity-setup-link` flow opens, just\nwithout the operator middleman. The returned URL is one-time use and\nexpires within ~minutes per WorkOS's contract.",
         "operationId": "issue_customer_admin_identity_setup_link",
         "requestBody": {
           "content": {
@@ -4980,7 +5433,7 @@
             "description": "No eligible identity integration for this customer"
           },
           "503": {
-            "description": "Admin portal unavailable"
+            "description": "WorkOS Admin Portal unavailable"
           }
         },
         "security": [
@@ -4990,7 +5443,7 @@
             ]
           }
         ],
-        "summary": "Create Identity Setup Link",
+        "summary": "Mint a fresh WorkOS Admin Portal link for the caller's customer.",
         "tags": [
           "identity"
         ],
@@ -5519,6 +5972,76 @@
         },
         "x-mountthor-source-path": "control-plane/admin-api/src/routes/api_keys.rs",
         "x-mountthor-stability": "v1alpha1"
+      },
+      "patch": {
+        "description": "The requested scopes must be covered by the caller's own API-key scopes.\nKey material is not rotated.",
+        "operationId": "update_customer_api_key_self_service",
+        "parameters": [
+          {
+            "description": "API key UUID to update",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerApiKeyUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerApiKeyUpdateResponse"
+                }
+              }
+            },
+            "description": "API key scopes updated"
+          },
+          "400": {
+            "description": "Request body failed validation"
+          },
+          "401": {
+            "description": "Missing or invalid customer API key"
+          },
+          "403": {
+            "description": "API key is missing keys:write scope"
+          },
+          "404": {
+            "description": "API key does not exist for this customer"
+          }
+        },
+        "security": [
+          {
+            "api_key_bearer": [
+              "keys:write"
+            ]
+          }
+        ],
+        "summary": "Update Key Scopes",
+        "tags": [
+          "api-keys"
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/api_keys.rs",
+        "x-mountthor-stability": "v1alpha1"
       }
     },
     "/v1/admin/machine-availability": {
@@ -5576,6 +6099,50 @@
           "returnsSecretOnce": false
         },
         "x-mountthor-source-path": "control-plane/admin-api/src/routes/machine_availability.rs",
+        "x-mountthor-stability": "v1alpha1"
+      }
+    },
+    "/v1/admin/products": {
+      "get": {
+        "description": "Returns the customer's `product` entitlements joined with the\ncanonical product catalog so the portal can render Launch affordances\nwithout hard-coding the slug list. Phase 1 of the backend-driven\nproduct catalog proposal — see #5505.",
+        "operationId": "get_customer_products",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerProductsResponse"
+                }
+              }
+            },
+            "description": "Customer product catalog"
+          },
+          "401": {
+            "description": "Missing or invalid customer API key"
+          },
+          "403": {
+            "description": "API key is missing account:read scope"
+          }
+        },
+        "security": [
+          {
+            "api_key_bearer": [
+              "account:read"
+            ]
+          }
+        ],
+        "summary": "List Products",
+        "tags": [
+          "account"
+        ],
+        "x-mountthor-owner": "admin-api",
+        "x-mountthor-secret-handling": {
+          "acceptsSecret": false,
+          "redactedFields": [],
+          "returnsSecret": false,
+          "returnsSecretOnce": false
+        },
+        "x-mountthor-source-path": "control-plane/admin-api/src/routes/products.rs",
         "x-mountthor-stability": "v1alpha1"
       }
     },
@@ -6022,7 +6589,7 @@
     },
     "/v1/admin/sessions/authorize": {
       "post": {
-        "description": "Returns the authorization URL for browser-based SSO login. The flow completes at `POST /v1/admin/sessions` with `grant_type=login-handoff`.",
+        "description": "Returns the WorkOS authorization URL the CLI opens in the browser. The flow\ncompletes at `POST /v1/admin/sessions` with `grant_type=login-handoff`, which\nmints the `mt_session_*` token. The long-lived API-key grant on that same\nendpoint is unaffected.",
         "operationId": "create_login_request",
         "requestBody": {
           "content": {
@@ -6055,7 +6622,7 @@
         "security": [
           {}
         ],
-        "summary": "Create Login Authorization",
+        "summary": "Begin a `mthr login` browser-SSO authorization.",
         "tags": [
           "sessions"
         ],
