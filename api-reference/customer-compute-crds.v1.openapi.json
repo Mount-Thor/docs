@@ -37,6 +37,9 @@
           "status": {
             "description": "Observed Mount Thor status for the BareMetalMachine. Customers read status; create and update requests should not set it.",
             "properties": {
+              "allocationDecisionID": {
+                "type": "string"
+              },
               "capacitySource": {
                 "type": "string"
               },
@@ -81,8 +84,17 @@
                 "type": "array"
               },
               "desktopSession": {
-                "description": "Desktop access session information.",
+                "description": "Browser desktop access contract per ADR 0014. Ships the credential-side fields only in this PR; access-broker / launcher / expiration fields land with their reconciler in a later phase under provider-neutral names.",
                 "properties": {
+                  "credentialSecretRef": {
+                    "description": "Reference to the Opaque Secret in the same namespace that the host-side bridge reads for the desktop credential.",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
                   "phase": {
                     "description": "Pending | Active | Expired | Revoked | Failed.",
                     "type": "string"
@@ -226,6 +238,9 @@
           "spec": {
             "description": "Desired customer-owned state for the Image.",
             "properties": {
+              "approvedForDemo": {
+                "type": "boolean"
+              },
               "architecture": {
                 "type": "string"
               },
@@ -253,6 +268,14 @@
               "displayName": {
                 "type": "string"
               },
+              "guestBootstrap": {
+                "properties": {
+                  "transport": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
               "guestOs": {
                 "type": "string"
               },
@@ -267,6 +290,14 @@
               },
               "source": {
                 "properties": {
+                  "pullSecretRef": {
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
                   "ref": {
                     "type": "string"
                   },
@@ -394,11 +425,11 @@
         "description": "Customer-visible VirtualMachine resource in the Mount Thor Compute API.",
         "properties": {
           "apiVersion": {
-            "description": "API version for this resource. Use `compute.mountthor.com/v1alpha1`.",
+            "description": "APIVersion defines the versioned schema of this representation of an object.\nServers should convert recognized schemas to the latest internal value, and\nmay reject unrecognized values.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
             "type": "string"
           },
           "kind": {
-            "description": "Resource kind. Must be `VirtualMachine`.",
+            "description": "Kind is a string value representing the REST resource this object represents.\nServers may infer this from the endpoint the client submits requests to.\nCannot be updated.\nIn CamelCase.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
             "type": "string"
           },
           "metadata": {
@@ -475,7 +506,13 @@
           "status": {
             "description": "VirtualMachineStatus defines the observed state of a VirtualMachine.",
             "properties": {
+              "allocationDecisionID": {
+                "type": "string"
+              },
               "capacitySource": {
+                "type": "string"
+              },
+              "cleanupEvidenceRef": {
                 "type": "string"
               },
               "conditions": {
@@ -555,6 +592,13 @@
                     "format": "int64",
                     "type": "integer"
                   },
+                  "layerCount": {
+                    "format": "int32",
+                    "type": "integer"
+                  },
+                  "operationId": {
+                    "type": "string"
+                  },
                   "rateBps": {
                     "format": "int64",
                     "type": "integer"
@@ -609,6 +653,44 @@
               },
               "resolvedImageRef": {
                 "type": "string"
+              },
+              "timings": {
+                "description": "VMTimingStatus records the native VM lifecycle milestones used for latency\nprofiling and readiness gating.",
+                "properties": {
+                  "customerReadyAt": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "guestReadyProbePassedAt": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "hostDurableAt": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "hostReservedAt": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "intentDurableAt": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "portsPublishedAt": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "prepareInstanceStartedAt": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "startSubmittedAt": {
+                    "format": "date-time",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
               }
             },
             "type": "object"
@@ -626,9 +708,12 @@
     }
   },
   "info": {
-    "description": "Mount Thor compute resource API for Kubernetes-compatible management of bare-metal machines, virtual machines, images, and machine classes.",
+    "description": "Generated Kubernetes-compatible customer compute schemas. Do not edit by hand.",
     "title": "Mount Thor Customer Compute CRDs",
-    "version": "v1"
+    "version": "v1",
+    "x-mountthor-audience": "customer",
+    "x-mountthor-source": "customer-v1",
+    "x-mountthor-stability": "alpha"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -667,6 +752,9 @@
             },
             "description": "OK"
           },
+          "201": {
+            "description": "Created"
+          },
           "400": {
             "description": "Bad Request"
           },
@@ -698,10 +786,13 @@
           "group": "compute.mountthor.com",
           "kind": "BareMetalMachine",
           "version": "v1alpha1"
-        }
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_baremetalmachines.yaml"
       },
       "post": {
-        "description": "Creates a bare-metal Mac machine request. The request selects a machine class, image channel, access policy, and optional placement preferences.",
+        "description": "Creates a bare-metal machine request. The request selects a machine class, image channel, access policy, and optional placement preferences.",
         "operationId": "createBareMetalMachine",
         "parameters": [
           {
@@ -774,7 +865,10 @@
           "group": "compute.mountthor.com",
           "kind": "BareMetalMachine",
           "version": "v1alpha1"
-        }
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_baremetalmachines.yaml"
       }
     },
     "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/baremetalmachines/{name}": {
@@ -846,7 +940,10 @@
           "group": "compute.mountthor.com",
           "kind": "BareMetalMachine",
           "version": "v1alpha1"
-        }
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_baremetalmachines.yaml"
       },
       "get": {
         "description": "Returns one bare-metal machine by name, including desired state and customer-visible status.",
@@ -882,6 +979,9 @@
             },
             "description": "OK"
           },
+          "201": {
+            "description": "Created"
+          },
           "400": {
             "description": "Bad Request"
           },
@@ -913,12 +1013,15 @@
           "group": "compute.mountthor.com",
           "kind": "BareMetalMachine",
           "version": "v1alpha1"
-        }
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_baremetalmachines.yaml"
       }
     },
     "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/fleetpolicies": {
       "get": {
-        "description": "Lists fleet policies in the tenant namespace.",
+        "description": "Lists Fleet Policies in the tenant namespace.",
         "operationId": "listFleetPolicy",
         "parameters": [
           {
@@ -951,6 +1054,9 @@
             },
             "description": "OK"
           },
+          "201": {
+            "description": "Created"
+          },
           "400": {
             "description": "Bad Request"
           },
@@ -982,12 +1088,15 @@
           "group": "compute.mountthor.com",
           "kind": "FleetPolicy",
           "version": "v1alpha1"
-        }
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_fleetpolicies.yaml"
       }
     },
     "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/fleetpolicies/{name}": {
       "get": {
-        "description": "Returns one fleet policy by name from the tenant namespace.",
+        "description": "Returns one Fleet Policy by name from the tenant namespace.",
         "operationId": "getFleetPolicy",
         "parameters": [
           {
@@ -1000,7 +1109,7 @@
             }
           },
           {
-            "description": "Kubernetes object name for the fleet policy.",
+            "description": "Kubernetes object name for the FleetPolicy.",
             "in": "path",
             "name": "name",
             "required": true,
@@ -1019,6 +1128,9 @@
               }
             },
             "description": "OK"
+          },
+          "201": {
+            "description": "Created"
           },
           "400": {
             "description": "Bad Request"
@@ -1051,7 +1163,10 @@
           "group": "compute.mountthor.com",
           "kind": "FleetPolicy",
           "version": "v1alpha1"
-        }
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_fleetpolicies.yaml"
       }
     },
     "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/images": {
@@ -1089,6 +1204,9 @@
             },
             "description": "OK"
           },
+          "201": {
+            "description": "Created"
+          },
           "400": {
             "description": "Bad Request"
           },
@@ -1120,7 +1238,10 @@
           "group": "compute.mountthor.com",
           "kind": "Image",
           "version": "v1alpha1"
-        }
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_images.yaml"
       }
     },
     "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/images/{name}": {
@@ -1158,6 +1279,9 @@
             },
             "description": "OK"
           },
+          "201": {
+            "description": "Created"
+          },
           "400": {
             "description": "Bad Request"
           },
@@ -1189,7 +1313,10 @@
           "group": "compute.mountthor.com",
           "kind": "Image",
           "version": "v1alpha1"
-        }
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_images.yaml"
       }
     },
     "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/machineclasses": {
@@ -1227,6 +1354,9 @@
             },
             "description": "OK"
           },
+          "201": {
+            "description": "Created"
+          },
           "400": {
             "description": "Bad Request"
           },
@@ -1258,7 +1388,10 @@
           "group": "compute.mountthor.com",
           "kind": "MachineClass",
           "version": "v1alpha1"
-        }
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_machineclasses.yaml"
       }
     },
     "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/machineclasses/{name}": {
@@ -1296,6 +1429,9 @@
             },
             "description": "OK"
           },
+          "201": {
+            "description": "Created"
+          },
           "400": {
             "description": "Bad Request"
           },
@@ -1327,12 +1463,15 @@
           "group": "compute.mountthor.com",
           "kind": "MachineClass",
           "version": "v1alpha1"
-        }
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_machineclasses.yaml"
       }
     },
     "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/virtualmachines": {
       "get": {
-        "description": "Lists VirtualMachines in the tenant namespace.",
+        "description": "Lists Virtual Machines in the tenant namespace.",
         "operationId": "listVirtualMachine",
         "parameters": [
           {
@@ -1365,6 +1504,9 @@
             },
             "description": "OK"
           },
+          "201": {
+            "description": "Created"
+          },
           "400": {
             "description": "Bad Request"
           },
@@ -1396,10 +1538,13 @@
           "group": "compute.mountthor.com",
           "kind": "VirtualMachine",
           "version": "v1alpha1"
-        }
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_virtualmachines.yaml"
       },
       "post": {
-        "description": "Creates one VirtualMachine in the tenant namespace.",
+        "description": "Creates one Virtual Machine in the tenant namespace.",
         "operationId": "createVirtualMachine",
         "parameters": [
           {
@@ -1472,12 +1617,15 @@
           "group": "compute.mountthor.com",
           "kind": "VirtualMachine",
           "version": "v1alpha1"
-        }
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_virtualmachines.yaml"
       }
     },
     "/v1/compute/apis/compute.mountthor.com/v1alpha1/namespaces/{namespace}/virtualmachines/{name}": {
       "delete": {
-        "description": "Deletes one VirtualMachine by name from the tenant namespace.",
+        "description": "Deletes one Virtual Machine by name from the tenant namespace.",
         "operationId": "deleteVirtualMachine",
         "parameters": [
           {
@@ -1544,10 +1692,13 @@
           "group": "compute.mountthor.com",
           "kind": "VirtualMachine",
           "version": "v1alpha1"
-        }
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_virtualmachines.yaml"
       },
       "get": {
-        "description": "Returns one VirtualMachine by name from the tenant namespace.",
+        "description": "Returns one Virtual Machine by name from the tenant namespace.",
         "operationId": "getVirtualMachine",
         "parameters": [
           {
@@ -1580,6 +1731,9 @@
             },
             "description": "OK"
           },
+          "201": {
+            "description": "Created"
+          },
           "400": {
             "description": "Bad Request"
           },
@@ -1611,7 +1765,10 @@
           "group": "compute.mountthor.com",
           "kind": "VirtualMachine",
           "version": "v1alpha1"
-        }
+        },
+        "x-mountthor-customer-safe-status": true,
+        "x-mountthor-owner": "manager",
+        "x-mountthor-source-path": "control-plane/manager/config/crd/bases/compute.mountthor.com_virtualmachines.yaml"
       }
     }
   },
@@ -1620,5 +1777,8 @@
       "description": "Mount Thor customer Kubernetes-compatible compute API",
       "url": "https://api.mountthor.com/v1/compute"
     }
-  ]
+  ],
+  "x-mountthor-generated-from": {
+    "registry": "governance/api-surfaces/customer.v1.yaml"
+  }
 }
